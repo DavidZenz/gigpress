@@ -1,0 +1,38 @@
+services:
+  db:
+    image: mariadb:11.4.5
+    environment:
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wordpress
+      MARIADB_PASSWORD: ${COMPAT_DB_PASSWORD:?runner must provide COMPAT_DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${COMPAT_DB_ROOT_PASSWORD:?runner must provide COMPAT_DB_ROOT_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h localhost -uroot -p$$MARIADB_ROOT_PASSWORD --silent"]
+      interval: 2s
+      timeout: 5s
+      retries: 45
+    volumes:
+      - wordpress_db:/var/lib/mysql
+
+  wordpress:
+    image: wordpress:${WP_VERSION:?runner must provide WP_VERSION}-php${PHP_VERSION:?runner must provide PHP_VERSION}-apache
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: ${COMPAT_DB_PASSWORD:?runner must provide COMPAT_DB_PASSWORD}
+      WORDPRESS_DEBUG: "1"
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_DEBUG_LOG', false);
+        define('WP_DEBUG_DISPLAY', false);
+    volumes:
+      - wordpress_data:/var/www/html
+      - ${REPO_ROOT:?runner must provide REPO_ROOT}:/var/www/html/wp-content/plugins/gigpress:ro
+      - ./probe.php:/compat/probe.php:ro
+
+volumes:
+  wordpress_data:
+  wordpress_db:
