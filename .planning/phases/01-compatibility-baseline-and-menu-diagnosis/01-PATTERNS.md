@@ -14,7 +14,7 @@
 | `lib/upgrade.php` | utility / legacy compatibility | transform | `lib/upgrade.php` | exact (modify in place) |
 | disposable compatibility matrix (path TBD by runner selection) | test / config | batch | none | no analog |
 
-All named analog paths are tracked source files (`git ls-files` verified). The repository has no existing Docker, Compose, test, or CI harness to copy.
+All named analog paths are tracked source files (`git ls-files` verified). The repository has no existing container, Compose, test, or CI harness to copy.
 
 ## Pattern Assignments
 
@@ -153,7 +153,7 @@ $r .= $str{$n};
 
 **Source:** `gigpress.php` lines 599-621; `admin/db.php` lines 142-151.
 
-**Apply to:** compatibility guard/deactivation investigation and any temporary admin diagnostic.
+**Apply to:** the active-but-inert compatibility guard and any temporary admin diagnostic.
 
 ```php
 register_activation_hook(__FILE__,'gigpress_install');
@@ -169,7 +169,7 @@ function gigpress_install() {
 }
 ```
 
-Use core’s requirement header handling before adding a custom deactivation/notice flow. If a custom transition is needed after supported-runtime testing, restrict feedback to WordPress’s plugin-management capability and avoid retaining diagnostic menu data.
+Use core’s requirement header handling to block new below-floor activation. For an already-active installation, branch before every normal include/hook, retain active state, register only the compatibility notice behind WordPress’s plugin-management capability, and keep diagnostic menu data out of that notice. Keep the normal procedural declarations inside the supported-runtime branch so they are absent below the floor.
 
 ### Procedural WordPress integration
 
@@ -191,7 +191,7 @@ Replace `{expression}` offset access with `[expression]` only. Preserve surround
 
 | File / artifact | Role | Data Flow | Reason |
 |---|---|---|---|
-| Disposable WordPress/PHP matrix definition and smoke runner (path TBD) | test/config | batch | No tracked Docker, Compose, test, CI, or harness files exist. Select the runner first, then keep fixture/log artifacts outside shipped plugin runtime paths. |
+| Disposable WordPress/PHP matrix definition and smoke runner (path TBD) | test/config | batch | No tracked Compose, test, CI, or harness files exist. Use the installed OrbStack Docker-compatible runtime, then keep fixture/log artifacts outside shipped plugin runtime paths; do not add a host PHP dependency. |
 | Controlled menu-order trace (path TBD) | test/diagnostic | event-driven | No diagnostic instrumentation exists. It must be temporary, record input/returned/final slugs plus callbacks, and not become a normal-request persistent option or notice. |
 
 ## Metadata

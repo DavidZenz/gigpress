@@ -30,14 +30,14 @@
 
 **User's choice:** Show a clear admin notice and stop incompatible code from running.
 
-### Deactivation behavior
+### Active-state behavior
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Remain active but inert | Skip GigPress code while leaving the plugin active. | |
-| Deactivate automatically | Deactivate GigPress below PHP 8.3. | ✓ |
+| Remain active but inert | Skip normal GigPress code while leaving the plugin active and registering only the compatibility notice. | ✓ |
+| Change active state | Remove GigPress from WordPress's active-plugin state below PHP 8.3. | |
 
-**User's choice:** Deactivate GigPress automatically.
+**User's choice:** Keep GigPress active but inert below PHP 8.3. The early guard runs before modules and normal hooks/functions, registers only the capability-scoped compatibility notice, and returns.
 
 ### Notice audience
 
@@ -57,7 +57,7 @@
 
 **User's choice:** Keep the notice visible until PHP 8.3 or later is detected.
 
-**Notes:** PHP 8.2 is diagnostic context for the reported WordPress 7.1.2 warning, not a support target.
+**Notes:** The notice repeats on later authorized admin requests while PHP remains below 8.3 and disappears automatically on PHP 8.3+. New activation remains blocked by `Requires PHP: 8.3`. PHP 8.2 is diagnostic context for the reported WordPress 7.1.2 warning, not a support target.
 
 ---
 

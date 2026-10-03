@@ -60,6 +60,8 @@ Progress: ░░░░░░░░░░ [░░░░░░░░░░] 0%
 Recent decisions affecting current work:
 
 - WordPress 7.0+ and PHP 8.3+ are the minimum support targets; PHP 8.2 is diagnostic context only.
+- An already-active GigPress installation below PHP 8.3 remains active but inert: its early bootstrap registers only a persistent plugin-manager compatibility notice and loads no normal modules, hooks, or functions until PHP 8.3+ returns.
+- Use the installed OrbStack Docker-compatible runtime and Compose for all WordPress/PHP matrix and lint containers; do not install or depend on host PHP.
 - Preserve existing records, settings, data model, public output, theme overrides, and CSV contracts.
 - Deliver the five approved workflow improvements after the compatibility baseline.
 
@@ -71,6 +73,7 @@ None yet.
 
 - Phase 1 must reproduce and trace the reported admin-menu warning; its cause is not yet confirmed.
 - Refresh supported WordPress/PHP release branches during planning and validation.
+- Verify the active-but-inert PHP-floor guard on both target WordPress lines, including active-state retention, hook/function absence, capability-scoped repeated notices, public-request inertness, and automatic recovery on PHP 8.3+.
 - Phase 2 must characterize historical schema and upgrade behavior before migration-adjacent changes.
 - Phases 4 and 5 must verify template/feed and CSV edge cases with representative fixtures.
 

@@ -18,21 +18,22 @@ Modernize GigPress in compatibility-first slices. Establish the WordPress 7.0+ a
 **Goal**: Site owners can run GigPress on the selected WordPress and PHP support matrix, and the admin-menu warning is traced and resolved.
 **Mode:** mvp
 **Depends on**: Nothing (first phase)
-**Requirements**: COMP-01, COMP-02, COMP-03
+**Requirements**: COMP-01, COMP-02, COMP-03, COMP-04
 **Success Criteria** (what must be TRUE):
   1. A controlled late-menu fixture reproduces the exact `separator-gigpress` key and the diagnostic identifies that fixture callback; GigPress's own equivalent late `separator-gp` mutation is corrected and this checkout's admin menu is warning-free on the supported WordPress/PHP matrix. The unavailable live site's callback identity is recorded as unprovable from repository evidence and is not inferred from the fixture.
   2. Site owners can activate GigPress and complete its existing administration, public-display, feed, and CSV workflows on WordPress 7.0 and the latest 7.1 release with PHP 8.3 and every newer PHP branch still supported upstream at validation time, without PHP warnings or fatal errors.
   3. Plugin metadata and readme declare WordPress 7.0 and PHP 8.3 minimums; the tested-up-to value names only a WordPress release that has passed compatibility checks.
+  4. On an already-active site below PHP 8.3, GigPress remains active but loads no normal modules, hooks, functions, or workflows; only a persistent plugin-manager compatibility notice is registered, and normal behavior resumes automatically without that notice on PHP 8.3+.
 **Plans**: 5 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Build the disposable compatibility tracer, matrix runner, workflow probes, and D-03 feasibility gate.
+- [ ] 01-01-PLAN.md — Build the OrbStack-backed compatibility tracer, matrix runner, workflow probes, and active-but-inert runtime-floor contract.
 - [ ] 01-02-PLAN.md — Reproduce and attribute the exact warning key in a controlled fixture, then document the repository-evidence boundary.
-- [ ] 01-03-PLAN.md — Remove PHP 8 parser blockers and enforce the WordPress 7.0/PHP 8.3 runtime contract.
+- [ ] 01-03-PLAN.md — Remove PHP 8 parser blockers and implement the active-but-inert WordPress 7.0/PHP 8.3 runtime contract.
 - [ ] 01-04-PLAN.md — Replace late menu mutation with pure ordering and standard-order fallback.
 - [ ] 01-05-PLAN.md — Run the full compatibility matrix and publish evidence-backed metadata.
 **UI hint**: yes
-**Research flags**: Reproduce the reported WordPress 7.1.2/PHP 8.2 warning as diagnostic context, inspect the final menu arrays and active ordering callbacks, and verify the supported WordPress/PHP matrix. PHP 8.2 is not a support target.
+**Research flags**: Reproduce the reported WordPress 7.1.2/PHP 8.2 warning as diagnostic context, inspect the final menu arrays and active ordering callbacks, verify the active-but-inert below-floor guard, and run the supported WordPress/PHP matrix through OrbStack's Docker-compatible Compose runtime. PHP 8.2 is not a support target and host PHP is not required.
 
 ### Phase 2: Data and Upgrade Preservation
 **Goal**: Site owners can update GigPress and keep their existing records, relationships, settings, and show-management behavior usable.
