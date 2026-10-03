@@ -30,11 +30,11 @@ Modernize GigPress in compatibility-first slices. Establish the WordPress 7.0+ a
 
 Plans:
 **Wave 1**
-- [ ] 01-01-PLAN.md — Build the OrbStack-backed compatibility tracer, matrix runner, workflow probes, and active-but-inert runtime-floor contract.
+- [ ] 01-01-PLAN.md — Remove PHP 8 parser blockers, then build the OrbStack-backed activation tracer, matrix runner, workflow probes, and active-but-inert runtime-floor contract.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 01-02-PLAN.md — Reproduce and attribute the exact warning key in a controlled fixture, then document the repository-evidence boundary.
-- [ ] 01-03-PLAN.md — Remove PHP 8 parser blockers and implement the active-but-inert WordPress 7.0/PHP 8.3 runtime contract.
+- [ ] 01-03-PLAN.md — Declare the WordPress 7.0/PHP 8.3 support floor and implement the active-but-inert runtime contract on Plan 01-01's parser-safe baseline.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 01-04-PLAN.md — Replace late menu mutation with pure ordering and standard-order fallback.
