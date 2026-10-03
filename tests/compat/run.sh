@@ -191,10 +191,6 @@ run_runtime_floor() {
     wait_for_wordpress
     run_fixture_phase fixture-low
     PHP_VERSION=$supported_php
-    if ! compose_env rm -sf wordpress >/dev/null || ! docker volume rm "${PROJECT}_wordpress_data" >/dev/null; then
-      cleanup_floor
-      fail "could not rebuild the disposable WordPress filesystem for fixture recovery"
-    fi
     if ! compose_env up -d --force-recreate wordpress >/dev/null; then cleanup_floor; fail "could not restore fixture cell $line/PHP $supported_php"; fi
     wait_for_wordpress
     run_fixture_phase fixture-recover
