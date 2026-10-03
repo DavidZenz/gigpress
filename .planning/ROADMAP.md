@@ -26,11 +26,11 @@ Modernize GigPress in compatibility-first slices. Establish the WordPress 7.0+ a
   3. Plugin metadata and readme declare WordPress 7.0 and PHP 8.3 minimums; the tested-up-to value names only a WordPress release that has passed compatibility checks.
   4. On an already-active site below PHP 8.3, GigPress remains active but loads no normal modules, hooks, functions, or workflows; only a persistent plugin-manager compatibility notice is registered, and normal behavior resumes automatically without that notice on PHP 8.3+.
 
-**Plans**: 5 plans
+**Plans**: 1/5 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 01-01-PLAN.md — Remove PHP 8 parser blockers, then build the OrbStack-backed activation tracer, matrix runner, workflow probes, controlled runtime-floor fixture, and reusable real-plugin assertions.
+- [x] 01-01-PLAN.md — Remove PHP 8 parser blockers, then build the OrbStack-backed activation tracer, matrix runner, workflow probes, controlled runtime-floor fixture, and reusable real-plugin assertions.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 01-02-PLAN.md — Reproduce and attribute the exact warning key in a controlled fixture, then document the repository-evidence boundary.
@@ -107,7 +107,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Compatibility Baseline and Menu Diagnosis | 0/5 | Not started | - |
+| 1. Compatibility Baseline and Menu Diagnosis | 1/5 | In Progress|  |
 | 2. Data and Upgrade Preservation | 0/TBD | Not started | - |
 | 3. Administration Workflows | 0/TBD | Not started | - |
 | 4. Public Publishing | 0/TBD | Not started | - |
