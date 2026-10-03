@@ -20,14 +20,14 @@ Modernize GigPress in compatibility-first slices. Establish the WordPress 7.0+ a
 **Depends on**: Nothing (first phase)
 **Requirements**: COMP-01, COMP-02, COMP-03
 **Success Criteria** (what must be TRUE):
-  1. GigPress's admin menu appears without the undefined `separator-gigpress` key warning on the supported WordPress/PHP matrix, and the warning's originating menu state or callback has been identified.
+  1. A controlled late-menu fixture reproduces the exact `separator-gigpress` key and the diagnostic identifies that fixture callback; GigPress's own equivalent late `separator-gp` mutation is corrected and this checkout's admin menu is warning-free on the supported WordPress/PHP matrix. The unavailable live site's callback identity is recorded as unprovable from repository evidence and is not inferred from the fixture.
   2. Site owners can activate GigPress and complete its existing administration, public-display, feed, and CSV workflows on WordPress 7.0 and the latest 7.1 release with PHP 8.3 and every newer PHP branch still supported upstream at validation time, without PHP warnings or fatal errors.
   3. Plugin metadata and readme declare WordPress 7.0 and PHP 8.3 minimums; the tested-up-to value names only a WordPress release that has passed compatibility checks.
 **Plans**: 5 plans
 
 Plans:
 - [ ] 01-01-PLAN.md — Build the disposable compatibility tracer, matrix runner, workflow probes, and D-03 feasibility gate.
-- [ ] 01-02-PLAN.md — Trace the menu-warning source locally and capture the affected installation evidence.
+- [ ] 01-02-PLAN.md — Reproduce and attribute the exact warning key in a controlled fixture, then document the repository-evidence boundary.
 - [ ] 01-03-PLAN.md — Remove PHP 8 parser blockers and enforce the WordPress 7.0/PHP 8.3 runtime contract.
 - [ ] 01-04-PLAN.md — Replace late menu mutation with pure ordering and standard-order fallback.
 - [ ] 01-05-PLAN.md — Run the full compatibility matrix and publish evidence-backed metadata.

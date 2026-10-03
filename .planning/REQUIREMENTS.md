@@ -11,7 +11,7 @@ Requirements for the first compatibility and UX delivery. Each maps to a roadmap
 
 - [ ] **COMP-01**: GigPress declares WordPress 7.0 and PHP 8.3 as its minimum versions in its plugin metadata and readme; its tested-up-to version reflects a WordPress release that has passed the project’s compatibility checks.
 - [ ] **COMP-02**: GigPress activates and completes its existing administration, public-display, feed, and CSV workflows on WordPress 7.0 and the latest 7.1 release with PHP 8.3 and every newer PHP release branch still supported upstream at validation time, without PHP warnings or fatal errors in those workflows.
-- [ ] **COMP-03**: The reported missing `separator-gigpress` admin-menu key is traced to its source and corrected so GigPress’s admin menu appears without that warning on the supported WordPress/PHP matrix.
+- [ ] **COMP-03**: A controlled late-menu fixture reproduces the exact reported `separator-gigpress` key and is attributed by the repository diagnostic; GigPress’s own equivalent late `separator-gp` mutation is corrected so this checkout’s admin menu is warning-free on the supported WordPress/PHP matrix. Because the reported installation is unavailable and this repository has no `separator-gigpress` occurrence, the original live site’s callback identity is recorded as unprovable from repository evidence rather than inferred from the fixture.
 
 ### Existing Data and Behavior
 
@@ -58,16 +58,30 @@ Deferred until separately requested or supported by user evidence.
 
 ## Traceability
 
-Which phases cover which requirements. This table will be filled during roadmap creation.
+Which phases cover which requirements.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
+| COMP-01 | Phase 1 | Pending |
+| COMP-02 | Phase 1 | Pending |
+| COMP-03 | Phase 1 | Pending |
+| DATA-01 | Phase 2 | Pending |
+| DATA-02 | Phase 2 | Pending |
+| ADMIN-01 | Phase 3 | Pending |
+| ADMIN-02 | Phase 3 | Pending |
+| ADMIN-03 | Phase 3 | Pending |
+| UX-01 | Phase 3 | Pending |
+| PUB-01 | Phase 4 | Pending |
+| PUB-02 | Phase 4 | Pending |
+| CSV-01 | Phase 5 | Pending |
+| CSV-02 | Phase 5 | Pending |
+| SEC-01 | Phase 5 | Pending |
 
 **Coverage:**
 - v1 requirements: 14 total
-- Mapped to phases: 0
-- Unmapped: 14 ⚠️
+- Mapped to phases: 14
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-10-03*
-*Last updated: 2026-10-03 after research and scope confirmation*
+*Last updated: 2026-10-03 after Phase 1 repository-evidence boundary clarification*

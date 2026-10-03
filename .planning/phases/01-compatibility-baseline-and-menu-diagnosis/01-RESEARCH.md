@@ -32,14 +32,14 @@ None — discussion stayed within Phase 1 scope.
 |---|---|---|
 | COMP-01 | Declare WordPress 7.0 and PHP 8.3 minimums; name only a validated WordPress release in `Tested up to`. | Header/readme ownership and release-matrix evidence below. |
 | COMP-02 | Run administration, public display, feed, and CSV workflows on WordPress 7.0/latest 7.1 with PHP 8.3 and each newer upstream-supported PHP branch, without warnings/fatals. | A matrix and workflow smoke protocol, plus PHP parse blockers discovered in the tracked source. |
-| COMP-03 | Trace and correct the missing `separator-gigpress` menu key warning. | Root-cause hypothesis, reproducible instrumentation, and a safe menu-order pattern below. |
+| COMP-03 | Reproduce and fixture-attribute the exact `separator-gigpress` key, correct GigPress's equivalent late `separator-gp` mutation, and record the unavailable live-site attribution boundary. | Repository history, related historical evidence, reproducible instrumentation, and a safe menu-order pattern below. |
 </phase_requirements>
 
 ## Summary
 
 GigPress needs a focused compatibility slice before wider workflow work: update its declared support contract, remove PHP 8 parser blockers on all workflow paths, and validate the existing workflows on a disposable WordPress matrix. The official archive lists WordPress 7.0.6 and 7.1.2 as the current releases of their respective lines; PHP lists 8.3, 8.4, and 8.5 as supported branches on this research date. PHP 8.2 remains diagnostic-only by the locked decision. [CITED: https://wordpress.org/download/releases/] [CITED: https://www.php.net/supported-versions.php]
 
-The strongest diagnosis is that GigPress mutates global `$menu` inside its `menu_order` filter. WordPress captures its default slug order before applying that filter and later sorts the global menu against that captured map. A separator inserted after that snapshot can therefore have no default-map key. The installed checkout creates `separator-gp`, while the report names `separator-gigpress`; that difference means the exact deployed callback or menu contributor must be captured in the reported environment before assigning final blame. [CITED: https://developer.wordpress.org/reference/hooks/menu_order/] [CITED: https://github.com/WordPress/wordpress-develop/blob/trunk/src/wp-admin/includes/menu.php]
+The strongest repository diagnosis is that GigPress mutates global `$menu` inside its `menu_order` filter. WordPress 7.1.2 captures its default slug order before applying that filter, flips the filtered and default arrays into ordering maps, and compares unknown rows through the default map. A separator inserted after the snapshot can therefore have no default-map key; if the final filtered order also omits it, sorting reads the absent key. The installed checkout creates `separator-gp`, while the report names `separator-gigpress`; `git log --all -Sseparator-gigpress -- gigpress.php` finds no historical occurrence in this repository. A prior official GigPress support topic reports an `Undefined index: separator-gp` conflict, which is related historical evidence for the same late-menu failure class, not proof of the current live site's actor. The unavailable live site's exact callback identity therefore cannot be proven from repository evidence. [CITED: https://developer.wordpress.org/reference/hooks/menu_order/] [CITED: https://github.com/WordPress/wordpress-develop/blob/7.1.2/src/wp-admin/includes/menu.php] [CITED: https://wordpress.org/support/topic/undefined-index-separator-gp-severe-conflicts-with-other-plugins/] [VERIFIED: repository history search on 2026-10-03]
 
 **Primary recommendation:** Make the runtime/header update and PHP 8 syntax cleanup first; reproduce the menu warning with a controlled trace; then replace the ordering filter with a pure transform that never mutates global `$menu`, falling back to core order when its prerequisites are absent or another ordering callback makes a safe transform impossible. [CITED: https://developer.wordpress.org/reference/hooks/menu_order/]
 
@@ -106,8 +106,8 @@ flowchart LR
 **Plan shape:**
 
 1. Capture the order input, final global menu slugs, returned order, and active `menu_order` callbacks in the WordPress 7.1.2/PHP 8.2 diagnostic run. Do not leave that trace enabled in normal requests. [ASSUMED]
-2. Establish whether the reported `separator-gigpress` comes from the deployed GigPress build, another plugin, or a callback registered after GigPress. The checked-out source emits `separator-gp`, so a slug rename alone is unsupported by evidence. [VERIFIED: gigpress.php:452] [VERIFIED: gigpress.php:466-467]
-3. If an explicit separator is still compatible, create it before WordPress snapshots menu slugs and return its existing slug in the pure ordering result. If menu-order preconditions fail or callback interaction cannot be made deterministic, remove GigPress’s custom ordering filters and let WordPress retain normal order. [CITED: https://github.com/WordPress/wordpress-develop/blob/trunk/src/wp-admin/includes/menu.php]
+2. Reproduce the exact reported `separator-gigpress` key with a controlled late-menu fixture and require the trace to name that fixture callback and priority. Keep this attribution explicitly fixture-scoped: the checked-out source emits `separator-gp`, repository history contains no `separator-gigpress` occurrence, and the original live callback is unavailable. [VERIFIED: gigpress.php:452] [VERIFIED: gigpress.php:466-467] [VERIFIED: repository history search on 2026-10-03]
+3. Correct GigPress's independently proven late `separator-gp` mutation. If an explicit separator is still compatible, create it before WordPress snapshots menu slugs and return its existing slug in the pure ordering result. If menu-order preconditions fail or callback interaction cannot be made deterministic, remove GigPress’s custom ordering filters and let WordPress retain normal order. [CITED: https://github.com/WordPress/wordpress-develop/blob/7.1.2/src/wp-admin/includes/menu.php]
 
 ### Pattern 2: Header-enforced minimums plus a tested legacy-site transition
 
@@ -143,7 +143,7 @@ flowchart LR
 
 ### Anti-Patterns to Avoid
 
-- **Rename a separator from the warning text:** The checkout creates `separator-gp`, not `separator-gigpress`; trace the active contributors first. [VERIFIED: gigpress.php:452] [VERIFIED: gigpress.php:466-467]
+- **Rename a separator from the warning text:** The checkout creates `separator-gp`, not `separator-gigpress`; attribute the exact key only to the controlled fixture and keep the unavailable live actor unproven. [VERIFIED: gigpress.php:452] [VERIFIED: gigpress.php:466-467] [VERIFIED: repository history search on 2026-10-03]
 - **Mutate global `$menu` inside `menu_order`:** Core makes its default map before the filter, so a newly appended row can be absent from that map. [CITED: https://github.com/WordPress/wordpress-develop/blob/trunk/src/wp-admin/includes/menu.php]
 - **Treat PHP 8.2 as a supported matrix cell:** It is only a reproduction environment under D-02. [ASSUMED: locked user decision]
 - **Claim PHP 8.3 compatibility after only changing metadata:** the active export function itself has removed syntax. [VERIFIED: gigpress.php:505-552] [CITED: https://www.php.net/manual/en/migration80.incompatible.php]
@@ -207,9 +207,9 @@ flowchart LR
    - Recommendation: make this the first matrix acceptance check. If core fails it, stop and request a product decision on an always-loaded host mechanism rather than falsely claiming a normal inactive plugin can persist a notice. [ASSUMED]
 
 2. **Which actor creates `separator-gigpress` in the reported environment?**
-   - What we know: this checkout creates `separator-gp`; WordPress’s ordering algorithm can expose a late-added menu slug. [VERIFIED: gigpress.php:452] [CITED: https://github.com/WordPress/wordpress-develop/blob/trunk/src/wp-admin/includes/menu.php]
-   - What's unclear: the deployed build, active plugins, mu-plugins, theme code, and callback order were not supplied.
-   - Recommendation: capture these values in the WordPress 7.1.2/PHP 8.2 diagnostic cell before finalizing the regression fixture. [ASSUMED]
+   - What we know: this checkout creates `separator-gp`; repository history has no `separator-gigpress` occurrence; WordPress’s ordering algorithm can expose a late-added menu slug; and the controlled fixture can prove the diagnostic attributes the exact reported key. The historical GigPress support archive documents an `Undefined index: separator-gp` conflict, which supports the failure class only. [VERIFIED: gigpress.php:452] [VERIFIED: repository history search on 2026-10-03] [CITED: https://github.com/WordPress/wordpress-develop/blob/7.1.2/src/wp-admin/includes/menu.php] [CITED: https://wordpress.org/support/topic/undefined-index-separator-gp-severe-conflicts-with-other-plugins/]
+   - What's unclear: the unavailable site's deployed build, active plugins, mu-plugins, theme code, callback order, and exact `separator-gigpress` actor.
+   - Recommendation: record that the live actor cannot be proven from repository evidence, do not generalize fixture attribution to production, and correct the checkout's independently observable late `separator-gp` mutation with a warning-free supported-matrix regression. [VERIFIED: repository evidence boundary]
 
 ## Environment Availability
 
@@ -283,19 +283,20 @@ flowchart LR
 - [WordPress Header Requirements](https://developer.wordpress.org/plugins/plugin-basics/header-requirements/) — main-file header fields.
 - [WordPress Plugin Readmes](https://developer.wordpress.org/plugins/wordpress-org/how-your-readme-txt-works/) — requirement-header ownership and `Tested up to` semantics.
 - [WordPress menu_order](https://developer.wordpress.org/reference/hooks/menu_order/) and [custom_menu_order](https://developer.wordpress.org/reference/hooks/custom_menu_order/) — menu filter contract.
-- [WordPress menu.php](https://github.com/WordPress/wordpress-develop/blob/trunk/src/wp-admin/includes/menu.php) — ordering/sort lifecycle.
+- [WordPress 7.1.2 menu.php](https://github.com/WordPress/wordpress-develop/blob/7.1.2/src/wp-admin/includes/menu.php) — target-release ordering snapshot, map, and sort lifecycle.
 - [WordPress validate_plugin_requirements](https://developer.wordpress.org/reference/functions/validate_plugin_requirements/) and [deactivate_plugins](https://developer.wordpress.org/reference/functions/deactivate_plugins/) — runtime gating and deactivation.
 - [WordPress release archive](https://wordpress.org/download/releases/) — current WordPress 7.0/7.1 patch releases.
 - [PHP supported versions](https://www.php.net/supported-versions.php) — current upstream PHP branches.
 - [PHP 8.0 incompatible changes](https://www.php.net/manual/en/migration80.incompatible.php) — removed curly-brace offset syntax.
 - [WordPress Playground troubleshooting](https://developer.wordpress.org/playground/blueprints/troubleshoot-and-debug/) — disposable environment logging and version selection.
+- [GigPress support archive: Undefined index: separator-gp — severe conflicts with other plugins](https://wordpress.org/support/topic/undefined-index-separator-gp-severe-conflicts-with-other-plugins/) — related historical evidence for the same separator failure class; not proof of the current reported site's callback identity.
 
 ## Metadata
 
 **Confidence breakdown:**
 
 - Standard stack: MEDIUM — runtime versions and metadata semantics come from official sources; target-runner availability remains unproven.
-- Architecture: MEDIUM — the core ordering lifecycle and current callback are directly inspected; the reported separator’s actor is not yet captured.
+- Architecture: MEDIUM — the core ordering lifecycle and current callback are directly inspected; the unavailable live site's reported separator actor is explicitly outside what repository evidence can prove.
 - Pitfalls: HIGH — parser blockers and truthiness defect are visible in source; their supported-runtime impact is documented by PHP.
 
 **Research date:** 2026-10-03
