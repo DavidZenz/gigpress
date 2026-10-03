@@ -3,7 +3,7 @@ phase: "01"
 slug: "compatibility-baseline-and-menu-diagnosis"
 # status lifecycle: draft (seeded by plan-phase) → validated (set by validate-phase §6)
 status: draft
-nyquist_compliant: false
+nyquist_compliant: true
 wave_0_complete: false
 created: "2026-10-03"
 ---
@@ -18,20 +18,20 @@ created: "2026-10-03"
 
 | Property | Value |
 |----------|-------|
-| **Framework** | None detected — select and configure a disposable WordPress integration runner in Wave 0. |
-| **Config file** | None — Wave 0 defines the runner configuration. |
-| **Quick run command** | TBD in Wave 0: lint changed PHP in the selected PHP container and run the smallest affected smoke cell. |
-| **Full suite command** | TBD in Wave 0: run the pinned WordPress 7.0.6/7.1.2 × PHP 8.3/8.4/8.5 matrix plus the PHP 8.2 diagnostic cell. |
-| **Estimated runtime** | TBD after the disposable runner is selected and measured. |
+| **Framework** | Repository-owned disposable Docker Compose WordPress/PHP integration harness (created by Plan 01-01). |
+| **Config file** | `tests/compat/compose.yaml` with orchestration in `tests/compat/run.sh`. |
+| **Quick run command** | `rtk bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario activation-menu` |
+| **Full suite command** | `rtk bash tests/compat/run.sh matrix --scenario full-workflows --wp-lines 7.0,7.1 --wp-patches latest --php-supported upstream --php-min 8.3 --error-reporting E_ALL` |
+| **Estimated runtime** | Record measured cached and cold-start durations in Task 01-01-02; each task uses the smallest relevant cell before the final full matrix. |
 
 ---
 
 ## Sampling Rate
 
-- **After every task commit:** Lint changed PHP files in the selected PHP container and run the smallest relevant disposable-site smoke cell.
-- **After every plan wave:** Run all supported WordPress/PHP cells and archive warning/fatal logs.
+- **After every task commit:** Run the task's named `tests/compat/run.sh` command; PHP-changing tasks also lint all tracked PHP on each supported PHP branch.
+- **After every plan wave:** Run the supported matrix scenario affected by that wave and retain warning/fatal results in the named evidence artifact.
 - **Before `$gsd-verify-work`:** Full supported matrix must be green and evidence recorded for each compatibility requirement.
-- **Max feedback latency:** TBD in Wave 0 after measuring the selected runner.
+- **Max feedback latency:** One cached cell; Task 01-01-02 records the measured duration and executor uses that value as the phase sampling ceiling.
 
 ---
 
@@ -39,9 +39,16 @@ created: "2026-10-03"
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| TBD after plan task IDs are assigned | TBD | 0 | COMP-01 | — | Version declarations match the verified matrix; no unvalidated `Tested up to` claim. | metadata + integration | TBD in Wave 0 | ❌ W0 | ⬜ pending |
-| TBD after plan task IDs are assigned | TBD | 0 | COMP-02 | — | Existing admin, public display, feed, and CSV workflows complete without PHP warnings or fatals. | integration smoke | TBD in Wave 0 | ❌ W0 | ⬜ pending |
-| TBD after plan task IDs are assigned | TBD | 0 | COMP-03 | — | Menu diagnostics are temporary and restricted to the disposable environment; normal menu ordering emits no warning. | diagnostic + integration | TBD in Wave 0 | ❌ W0 | ⬜ pending |
+| 01-01-01 | 01-01 | 1 | COMP-02, COMP-03 | T-01-01, T-01-02 | A disposable supported cell activates the real plugin and records menu state without warnings/fatals or external DB access. | tracer integration | `rtk bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario activation-menu` | ❌ W0 | ⬜ pending |
+| 01-01-02 | 01-01 | 1 | COMP-02, COMP-03 | T-01-01, T-01-02 | Matrix parsing is fail-closed and core's D-03 compatibility feedback is capability-scoped and persistent after downgrade. | harness contract + lifecycle integration | `rtk bash tests/compat/run.sh self-test` and `rtk bash tests/compat/run.sh runtime-floor --wp-lines 7.0,7.1 --supported-php 8.3 --diagnostic-php 8.2` | ❌ W0 | ⬜ pending |
+| 01-02-01 | 01-02 | 2 | COMP-03 | T-01-03, T-01-04 | Diagnostic data is request-local/redacted and the controlled warning names its exact row creator and callback. | diagnostic integration | `rtk bash tests/compat/run.sh diagnose-menu --wp 7.1.2 --php 8.2 --diagnostic tests/compat/diagnostics/menu-trace.php --conflict-fixture tests/compat/fixtures/menu-conflict-plugin.php` | ❌ W0 | ⬜ pending |
+| 01-02-02 | 01-02 | 2 | COMP-03 | T-01-03, T-01-04 | Affected-site attribution requires a redacted deployed build/callback trace and cannot be inferred from warning text. | blocking human evidence | Site-owner trace checkpoint; executor verifies exact row/callback attribution | n/a checkpoint | ⬜ pending |
+| 01-03-01 | 01-03 | 2 | COMP-02 | T-01-06 | All shipped PHP parses on every supported PHP branch and CSV behavior remains unchanged. | syntax + workflow integration | `rtk bash tests/compat/run.sh lint --php-branches 8.3,8.4,8.5 --all-tracked-php` plus the PHP 8.3 CSV round trip | ❌ W0 | ⬜ pending |
+| 01-03-02 | 01-03 | 2 | COMP-01, COMP-02 | T-01-05, T-01-06 | Runtime floors match metadata; below-floor GigPress deactivates without exposing feedback to unauthorized users. | metadata + lifecycle integration | `rtk bash tests/compat/run.sh runtime-floor --plugin gigpress/gigpress.php --wp-lines 7.0,7.1 --supported-php 8.3 --diagnostic-php 8.2` | ❌ W0 | ⬜ pending |
+| 01-04-01 | 01-04 | 3 | COMP-03 | T-01-07, T-01-08 | Menu ordering is a pure stable transform and all missing/duplicate/empty/conflict cases return incoming core order. | contract integration | `rtk bash tests/compat/run.sh menu-contract --wp 7.1.2 --php 8.3 --cases preferred,index-zero,missing,duplicate,empty,single,order-conflict,no-global-mutation` | ❌ W0 | ⬜ pending |
+| 01-04-02 | 01-04 | 3 | COMP-03 | T-01-07, T-01-08 | Preferred placement and standard-order fallback are warning-free across supported cells and competing order callbacks. | matrix integration + human check | `rtk bash tests/compat/run.sh matrix --scenario admin-menu --wp-lines 7.0,7.1 --php-supported upstream --conflict-fixture tests/compat/fixtures/menu-conflict-plugin.php --conflict-mode order-only` | ❌ W0 | ⬜ pending |
+| 01-05-01 | 01-05 | 4 | COMP-02, COMP-03 | T-01-09, T-01-10 | Every exact supported pair completes all existing workflows under E_ALL using disposable data. | full matrix integration | `rtk bash tests/compat/run.sh matrix --scenario full-workflows --wp-lines 7.0,7.1 --wp-patches latest --php-supported upstream --php-min 8.3 --error-reporting E_ALL` | ❌ W0 | ⬜ pending |
+| 01-05-02 | 01-05 | 4 | COMP-01 | T-01-09 | Header/readme floors match and `Tested up to` is backed by a fully passing exact WordPress patch line. | metadata evidence gate | `rtk bash tests/compat/run.sh metadata --plugin gigpress.php --readme readme.txt --matrix-evidence .planning/phases/01-compatibility-baseline-and-menu-diagnosis/01-COMPATIBILITY-MATRIX.md --expect-wp-min 7.0 --expect-php-min 8.3 --require-tested-line-pass` | ❌ W0 | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -49,12 +56,11 @@ created: "2026-10-03"
 
 ## Wave 0 Requirements
 
-- [ ] Define a reproducible disposable WordPress/PHP matrix runner and plugin mount/install procedure.
-- [ ] Add a temporary controlled trace for menu-order input, returned order, final slugs, and participating callbacks; ensure normal requests do not retain diagnostic output.
-- [ ] Define reusable fixtures/checklist for an admin action, public shortcode/list, RSS, iCalendar, CSV import, and CSV export.
-- [ ] Record each matrix cell's WordPress/PHP versions and warning/fatal output in a consistent results format.
-- [ ] Verify the reported PHP 8.2 diagnostic case and whether WordPress keeps an actionable compatibility notice visible after an already-active plugin is deactivated; pause for a product decision if core behavior cannot satisfy D-03.
-- [ ] Recheck upstream-supported WordPress and PHP releases immediately before fixing the final matrix.
+- [ ] Task 01-01-01 creates the disposable WordPress/PHP runner and real plugin mount/install tracer.
+- [ ] Task 01-01-02 creates reusable admin/public/feed/CSV fixtures, stable result schema, matrix edges, and the D-03 core-feedback feasibility check.
+- [ ] Task 01-02-01 creates the transient menu trace and proves exact row/callback attribution on a controlled conflict.
+- [ ] Task 01-02-02 resolves the external deployed-build attribution or records the blocking dependency conflict.
+- [ ] Task 01-05-01 refreshes upstream WordPress/PHP releases immediately before the final full matrix.
 
 ---
 
@@ -69,11 +75,11 @@ created: "2026-10-03"
 
 ## Validation Sign-Off
 
-- [ ] All plan tasks have automated verification or explicit Wave 0 dependencies.
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify.
-- [ ] Wave 0 covers all missing validation references.
+- [x] All plan tasks have automated verification or an explicit blocking-human evidence checkpoint.
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify.
+- [x] Wave 0 tasks cover all missing validation references.
 - [ ] No watch-mode flags.
 - [ ] Feedback latency target recorded after runner selection.
-- [ ] `nyquist_compliant: true` set in frontmatter after validation strategy and plan mapping are complete.
+- [x] `nyquist_compliant: true` set in frontmatter after validation strategy and plan mapping are complete.
 
 **Approval:** pending
