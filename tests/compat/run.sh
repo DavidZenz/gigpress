@@ -17,23 +17,35 @@ done
 MODE=${1:-}; shift || true
 
 run_lint() {
-  local branches='' files=''
+  local branches='' files='' all_tracked=false
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --php-branches) branches=${2:-}; shift 2 ;;
       --files) files=${2:-}; shift 2 ;;
+      --all-tracked-php) all_tracked=true; shift ;;
       *) fail "unknown lint option $1" ;;
     esac
   done
-  require_value --php-branches "$branches"; require_value --files "$files"
+  require_value --php-branches "$branches"
+  if [[ "$all_tracked" == true ]]; then
+    [[ -z "$files" ]] || fail "--files and --all-tracked-php cannot be combined"
+    php_files=()
+    while IFS= read -r file; do
+      php_files+=("$file")
+    done < <(git -C "$ROOT" ls-files '*.php')
+    ((${#php_files[@]})) || fail "no tracked PHP files found"
+  else
+    require_value --files "$files"
+    IFS=',' read -r -a php_files <<< "$files"
+  fi
   local branch file image
   IFS=',' read -r -a php_branches <<< "$branches"
-  IFS=',' read -r -a php_files <<< "$files"
   for branch in "${php_branches[@]}"; do
     [[ "$branch" =~ ^[0-9]+[.][0-9]+$ ]] || fail "PHP must be a major.minor version"
     [[ "$branch" != 8.2 ]] || fail "PHP 8.2 is diagnostic-only and cannot satisfy lint"
     image="wordpress:7.1.2-php${branch}-apache"
     docker pull "$image" >/dev/null || fail "could not resolve official image $image"
+    printf 'lint image %s (%s)\n' "$image" "$(docker image inspect --format '{{.Id}}' "$image")"
     for file in "${php_files[@]}"; do
       [[ "$file" == *.php && -f "$ROOT/$file" ]] || fail "lint file must be a repository PHP file: $file"
       git -C "$ROOT" ls-files --error-unmatch -- "$file" >/dev/null || fail "lint file is not tracked: $file"
@@ -61,7 +73,10 @@ require_value --wp "$WP_VERSION"; require_value --php "$PHP_VERSION"
 [[ "$WP_VERSION" =~ ^[0-9]+([.][0-9]+){2}$ ]] || fail "WordPress must be an exact patch version"
 [[ "$PHP_VERSION" =~ ^[0-9]+[.][0-9]+$ ]] || fail "PHP must be a major.minor version"
 [[ "$PHP_VERSION" != 8.2 ]] || fail "PHP 8.2 is diagnostic-only and cannot be a supported cell"
-[[ "$SCENARIO" == activation-menu ]] || fail "unsupported cell scenario: $SCENARIO"
+case "$SCENARIO" in
+  activation-menu|csv-roundtrip) ;;
+  *) fail "unsupported cell scenario: $SCENARIO" ;;
+esac
 
 PROJECT="gigpress_compat_${RANDOM}_$$_$(date +%s)"
 DB_PASSWORD="compat_${RANDOM}_${RANDOM}"

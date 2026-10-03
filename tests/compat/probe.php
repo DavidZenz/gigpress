@@ -48,6 +48,41 @@ foreach ((array) $menu as $item) {
         $menuSlugs[] = basename((string) $item[2]);
     }
 }
+$csvRoundTrip = null;
+if ((getenv('COMPAT_PURPOSE') ?: 'activation-menu') === 'csv-roundtrip') {
+    $fixture = '/compat/fixtures/shows.csv';
+    if (!is_readable($fixture)) {
+        $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'CSV fixture is unavailable', 'file' => $fixture, 'line' => 0);
+    } else {
+        require_once WP_PLUGIN_DIR . '/gigpress/admin/handlers.php';
+        $_POST = array('_wpnonce' => wp_create_nonce('gigpress-action'));
+        $_REQUEST = $_POST;
+        $_FILES = array('gp_import' => array('name' => 'shows.csv', 'tmp_name' => $fixture, 'error' => UPLOAD_ERR_OK, 'size' => filesize($fixture)));
+        ob_start();
+        gigpress_import();
+        ob_end_clean();
+
+        $_POST = array('_wpnonce' => wp_create_nonce('gigpress-action'), 'scope' => '-1', 'artist_id' => '-1', 'tour_id' => '-1');
+        $_REQUEST = $_POST;
+        ob_start();
+        gigpress_export();
+        $exported = ob_get_clean();
+        $roundTrip = new parseCSV();
+        $roundTrip->parse($exported);
+        $row = isset($roundTrip->data[0]) ? $roundTrip->data[0] : array();
+        $csvRoundTrip = array(
+            'columns' => array_keys($row),
+            'artist' => isset($row['Artist']) ? $row['Artist'] : null,
+            'venue' => isset($row['Venue']) ? $row['Venue'] : null,
+            'notes' => isset($row['Notes']) ? $row['Notes'] : null,
+            'time' => isset($row['Time']) ? $row['Time'] : null,
+            'all_day_sentinel_preserved' => isset($row['Time']) && $row['Time'] === '',
+        );
+        if ($csvRoundTrip['artist'] !== 'The Compatibility Band' || $csvRoundTrip['venue'] !== 'The Test Hall' || $csvRoundTrip['notes'] !== 'Quoted, durable notes' || !$csvRoundTrip['all_day_sentinel_preserved']) {
+            $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'CSV round trip changed fixture values or the all-day sentinel', 'file' => $fixture, 'line' => 0);
+        }
+    }
+}
 $result = array(
     'status' => $pluginErrors ? 'FAIL' : 'PASS',
     'wordpress_version' => get_bloginfo('version'),
@@ -57,6 +92,7 @@ $result = array(
     'plugin_errors' => $pluginErrors,
     'fatal' => $fatal,
     'purpose' => getenv('COMPAT_PURPOSE') ?: 'activation-menu',
+    'csv_roundtrip' => $csvRoundTrip,
 );
 echo json_encode($result, JSON_UNESCAPED_SLASHES) . PHP_EOL;
 exit($result['status'] === 'PASS' ? 0 : 1);

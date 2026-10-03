@@ -32,6 +32,7 @@ services:
       - wordpress_data:/var/www/html
       - ${REPO_ROOT:?runner must provide REPO_ROOT}:/var/www/html/wp-content/plugins/gigpress:ro
       - ./probe.php:/compat/probe.php:ro
+      - ./fixtures:/compat/fixtures:ro
 
 volumes:
   wordpress_data:
