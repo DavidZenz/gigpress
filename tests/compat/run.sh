@@ -198,6 +198,77 @@ run_runtime_floor() {
   done
 }
 
+run_diagnose_menu() {
+  local diagnostic='' fixture='' conflict_mode='' expect_key='' boundary=''
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --wp) WP_VERSION=${2:-}; shift 2 ;;
+      --php) PHP_VERSION=${2:-}; shift 2 ;;
+      --diagnostic) diagnostic=${2:-}; shift 2 ;;
+      --conflict-fixture) fixture=${2:-}; shift 2 ;;
+      --conflict-mode) conflict_mode=${2:-}; shift 2 ;;
+      --expect-key) expect_key=${2:-}; shift 2 ;;
+      --assert-repository-boundary) boundary=${2:-}; shift 2 ;;
+      *) fail "unknown diagnose-menu option $1" ;;
+    esac
+  done
+  require_value --wp "${WP_VERSION:-}"; require_value --php "${PHP_VERSION:-}"
+  require_value --diagnostic "$diagnostic"; require_value --conflict-mode "$conflict_mode"; require_value --expect-key "$expect_key"
+  [[ "$WP_VERSION" =~ ^[0-9]+([.][0-9]+){2}$ ]] || fail "WordPress must be an exact patch version"
+  [[ "$PHP_VERSION" =~ ^[0-9]+[.][0-9]+$ ]] || fail "PHP must be a major.minor version"
+  [[ "$PHP_VERSION" == 8.2 || "$PHP_VERSION" == 8.3 ]] || fail "diagnose-menu accepts PHP 8.2 or 8.3"
+  [[ "$diagnostic" == 'tests/compat/diagnostics/menu-trace.php' && -f "$ROOT/$diagnostic" ]] || fail "diagnostic must be the repository menu trace"
+  case "$conflict_mode" in
+    exact-key-late-add) [[ "$fixture" == 'tests/compat/fixtures/menu-conflict-plugin.php' && -f "$ROOT/$fixture" ]] || fail "exact-key-late-add requires the repository controlled fixture" ;;
+    checkout-only) [[ -z "$fixture" ]] || fail "checkout-only does not accept a fixture" ;;
+    *) fail "unsupported diagnose-menu conflict mode: $conflict_mode" ;;
+  esac
+  if [[ -n "$boundary" ]]; then
+    [[ "$boundary" == .planning/phases/01-compatibility-baseline-and-menu-diagnosis/01-DIAGNOSIS.md && -f "$ROOT/$boundary" ]] || fail "repository-boundary assertion requires the phase diagnosis"
+    rtk grep -Fq 'Fixture-only attribution' "$ROOT/$boundary" || fail "diagnosis omits fixture-only attribution"
+    rtk grep -Fq 'cannot be proven from repository evidence' "$ROOT/$boundary" || fail "diagnosis omits the live-site evidence boundary"
+    rtk grep -Fq 'Undefined index: separator-gp' "$ROOT/$boundary" || fail "diagnosis omits related historical separator-gp evidence"
+    rtk grep -Fq 'standard WordPress order' "$ROOT/$boundary" || fail "diagnosis omits the D-04 fallback"
+    git -C "$ROOT" log --all -S'separator-gigpress' --format=%H -- gigpress.php | rtk grep -q . && fail "repository history unexpectedly contains separator-gigpress in gigpress.php"
+  fi
+  PROJECT="gigpress_menu_diagnosis_${RANDOM}_$$_$(date +%s)"
+  DB_PASSWORD="compat_${RANDOM}_${RANDOM}"; DB_ROOT_PASSWORD="root_${RANDOM}_${RANDOM}"
+  COMPOSE=(docker compose --project-name "$PROJECT" --file "$COMPAT_DIR/compose.yaml")
+  CLEANUP_NEEDED=false
+  cleanup() {
+    local status=$?
+    [[ "$CLEANUP_NEEDED" == true ]] && env REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" PHP_VERSION="$PHP_VERSION" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true
+    exit "$status"
+  }
+  trap cleanup EXIT INT TERM
+  compose_env() {
+    env -u COMPOSE_FILE -u COMPOSE_PROJECT_NAME -u WORDPRESS_DB_HOST -u MYSQL_HOST -u DB_HOST -u DATABASE_URL REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" PHP_VERSION="$PHP_VERSION" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" "$@"
+  }
+  CLEANUP_NEEDED=true
+  compose_env pull wordpress db
+  compose_env up -d db wordpress
+  wait_for_database; wait_for_wordpress
+  compose_env exec -T wordpress sh -c 'mkdir -p /var/www/html/wp-content/mu-plugins && cp /var/www/html/wp-content/plugins/gigpress/tests/compat/diagnostics/menu-trace.php /var/www/html/wp-content/mu-plugins/gigpress-menu-trace.php'
+  [[ "$conflict_mode" == exact-key-late-add ]] && compose_env exec -T wordpress sh -c 'cp /var/www/html/wp-content/plugins/gigpress/tests/compat/fixtures/menu-conflict-plugin.php /var/www/html/wp-content/plugins/menu-conflict-plugin.php'
+  output=$(compose_env exec -T -e COMPAT_PURPOSE=diagnose-menu -e COMPAT_CONFLICT_MODE="$conflict_mode" wordpress php /compat/probe.php) || { printf '%s\n' "$output" >&2; fail "menu diagnostic probe failed"; }
+  printf '%s\n' "$output" | tee "$RESULT_DIR/${WP_VERSION}-php${PHP_VERSION}-diagnose-menu-${conflict_mode}.json"
+  if [[ "$conflict_mode" == exact-key-late-add ]]; then
+    printf '%s\n' "$output" | rtk jq -e --arg key "$expect_key" '.status == "PASS" and .menu_trace.trace_is_request_local == true and (.menu_trace.row_creators | any(.slug == $key and .callback == "gigpress_menu_conflict_late_add" and .priority == 20)) and (.menu_trace.missing_from_input | index($key)) and (.menu_trace.missing_from_returned_order | index($key)) and (.menu_trace.callbacks | any(.identity == "gigpress_menu_conflict_late_add" and .priority == 20))' >/dev/null || fail "trace did not attribute the exact controlled separator key"
+  else
+    printf '%s\n' "$output" | rtk jq -e --arg key "$expect_key" '.status == "PASS" and (.menu_trace.final_slugs | index($key))' >/dev/null || fail "checkout-only trace did not retain the checkout separator"
+  fi
+  if [[ "$PHP_VERSION" == 8.2 ]]; then
+    printf '%s\n' "$output" | rtk jq -e '.menu_trace.runtime_label == "diagnostic-only"' >/dev/null || fail "PHP 8.2 was not labeled diagnostic-only"
+  else
+    printf '%s\n' "$output" | rtk jq -e '.menu_trace.runtime_label == "supported"' >/dev/null || fail "supported PHP diagnostic was mislabeled"
+  fi
+}
+
+if [[ "$MODE" == diagnose-menu ]]; then
+  run_diagnose_menu "$@"
+  exit 0
+fi
+
 if [[ "$MODE" == lint ]]; then
   run_lint "$@"
   exit 0

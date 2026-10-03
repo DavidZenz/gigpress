@@ -4,8 +4,16 @@ error_reporting(E_ALL);
 ini_set('display_errors', '0');
 
 $pluginErrors = array();
+$menuWarnings = array();
 $fatal = null;
-set_error_handler(function ($severity, $message, $file, $line) use (&$pluginErrors) {
+set_error_handler(function ($severity, $message, $file, $line) use (&$pluginErrors, &$menuWarnings) {
+    if ((getenv('COMPAT_PURPOSE') ?: 'activation-menu') === 'diagnose-menu'
+        && ($severity & E_WARNING)
+        && strpos($message, 'Undefined array key') !== false
+        && strpos($file, '/wp-admin/includes/menu.php') !== false) {
+        $menuWarnings[] = array('message' => $message, 'line' => $line);
+        return true;
+    }
     if ($severity & E_ALL) {
         $pluginRoot = defined('WP_PLUGIN_DIR') ? WP_PLUGIN_DIR . '/gigpress/' : '/gigpress/';
         if (strpos(str_replace('\\', '/', $file), $pluginRoot) !== false) {
@@ -152,7 +160,13 @@ if ($purpose === 'fixture-activate' || !$fixturePurpose) {
 } elseif (!is_plugin_active($plugin)) {
     $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Controlled fixture lost active state', 'file' => __FILE__, 'line' => __LINE__);
 }
-do_action('admin_menu');
+if ($purpose === 'diagnose-menu' && (getenv('COMPAT_CONFLICT_MODE') ?: '') === 'exact-key-late-add') {
+    $fixtureActivation = activate_plugin('menu-conflict-plugin.php', '', false, false);
+    if (is_wp_error($fixtureActivation)) {
+        $pluginErrors[] = array('severity' => E_ERROR, 'message' => $fixtureActivation->get_error_message(), 'file' => __FILE__, 'line' => __LINE__);
+    }
+}
+require ABSPATH . 'wp-admin/menu.php';
 global $menu;
 $menuSlugs = array();
 foreach ((array) $menu as $item) {
@@ -201,6 +215,14 @@ $real_plugin_inventory = array(
     'hooks' => array('admin_menu' => 'gigpress_admin_menu', 'init' => 'gigpress_init'),
     'modules' => array('admin/db.php', 'output/gigpress_shows.php', 'output/ical.php'),
 );
+$menuTrace = null;
+if ($purpose === 'diagnose-menu' && function_exists('gigpress_menu_trace_result')) {
+    $pluginData = get_plugin_data(WP_PLUGIN_DIR . '/gigpress/gigpress.php', false, false);
+    $menuTrace = gigpress_menu_trace_result($menuSlugs, $menuWarnings, array(
+        'version' => $pluginData['Version'],
+        'hash' => hash_file('sha256', WP_PLUGIN_DIR . '/gigpress/gigpress.php'),
+    ));
+}
 $csvRoundTrip = null;
 if ((getenv('COMPAT_PURPOSE') ?: 'activation-menu') === 'csv-roundtrip') {
     $fixture = '/compat/fixtures/shows.csv';
@@ -248,6 +270,7 @@ $result = array(
     'csv_roundtrip' => $csvRoundTrip,
     'fixture_runtime' => $fixtureRuntime,
     'real_plugin_inventory' => $real_plugin_inventory,
+    'menu_trace' => $menuTrace,
 );
 echo json_encode($result, JSON_UNESCAPED_SLASHES) . PHP_EOL;
 exit($result['status'] === 'PASS' ? 0 : 1);
