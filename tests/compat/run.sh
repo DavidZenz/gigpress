@@ -186,11 +186,20 @@ run_self_test() {
   (run_matrix --php-branches 8.3) >/dev/null 2>&1 && fail "matrix accepted missing WordPress lines"
   (run_matrix --wp-lines 7.1) >/dev/null 2>&1 && fail "matrix accepted missing PHP branches"
   (run_matrix --wp-lines ',' --php-branches 8.3) >/dev/null 2>&1 && fail "matrix accepted an invalid normalized pair list"
+  normalise_menu_cases 'preferred,index-zero' >/dev/null || fail "valid menu case list was rejected"
+  normalise_menu_cases '' >/dev/null 2>&1 && fail "empty menu case list was accepted"
+  normalise_menu_cases ',' >/dev/null 2>&1 && fail "blank menu cases were accepted"
+  normalise_menu_cases 'preferred,,missing' >/dev/null 2>&1 && fail "menu case list with an empty entry was accepted"
   (run_runtime_floor --fixture tests/compat/fixtures/php-floor-plugin.php --plugin gigpress/gigpress.php --wp-lines 7.1 --supported-php 8.3 --diagnostic-php 8.2) >/dev/null 2>&1 && fail "runtime-floor accepted both targets"
   (run_runtime_floor --plugin unknown/plugin.php --wp-lines 7.1 --supported-php 8.3 --diagnostic-php 8.2) >/dev/null 2>&1 && fail "runtime-floor accepted an unknown real-plugin target"
   grep -q "fixture-activate" "$COMPAT_DIR/probe.php" || fail "fixture lifecycle probe is missing"
   grep -q "real_plugin_inventory" "$COMPAT_DIR/probe.php" || fail "real-plugin inventory contract is missing"
   printf '%s\n' '{"status":"PASS","self_test":"matrix ordering, diagnostic exclusion, and distinct runtime targets"}'
+}
+
+normalise_menu_cases() {
+  [[ "${1:-}" =~ ^[^,]+(,[^,]+)*$ ]] || return 1
+  printf '%s' "$1"
 }
 
 run_menu_contract() {
@@ -204,7 +213,7 @@ run_menu_contract() {
     esac
   done
   [[ "$wp" == '7.1.2' && "$php" == '8.3' ]] || fail "menu-contract requires WordPress 7.1.2 and PHP 8.3"
-  [[ -n "$cases" ]] || fail "menu-contract requires --cases"
+  cases=$(normalise_menu_cases "$cases") || fail "menu-contract requires one or more nonempty --cases entries"
   local image="wordpress:${wp}-php${php}-apache" output status
   docker pull "$image" >/dev/null || fail "could not resolve official image $image"
   set +e
@@ -254,7 +263,11 @@ $source = file_get_contents('gigpress.php');
 $callback = extract_function($source, 'custom_menu_order');
 $adminMenu = extract_function($source, 'gigpress_admin_menu');
 eval($callback);
-$requested = array_filter(explode(',', getenv('COMPAT_CASES') ?: ''));
+$caseList = explode(',', getenv('COMPAT_CASES') ?: '');
+$requested = array_values(array_filter($caseList, 'strlen'));
+if ($requested === array() || count($requested) !== count($caseList)) {
+    throw new RuntimeException('menu-contract requires one or more nonempty cases');
+}
 $failures = array();
 function contract_assert($condition, $case, $message) {
     global $failures;
