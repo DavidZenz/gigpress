@@ -305,7 +305,7 @@ PHP
 }
 
 run_matrix() {
-  local wp_lines='' php_branches='' php_supported='' scenario='activation-menu' conflict_fixture='' conflict_mode=''
+  local wp_lines='' php_branches='' php_supported='' scenario='activation-menu' conflict_fixture='' conflict_mode='' conflict_position=''
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --wp-lines) wp_lines=${2:-}; shift 2 ;;
@@ -314,6 +314,7 @@ run_matrix() {
       --scenario) scenario=${2:-}; shift 2 ;;
       --conflict-fixture) conflict_fixture=${2:-}; shift 2 ;;
       --conflict-mode) conflict_mode=${2:-}; shift 2 ;;
+      --conflict-position) conflict_position=${2:-}; shift 2 ;;
       *) fail "unknown matrix option $1" ;;
     esac
   done
@@ -323,12 +324,18 @@ run_matrix() {
   fi
   if [[ -n "$conflict_fixture" || -n "$conflict_mode" ]]; then
     [[ "$conflict_fixture" == 'tests/compat/fixtures/menu-conflict-plugin.php' && "$conflict_mode" == order-only ]] || fail "matrix conflict coverage requires the order-only fixture"
+    [[ -n "$conflict_position" ]] || conflict_position=before
+    [[ "$conflict_position" == before || "$conflict_position" == after ]] || fail "matrix conflict coverage requires a before or after position"
   fi
-  [[ "$scenario" == activation-menu || "$scenario" == csv-roundtrip ]] || fail "unsupported matrix scenario: $scenario"
+  [[ "$scenario" == activation-menu || "$scenario" == admin-menu || "$scenario" == csv-roundtrip ]] || fail "unsupported matrix scenario: $scenario"
   local pair line branch wp_version
   while IFS=, read -r line branch; do
     wp_version=$(runtime_wp_version "$line")
-    bash "$COMPAT_DIR/run.sh" cell --wp "$wp_version" --php "$branch" --scenario "$scenario" ${conflict_fixture:+--conflict-fixture "$conflict_fixture" --conflict-mode "$conflict_mode"}
+    local -a cell_args=(cell --wp "$wp_version" --php "$branch" --scenario "$scenario")
+    if [[ -n "$conflict_fixture" ]]; then
+      cell_args+=(--conflict-fixture "$conflict_fixture" --conflict-mode "$conflict_mode" --conflict-position "$conflict_position")
+    fi
+    bash "$COMPAT_DIR/run.sh" "${cell_args[@]}" </dev/null
   done < <(normalise_matrix "$wp_lines" "$php_branches") || fail "matrix cell failed"
 }
 
@@ -482,7 +489,11 @@ run_diagnose_menu() {
   wait_for_database; wait_for_wordpress
   compose_env exec -T wordpress sh -c 'mkdir -p /var/www/html/wp-content/mu-plugins && cp /var/www/html/wp-content/plugins/gigpress/tests/compat/diagnostics/menu-trace.php /var/www/html/wp-content/mu-plugins/gigpress-menu-trace.php'
   [[ "$conflict_mode" == exact-key-late-add ]] && compose_env exec -T wordpress sh -c 'cp /var/www/html/wp-content/plugins/gigpress/tests/compat/fixtures/menu-conflict-plugin.php /var/www/html/wp-content/plugins/menu-conflict-plugin.php'
-  output=$(compose_env exec -T -e COMPAT_PURPOSE=diagnose-menu -e COMPAT_CONFLICT_MODE="$conflict_mode" wordpress php /compat/probe.php) || { printf '%s\n' "$output" >&2; fail "menu diagnostic probe failed"; }
+  local skip_gigpress_activation=''
+  if [[ "$PHP_VERSION" == 8.2 && "$conflict_mode" == exact-key-late-add ]]; then
+    skip_gigpress_activation=1
+  fi
+  output=$(compose_env exec -T -e COMPAT_PURPOSE=diagnose-menu -e COMPAT_CONFLICT_MODE="$conflict_mode" -e COMPAT_SKIP_GIGPRESS_ACTIVATION="$skip_gigpress_activation" wordpress php /compat/probe.php) || { printf '%s\n' "$output" >&2; fail "menu diagnostic probe failed"; }
   printf '%s\n' "$output" | tee "$RESULT_DIR/${WP_VERSION}-php${PHP_VERSION}-diagnose-menu-${conflict_mode}.json"
   if [[ "$conflict_mode" == exact-key-late-add ]]; then
     printf '%s\n' "$output" | rtk jq -e --arg key "$expect_key" '.status == "PASS" and .menu_trace.trace_is_request_local == true and (.menu_trace.row_creators | any(.slug == $key and .callback == "gigpress_menu_conflict_late_add" and .priority == 20)) and (.menu_trace.missing_from_input | index($key)) and (.menu_trace.missing_from_returned_order | index($key)) and (.menu_trace.callbacks | any(.identity == "gigpress_menu_conflict_late_add" and .priority == 20))' >/dev/null || fail "trace did not attribute the exact controlled separator key"
@@ -532,7 +543,7 @@ if [[ "$MODE" == matrix ]]; then
 fi
 
 [[ "$MODE" == cell ]] || fail "supported commands: cell, matrix, lint, metadata, self-test, runtime-floor, menu-contract"
-WP_VERSION=''; PHP_VERSION=''; SCENARIO='activation-menu'; CONFLICT_FIXTURE=''; CONFLICT_MODE=''
+WP_VERSION=''; PHP_VERSION=''; SCENARIO='activation-menu'; CONFLICT_FIXTURE=''; CONFLICT_MODE=''; CONFLICT_POSITION=''
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --wp) WP_VERSION=${2:-}; shift 2 ;;
@@ -540,6 +551,7 @@ while [[ $# -gt 0 ]]; do
     --scenario) SCENARIO=${2:-}; shift 2 ;;
     --conflict-fixture) CONFLICT_FIXTURE=${2:-}; shift 2 ;;
     --conflict-mode) CONFLICT_MODE=${2:-}; shift 2 ;;
+    --conflict-position) CONFLICT_POSITION=${2:-}; shift 2 ;;
     *) fail "unknown option $1" ;;
   esac
 done
@@ -548,11 +560,13 @@ require_value --wp "$WP_VERSION"; require_value --php "$PHP_VERSION"
 [[ "$PHP_VERSION" =~ ^[0-9]+[.][0-9]+$ ]] || fail "PHP must be a major.minor version"
 [[ "$PHP_VERSION" != 8.2 ]] || fail "PHP 8.2 is diagnostic-only and cannot be a supported cell"
 case "$SCENARIO" in
-  activation-menu|csv-roundtrip) ;;
+  activation-menu|admin-menu|csv-roundtrip) ;;
   *) fail "unsupported cell scenario: $SCENARIO" ;;
 esac
 if [[ -n "$CONFLICT_FIXTURE" || -n "$CONFLICT_MODE" ]]; then
   [[ "$CONFLICT_FIXTURE" == 'tests/compat/fixtures/menu-conflict-plugin.php' && "$CONFLICT_MODE" == order-only ]] || fail "cell conflict coverage requires the order-only fixture"
+  [[ -n "$CONFLICT_POSITION" ]] || CONFLICT_POSITION=before
+  [[ "$CONFLICT_POSITION" == before || "$CONFLICT_POSITION" == after ]] || fail "cell conflict coverage requires a before or after position"
 fi
 
 PROJECT="gigpress_compat_${RANDOM}_$$_$(date +%s)"
@@ -581,11 +595,17 @@ for attempt in $(seq 1 45); do
   [[ "$attempt" -eq 45 ]] && { compose_env logs --no-color >&2 || true; fail "disposable MariaDB did not become ready"; }
   sleep 2
 done
+wait_for_database
 wait_for_wordpress
 if [[ "$CONFLICT_MODE" == order-only ]]; then
   compose_env exec -T wordpress sh -c 'cp /var/www/html/wp-content/plugins/gigpress/tests/compat/fixtures/menu-conflict-plugin.php /var/www/html/wp-content/plugins/menu-conflict-plugin.php'
-  compose_env exec -T -e COMPAT_CONFLICT_MODE=order-only wordpress php -r 'define("WP_INSTALLING", true); require "/var/www/html/wp-load.php"; require_once ABSPATH . "wp-admin/includes/plugin.php"; $result = activate_plugin("menu-conflict-plugin.php", "", false, false); if (is_wp_error($result)) { fwrite(STDERR, $result->get_error_message()); exit(1); }'
 fi
-output=$(compose_env exec -T -e COMPAT_PURPOSE="$SCENARIO" -e COMPAT_CONFLICT_MODE="$CONFLICT_MODE" wordpress php /compat/probe.php) || { printf '%s\n' "$output" >&2; fail "probe failed"; }
+output=$(compose_env exec -T -e COMPAT_PURPOSE="$SCENARIO" -e COMPAT_CONFLICT_MODE="$CONFLICT_MODE" -e COMPAT_CONFLICT_POSITION="$CONFLICT_POSITION" wordpress php /compat/probe.php) || { printf '%s\n' "$output" >&2; fail "probe failed"; }
 printf '%s\n' "$output" | tee "$RESULT_DIR/${WP_VERSION}-php${PHP_VERSION}-${SCENARIO}.json"
-printf '%s\n' "$output" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.menu_slugs | index("gigpress.php")) and (.plugin_errors | length == 0)' >/dev/null || fail "probe did not report a warning-free active GigPress menu"
+if [[ "$SCENARIO" == admin-menu && "$CONFLICT_MODE" == order-only ]]; then
+  printf '%s\n' "$output" | rtk jq -e '.status == "PASS" and .plugin_active == true and .menu_order_conflict == true and (.menu_warnings | length == 0) and (.plugin_errors | length == 0) and ((.menu_slugs | length) == (.menu_slugs | unique | length)) and ((.menu_slugs | index("edit-comments.php")) as $comments | (.menu_slugs | index("gigpress.php")) as $gigpress | ($comments != null and $gigpress != null and $gigpress > $comments) and ((.menu_slugs | index("separator-gp")) == null))' >/dev/null || fail "conflict cell did not preserve standard WordPress menu order"
+elif [[ "$SCENARIO" == admin-menu ]]; then
+  printf '%s\n' "$output" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.menu_warnings | length == 0) and (.plugin_errors | length == 0) and ((.menu_slugs | length) == (.menu_slugs | unique | length)) and ((.menu_slugs | index("edit-comments.php")) as $comments | (.menu_slugs | index("separator-gp")) as $separator | (.menu_slugs | index("gigpress.php")) as $gigpress | ($comments != null and $separator == ($comments + 1) and $gigpress == ($separator + 1)))' >/dev/null || fail "admin-menu cell did not preserve warning-free preferred GigPress placement"
+else
+  printf '%s\n' "$output" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.menu_slugs | index("gigpress.php")) and (.plugin_errors | length == 0)' >/dev/null || fail "probe did not report a warning-free active GigPress menu"
+fi

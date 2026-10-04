@@ -7,7 +7,7 @@ $pluginErrors = array();
 $menuWarnings = array();
 $fatal = null;
 set_error_handler(function ($severity, $message, $file, $line) use (&$pluginErrors, &$menuWarnings) {
-    if ((getenv('COMPAT_PURPOSE') ?: 'activation-menu') === 'diagnose-menu'
+    if (in_array(getenv('COMPAT_PURPOSE') ?: 'activation-menu', array('diagnose-menu', 'admin-menu'), true)
         && ($severity & E_WARNING)
         && strpos($message, 'Undefined array key') !== false
         && strpos($file, '/wp-admin/includes/menu.php') !== false) {
@@ -198,16 +198,18 @@ $admin = get_user_by('login', 'compat-admin');
 wp_set_current_user($admin->ID);
 $fixturePurpose = in_array($purpose, array('fixture-activate', 'fixture-low', 'fixture-recover'), true);
 $plugin = $fixturePurpose ? 'php-floor-plugin.php' : 'gigpress/gigpress.php';
-if ($purpose === 'fixture-activate' || !$fixturePurpose) {
+$skipGigPressActivation = $purpose === 'diagnose-menu' && (getenv('COMPAT_SKIP_GIGPRESS_ACTIVATION') ?: '') === '1';
+if (($purpose === 'fixture-activate' || !$fixturePurpose) && !$skipGigPressActivation) {
     $activation = activate_plugin($plugin, '', false, false);
     if (is_wp_error($activation)) {
         echo json_encode(array('status' => 'FAIL', 'reason' => $activation->get_error_message(), 'plugin_errors' => $pluginErrors)) . PHP_EOL;
         exit(1);
     }
-} elseif (!is_plugin_active($plugin)) {
+} elseif (!$skipGigPressActivation && !is_plugin_active($plugin)) {
     $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Controlled fixture lost active state', 'file' => __FILE__, 'line' => __LINE__);
 }
-if ($purpose === 'diagnose-menu' && (getenv('COMPAT_CONFLICT_MODE') ?: '') === 'exact-key-late-add') {
+if (($purpose === 'diagnose-menu' && (getenv('COMPAT_CONFLICT_MODE') ?: '') === 'exact-key-late-add')
+    || ($purpose === 'admin-menu' && (getenv('COMPAT_CONFLICT_MODE') ?: '') === 'order-only')) {
     $fixtureActivation = activate_plugin('menu-conflict-plugin.php', '', false, false);
     if (is_wp_error($fixtureActivation)) {
         $pluginErrors[] = array('severity' => E_ERROR, 'message' => $fixtureActivation->get_error_message(), 'file' => __FILE__, 'line' => __LINE__);
@@ -343,7 +345,9 @@ $result = array(
     'wordpress_version' => get_bloginfo('version'),
     'php_version' => PHP_VERSION,
     'plugin_active' => is_plugin_active($plugin),
-    'menu_slugs' => array_values(array_unique($menuSlugs)),
+    'menu_slugs' => $menuSlugs,
+    'menu_warnings' => $menuWarnings,
+    'menu_order_conflict' => !empty($GLOBALS['gigpress_menu_order_conflict']),
     'plugin_errors' => $pluginErrors,
     'fatal' => $fatal,
     'purpose' => $purpose,

@@ -14,12 +14,18 @@ function gigpress_menu_conflict_late_add($menuOrder) {
 }
 
 function gigpress_menu_conflict_order_only($menuOrder) {
-    $GLOBALS['gigpress_menu_order_conflict'] = true;
     return $menuOrder;
 }
 
+function gigpress_menu_conflict_mark_order() {
+    $GLOBALS['gigpress_menu_order_conflict'] = true;
+}
+
 if ((getenv('COMPAT_CONFLICT_MODE') ?: '') === 'exact-key-late-add') {
+    add_filter('custom_menu_order', '__return_true');
     add_filter('menu_order', 'gigpress_menu_conflict_late_add', 20);
 } elseif ((getenv('COMPAT_CONFLICT_MODE') ?: '') === 'order-only') {
-    add_filter('menu_order', 'gigpress_menu_conflict_order_only', 5);
+    $priority = (getenv('COMPAT_CONFLICT_POSITION') ?: '') === 'after' ? 20 : 5;
+    add_action('admin_menu', 'gigpress_menu_conflict_mark_order', 1);
+    add_filter('menu_order', 'gigpress_menu_conflict_order_only', $priority);
 }
