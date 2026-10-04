@@ -20,7 +20,7 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-03)
+See: .planning/PROJECT.md (updated 2026-10-04)
 
 **Core value:** Site owners can manage show information and reliably publish it on their WordPress sites.
 **Current focus:** Phase 02 — Data and Upgrade Preservation
@@ -68,21 +68,11 @@ Progress: ░░░░░░░░░░ [██░░░░░░░░] 20%
 
 Recent decisions affecting current work:
 
-- WordPress 7.0+ and PHP 8.3+ are the minimum support targets; PHP 8.2 is diagnostic context only.
-- An already-active GigPress installation below PHP 8.3 remains active but inert: its early bootstrap registers only a persistent plugin-manager compatibility notice and loads no normal modules, hooks, or functions until PHP 8.3+ returns.
-- Use the installed OrbStack Docker-compatible runtime and Compose for all WordPress/PHP matrix and lint containers; do not install or depend on host PHP.
-- Preserve existing records, settings, data model, public output, theme overrides, and CSV contracts.
-- Deliver the five approved workflow improvements after the compatibility baseline.
-- [Phase 01]: PHP 8.2 remains diagnostic-only and cannot enter supported lint or matrix results.
-- [Phase 01]: The controlled fixture's original PHP 8.2 test uses a narrow plugin API facade; the separate real-GigPress low-floor path boots WordPress 7.0.6 and 7.1.2 directly on PHP 8.2.34.
-- [Phase 01]: The real GigPress runtime-floor lifecycle keeps an already-active plugin inert under diagnostic PHP 8.2 and restores its normal bootstrap on PHP 8.3+.
-- [Phase 01]: The exact separator-gigpress reproduction is attributed only to the controlled fixture callback at priority 20.
-- [Phase 01]: GigPress separator-gp is independently actionable while the unavailable live callback remains unproven.
-- [Phase 01]: Declared WordPress 7.0 and PHP 8.3 floors in plugin and readme metadata.
-- [Phase 01]: Below PHP 8.3, GigPress remains active but registers only an escaped activate_plugins-scoped compatibility notice.
-- [Phase 01]: Register separator-gp during admin_menu and return standard order when menu ordering conflicts.
-- [Phase 01]: WordPress 7.0.6 is tested from the official archive on an official PHP/Apache runtime base because its exact Docker tag is unavailable.
-- [Phase 01]: Tested up to 7.1 is backed by every latest-patch WordPress 7.1/PHP 8.3-8.5 full-workflow cell.
+- Minimum support is WordPress 7.0 and PHP 8.3; PHP 8.2 is diagnostic-only.
+- Below PHP 8.3, an already-active GigPress remains active but inert with a scoped notice, and resumes normally when PHP 8.3+ returns.
+- The reported menu warning is reproduced only by a controlled fixture; the unavailable live callback remains unproven.
+- GigPress registers its separator during `admin_menu` and returns standard order unchanged on conflicts.
+- OrbStack/Compose supplies the WordPress/PHP matrix; WordPress 7.0.6 uses the official release archive, and `Tested up to: 7.1` is backed by the PHP 8.3–8.5 workflow matrix.
 
 ### Pending Todos
 
@@ -90,11 +80,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- The reported warning is reproduced and attributed to a controlled fixture callback; the unavailable live site's callback identity remains unproven.
-- The selected PHP and WordPress release branches were refreshed for the Phase 01 compatibility matrix.
-- The active-but-inert PHP-floor lifecycle is verified on both target WordPress lines, including active-state retention, hook/function absence, capability-scoped repeated notices, public-request inertness, and automatic recovery on PHP 8.3+.
-- Phase 2 must characterize historical schema and upgrade behavior before migration-adjacent changes.
-- Phases 4 and 5 must verify template/feed and CSV edge cases with representative fixtures.
+- [Phase 01] The unavailable live site's callback identity for the reported warning remains unproven; the controlled fixture is not evidence of the live actor.
+- [Phase 02] Characterize historical schema and upgrade behavior before migration-adjacent changes.
+- [Phase 04] Verify template overrides and feed contracts with representative fixtures.
+- [Phase 05] Verify CSV import/export edge cases and mutation protection with representative fixtures.
 
 ## Deferred Items
 
@@ -104,6 +93,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-04T07:22:22.754Z
+Last session: 2026-10-04T09:08:43Z
 Stopped at: Phase 01 complete, ready to plan Phase 2
 Resume file: None

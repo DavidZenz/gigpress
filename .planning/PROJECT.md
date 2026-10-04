@@ -15,12 +15,12 @@ Site owners can manage show information and reliably publish it on their WordPre
 - ✓ Manage shows, artists, venues, and tours through WordPress administration — established product capability
 - ✓ Publish show listings and show details in WordPress content — established product capability
 - ✓ Provide RSS and iCalendar feeds and CSV import/export — established product capability
+- ✓ Support WordPress 7.0 and the 7.1 release line with a stated minimum — Phase 1
+- ✓ Support PHP 8.3 and later with a stated minimum; PHP 8.2 remains diagnostic-only — Phase 1
+- ✓ Reproduce and trace the reported admin-menu warning with a controlled fixture, fix GigPress's equivalent menu-order conflict, and leave the unavailable live callback unclaimed — Phase 1
 
 ### Active
 
-- [ ] Support WordPress 7.0 and later, including the 7.1 release line, with a clearly stated minimum.
-- [ ] Support PHP 8.3 and later, with a clearly stated minimum.
-- [ ] Investigate and fix the reported GigPress admin-menu warning on WordPress 7.1.2; the report came from PHP 8.2, which is diagnostic context and not a supported target.
 - [ ] Preserve existing GigPress data and established administration, display, feed, and import/export behavior while updating compatibility.
 - [ ] Identify and deliver useful improvements to the add-show date/time workflow, show-list filtering and bulk actions, settings organization and help, responsive public show displays, and import/export layout and feedback.
 
@@ -34,9 +34,9 @@ Site owners can manage show information and reliably publish it on their WordPre
 
 - This is a brownfield WordPress plugin implemented in procedural PHP. The codebase map is in `.planning/codebase/`.
 - The existing plugin manages shows, artists, venues, and tours; supports public listings and feeds; and provides CSV import/export.
-- The user reported this warning on WordPress 7.1.2 with PHP 8.2: `Warning: Undefined array key "separator-gigpress" in wp-admin/includes/menu.php on line 339`. The warning is actual; its cause has not yet been confirmed. PHP 8.2 is not part of the support target.
-- UX opportunities were identified by reading the existing source. No live-site or visual audit has been performed.
-- The repository currently has no automated test suite, so compatibility verification will need an explicit validation approach during planning.
+- The user reported this warning on WordPress 7.1.2 with PHP 8.2: `Warning: Undefined array key "separator-gigpress" in wp-admin/includes/menu.php on line 339`. A controlled fixture now reproduces the exact core warning and identifies its fixture callback; the unavailable live site's callback remains unproven. PHP 8.2 is not part of the support target.
+- UX opportunities were identified by reading the existing source. The preferred and conflict-order admin menus were visually checked in disposable WordPress 7.1.2/PHP 8.3 cells; no live-site UI audit was performed.
+- A repository-owned OrbStack/Compose compatibility harness now covers supported PHP syntax, WordPress activation, menu ordering, data-preserving lifecycle transitions, and existing admin/public/feed/CSV workflows.
 
 ## Constraints
 
@@ -50,14 +50,14 @@ Site owners can manage show information and reliably publish it on their WordPre
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Set the minimum PHP version to 8.3. | User selected PHP 8.3+ as the support baseline. | — Pending |
-| Set the minimum WordPress version to 7.0. | User selected WordPress 7.0+ and 7.1+. | — Pending |
-| Treat the WordPress 7.1.2 / PHP 8.2 warning as an investigation clue, not a PHP 8.2 support commitment. | User clarified that PHP 8.2 is not a target. | — Pending |
-| Include improvement work in all five identified UX areas, behind compatibility. | User selected priorities 1–5. | — Pending |
+| Set the minimum PHP version to 8.3. | User selected PHP 8.3+ as the support baseline. | Implemented and verified in Phase 1; PHP 8.2 remains diagnostic-only. |
+| Set the minimum WordPress version to 7.0. | User selected WordPress 7.0+ and 7.1+. | Implemented and verified in Phase 1 on WordPress 7.0.6 and 7.1.2. |
+| Treat the WordPress 7.1.2 / PHP 8.2 warning as an investigation clue, not a PHP 8.2 support commitment. | User clarified that PHP 8.2 is not a target. | Exact warning reproduced in a controlled fixture; the live callback identity is unproven. |
+| Include improvement work in all five identified UX areas, behind compatibility. | User selected priorities 1–5. | Sequenced after compatibility; data preservation is Phase 2, administration Phase 3, publishing Phase 4, and CSV Phase 5. |
 
 ## Evolution
 
 After each phase, move completed and confirmed requirements from Active to Validated, move rejected requirements to Out of Scope with a reason, record new requirements and decisions, and update this project description if the product changes. Review all sections at each milestone.
 
 ---
-*Last updated: 2026-10-03 after project discovery and compatibility-scope approval.*
+*Last updated: 2026-10-04 after Phase 1 compatibility verification.*
