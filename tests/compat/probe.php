@@ -172,6 +172,31 @@ if ($purpose === 'upgrade-preservation') {
     if (!is_array($upgradeFixture) || ($upgradeFixture['label'] ?? '') !== 'reconstructed-1.4') {
         $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Reconstructed 1.4 fixture is unavailable', 'file' => $fixturePath, 'line' => 0);
     }
+    if (is_array($upgradeFixture) && $wpdb->prefix === $upgradeFixture['prefix']) {
+        $tables = array(
+            'shows' => 'show_id bigint(20) unsigned NOT NULL AUTO_INCREMENT, show_artist_id bigint(20) NOT NULL, show_venue_id bigint(20) NOT NULL, show_tour_id bigint(20) NOT NULL DEFAULT 0, show_date date NOT NULL, show_multi tinyint(1) NULL, show_time time NOT NULL, show_expire date NOT NULL, show_price varchar(255) NULL, show_tix_url varchar(255) NULL, show_tix_phone varchar(255) NULL, show_ages varchar(255) NULL, show_notes text NULL, show_related bigint(20) NOT NULL DEFAULT 0, show_status varchar(32) NOT NULL DEFAULT \'active\', show_external_url varchar(255) NULL, show_tour_restore tinyint(1) NOT NULL DEFAULT 0, show_address varchar(255) NULL, show_locale varchar(255) NULL, show_country varchar(2) NULL, show_venue varchar(255) NULL, show_venue_url varchar(255) NULL, show_venue_phone varchar(255) NULL, PRIMARY KEY (show_id)',
+            'artists' => 'artist_id bigint(20) unsigned NOT NULL AUTO_INCREMENT, artist_name varchar(255) NOT NULL, artist_alpha varchar(255) NOT NULL, artist_url varchar(255) NULL, artist_order bigint(20) NOT NULL DEFAULT 0, PRIMARY KEY (artist_id)',
+            'venues' => 'venue_id bigint(20) unsigned NOT NULL AUTO_INCREMENT, venue_name varchar(255) NOT NULL, venue_address varchar(255) NULL, venue_city varchar(255) NOT NULL, venue_state varchar(255) NULL, venue_postal_code varchar(32) NULL, venue_country varchar(2) NOT NULL, venue_url varchar(255) NULL, venue_phone varchar(255) NULL, PRIMARY KEY (venue_id)',
+            'tours' => 'tour_id bigint(20) unsigned NOT NULL AUTO_INCREMENT, tour_name varchar(255) NOT NULL, tour_status varchar(32) NOT NULL DEFAULT \'active\', PRIMARY KEY (tour_id)',
+        );
+        foreach ($tables as $name => $definition) {
+            $table = $wpdb->prefix . 'gigpress_' . $name;
+            if ($wpdb->query("CREATE TABLE {$table} ({$definition})") === false) {
+                $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Could not prepare reconstructed ' . $name . ' table', 'file' => __FILE__, 'line' => __LINE__);
+            }
+        }
+        $postId = wp_insert_post(array('post_title' => 'Reconstructed linked post', 'post_content' => 'Existing WordPress content remains unchanged.', 'post_status' => 'publish', 'post_type' => 'post'));
+        foreach (array('artists', 'venues', 'tours', 'shows') as $kind) {
+            foreach ($upgradeFixture[$kind] as $row) {
+                if ($kind === 'shows' && $row['show_related'] === 0 && $row['show_id'] === 109) $row['show_related'] = (int) $postId;
+                $result = $wpdb->insert($wpdb->prefix . 'gigpress_' . $kind, $row);
+                if ($result === false) $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Could not insert reconstructed ' . $kind . ' row', 'file' => __FILE__, 'line' => __LINE__);
+            }
+        }
+        update_option('gigpress_settings', $upgradeFixture['settings']);
+    } else {
+        $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Upgrade fixture did not receive its nondefault prefix', 'file' => __FILE__, 'line' => __LINE__);
+    }
 }
 $fixturePurpose = in_array($purpose, array('fixture-activate', 'fixture-low', 'fixture-recover'), true);
 $plugin = $fixturePurpose ? 'php-floor-plugin.php' : 'gigpress/gigpress.php';
@@ -187,13 +212,40 @@ if (($purpose === 'fixture-activate' || !$fixturePurpose) && !$skipGigPressActiv
     $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Controlled fixture lost active state', 'file' => __FILE__, 'line' => __LINE__);
 }
 if ($purpose === 'upgrade-preservation') {
-    $ok = function_exists('gigpress_db_bootstrap') && is_array($upgradeFixture);
+    $snapshot = function () use ($wpdb) {
+        $data = array('prefix' => $wpdb->prefix, 'settings' => get_option('gigpress_settings'));
+        foreach (array('shows' => 'show_id', 'artists' => 'artist_id', 'venues' => 'venue_id', 'tours' => 'tour_id') as $kind => $id) {
+            $data[$kind] = $wpdb->get_results('SELECT * FROM ' . $wpdb->prefix . 'gigpress_' . $kind . ' ORDER BY ' . $id, ARRAY_A);
+        }
+        $postId = isset($data['shows'][0]['show_related']) ? (int) $data['shows'][0]['show_related'] : 0;
+        $post = $postId ? get_post($postId, ARRAY_A) : null;
+        $data['linked_post'] = $post ? array('ID' => (int) $post['ID'], 'post_title' => $post['post_title'], 'post_content' => $post['post_content']) : null;
+        return $data;
+    };
+    $first = $snapshot();
+    $second = function_exists('gigpress_db_bootstrap') ? $snapshot() : null;
+    $expected = is_array($upgradeFixture) ? $upgradeFixture['expected'] : array();
+    $checks = array(
+        'prefix' => $first['prefix'] === ($upgradeFixture['prefix'] ?? null),
+        'version' => ($first['settings']['db_version'] ?? null) === ($expected['version'] ?? null),
+        'show_ids' => array_map('intval', array_column($first['shows'], 'show_id')) === ($expected['show_ids'] ?? null),
+        'artist_ids' => array_map('intval', array_column($first['artists'], 'artist_id')) === ($expected['artist_ids'] ?? null),
+        'venue_ids' => array_map('intval', array_column($first['venues'], 'venue_id')) === ($expected['venue_ids'] ?? null),
+        'tour_ids' => array_map('intval', array_column($first['tours'], 'tour_id')) === ($expected['tour_ids'] ?? null),
+        'artist_alpha' => ($first['artists'][0]['artist_alpha'] ?? null) === ($expected['artist_alpha'] ?? null),
+        'venue_city' => ($first['venues'][0]['venue_city'] ?? null) === ($expected['venue_city'] ?? null),
+        'venue_state' => ($first['venues'][0]['venue_state'] ?? null) === ($expected['venue_state'] ?? null),
+        'journal_removed' => !get_option('gigpress_upgrade_state', false),
+    );
+    $manifestMatches = !in_array(false, $checks, true);
+    $ok = function_exists('gigpress_db_bootstrap') && is_array($upgradeFixture) && $manifestMatches && $first === $second;
     $upgradePreservation = array(
         'status' => $ok ? 'PASS' : 'FAIL',
         'case' => $upgradeCase,
         'fixture' => is_array($upgradeFixture) ? $upgradeFixture['label'] : null,
-        'manifest_matches' => false,
-        'repeat_matches' => false,
+        'manifest_matches' => $manifestMatches,
+        'repeat_matches' => $first === $second,
+        'checks' => $checks,
     );
     if (!$ok) {
         $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Upgrade coordinator is not available for the reconstructed fixture', 'file' => WP_PLUGIN_DIR . '/gigpress/admin/db.php', 'line' => 0);

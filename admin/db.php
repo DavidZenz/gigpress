@@ -121,77 +121,128 @@ $default_settings = array(
 );
 
 global $gpo;
+$gpo = array();
 
-if( ! $gpo = get_option('gigpress_settings') )
-{
-	$gpo = $default_settings;
+/* Upgrade coordination deliberately keeps its journal out of gigpress_settings.
+ * A version marker is completion evidence, never a record of attempted SQL. */
+function gigpress_db_tables_exist() {
+	global $wpdb;
+	foreach (array(GIGPRESS_SHOWS, GIGPRESS_ARTISTS, GIGPRESS_VENUES, GIGPRESS_TOURS) as $table) {
+		if ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $table)) !== $table) {
+			return false;
+		}
+	}
+	return true;
 }
 
-if(empty($gpo['buy_tickets_label']))
-{
-	$gpo['buy_tickets_label'] = 'Buy Tickets';
-	update_option('gigpress_settings', $gpo);
+function gigpress_db_merge_settings($settings) {
+	global $default_settings;
+	foreach ($default_settings as $key => $value) {
+		if (!array_key_exists($key, $settings)) {
+			$settings[$key] = $value;
+		}
+	}
+	return $settings;
 }
 
-if(empty($gpo['output_schema_json']) || (!empty($gpo['output_schema_json']) && $gpo['output_schema_json'] == 1))
-{
-	$gpo['output_schema_json'] = 'y';
-	update_option('gigpress_settings', $gpo);
+function gigpress_db_upgrade_should_fail($point) {
+	return (bool) apply_filters('gigpress_upgrade_failure_point', false, $point);
 }
 
-function gigpress_install() {
+function gigpress_db_snapshot_ids() {
+	global $wpdb;
+	$ids = array();
+	foreach (array('shows' => GIGPRESS_SHOWS, 'artists' => GIGPRESS_ARTISTS, 'venues' => GIGPRESS_VENUES, 'tours' => GIGPRESS_TOURS) as $kind => $table) {
+		$id = substr($kind, 0, -1) . '_id';
+		$ids[$kind] = array_map('intval', (array) $wpdb->get_col("SELECT {$id} FROM {$table} ORDER BY {$id}"));
+	}
+	return $ids;
+}
 
-	global $wpdb, $gp_db, $default_settings;
-	
-	if($wpdb->get_var("SHOW TABLES LIKE '" . GIGPRESS_SHOWS . "'") != GIGPRESS_SHOWS) {
+function gigpress_db_block($code) {
+	global $gpo, $gigpress_db_bootstrap_result;
+	$gigpress_db_bootstrap_result = array('status' => 'blocked', 'code' => $code);
+	$gpo = is_array($gpo) ? $gpo : array();
+	return $gigpress_db_bootstrap_result;
+}
+
+function gigpress_db_upgrade_160_verified() {
+	global $wpdb, $gpo;
+	foreach ((array) $wpdb->get_results('SELECT artist_id, artist_name FROM ' . GIGPRESS_ARTISTS) as $artist) {
+		if (gigpress_db_upgrade_should_fail('before_artist_alpha')) return false;
+		$alpha = preg_replace('/^the\s+/ui', '', strtolower($artist->artist_name));
+		$result = $wpdb->update(GIGPRESS_ARTISTS, array('artist_alpha' => $alpha), array('artist_id' => $artist->artist_id), array('%s'), array('%d'));
+		if ($result === false || $wpdb->get_var($wpdb->prepare('SELECT artist_alpha FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_id = %d', $artist->artist_id)) !== $alpha) return false;
+	}
+	foreach ((array) $wpdb->get_results('SELECT venue_id, venue_city, venue_state FROM ' . GIGPRESS_VENUES) as $venue) {
+		if (preg_match('/,[ ]?([A-Z]{2})$/u', $venue->venue_city, $matches) !== 1) continue;
+		if (gigpress_db_upgrade_should_fail('before_venue_state')) return false;
+		$values = array('venue_state' => $matches[1], 'venue_city' => preg_replace('/,[ ]?[A-Z]{2}$/u', '', $venue->venue_city));
+		$result = $wpdb->update(GIGPRESS_VENUES, $values, array('venue_id' => $venue->venue_id), array('%s', '%s'), array('%d'));
+		$actual = $wpdb->get_row($wpdb->prepare('SELECT venue_state, venue_city FROM ' . GIGPRESS_VENUES . ' WHERE venue_id = %d', $venue->venue_id), ARRAY_A);
+		if ($result === false || !$actual || $actual['venue_state'] !== $values['venue_state'] || $actual['venue_city'] !== $values['venue_city']) return false;
+	}
+	$gpo['artist_link'] = 1;
+	$gpo['external_link_label'] = 'More information';
+	return true;
+}
+
+function gigpress_db_bootstrap() {
+	global $wpdb, $gp_db, $default_settings, $gpo, $gigpress_db_bootstrap_result;
+	if (isset($gigpress_db_bootstrap_result)) return $gigpress_db_bootstrap_result;
+	$settings = get_option('gigpress_settings', false);
+	if (!gigpress_db_tables_exist()) {
+		if ($settings !== false) return gigpress_db_block('metadata_without_tables');
 		require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+		if (gigpress_db_upgrade_should_fail('before_schema')) return gigpress_db_block('schema_unproven');
 		dbDelta($gp_db);
+		if (!gigpress_db_tables_exist() || gigpress_db_upgrade_should_fail('after_schema')) return gigpress_db_block('schema_unproven');
 		add_option('gigpress_settings', $default_settings);
+		$gpo = get_option('gigpress_settings', array());
+		return $gigpress_db_bootstrap_result = array('status' => 'ready', 'code' => 'fresh');
 	}
-}
-
-
-// Upgrade checks and functions
-
-if ( $gpo['db_version'] < GIGPRESS_DB_VERSION ) {
-	
-	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');	
+	if (!is_array($settings) || !isset($settings['db_version']) || !is_string($settings['db_version'])) return gigpress_db_block('unsafe_metadata');
+	$version = $settings['db_version'];
+	if ($version === GIGPRESS_DB_VERSION) {
+		$gpo = gigpress_db_merge_settings($settings);
+		if ($gpo !== $settings) update_option('gigpress_settings', $gpo);
+		return $gigpress_db_bootstrap_result = array('status' => 'ready', 'code' => 'current');
+	}
+	if (!in_array($version, array('1.0', '1.1', '1.2', '1.3', '1.4', '1.5'), true)) return gigpress_db_block('unsafe_metadata');
+	if ($version !== '1.4' && $version !== '1.5') return gigpress_db_block('legacy_path_unproven');
+	$journal = get_option('gigpress_upgrade_state', false);
+	if (!is_array($journal)) {
+		$journal = array('source' => $version, 'target' => GIGPRESS_DB_VERSION, 'completed' => array(), 'pre_mutation_ids' => gigpress_db_snapshot_ids(), 'created_ids' => array());
+		update_option('gigpress_upgrade_state', $journal);
+	}
+	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+	if (gigpress_db_upgrade_should_fail('before_schema')) return gigpress_db_block('schema_unproven');
 	dbDelta($gp_db);
-	
-	switch($gpo['db_version']) {
-		case "1.0":
-			gigpress_db_upgrade_110();
-			gigpress_db_upgrade_120();
-			gigpress_db_upgrade_130();
-			gigpress_db_upgrade_140();
-			gigpress_db_upgrade_160();
-			break;		
-		case "1.1":
-			gigpress_db_upgrade_120();
-			gigpress_db_upgrade_130();
-			gigpress_db_upgrade_140();
-			gigpress_db_upgrade_160();
-			break;
-		case "1.2":
-			gigpress_db_upgrade_130();
-			gigpress_db_upgrade_140();
-			gigpress_db_upgrade_160();
-			break;
-		case "1.3":
-			gigpress_db_upgrade_140();
-			gigpress_db_upgrade_160();
-			break;
-		case "1.4":
-			gigpress_db_upgrade_160();
-			break;
-		case "1.5":
-			gigpress_db_upgrade_160();
-			break;
+	if (!gigpress_db_tables_exist() || gigpress_db_upgrade_should_fail('after_schema')) return gigpress_db_block('schema_unproven');
+	$journal['completed']['schema'] = true;
+	update_option('gigpress_upgrade_state', $journal);
+	if (empty($journal['completed']['upgrade_160'])) {
+		if (!gigpress_db_upgrade_160_verified()) return gigpress_db_block('data_unproven');
+		$journal['completed']['upgrade_160'] = true;
+		update_option('gigpress_upgrade_state', $journal);
 	}
-	
+	$gpo = gigpress_db_merge_settings($settings);
+	if (gigpress_db_upgrade_should_fail('before_final_marker')) return gigpress_db_block('marker_unproven');
 	$gpo['db_version'] = GIGPRESS_DB_VERSION;
 	update_option('gigpress_settings', $gpo);
+	$stored = get_option('gigpress_settings', array());
+	if (!is_array($stored) || ($stored['db_version'] ?? null) !== GIGPRESS_DB_VERSION) return gigpress_db_block('marker_unproven');
+	delete_option('gigpress_upgrade_state');
+	return $gigpress_db_bootstrap_result = array('status' => 'ready', 'code' => 'upgraded');
+}
 
+function gigpress_install() { gigpress_db_bootstrap(); }
+
+function gigpress_db_upgrade_notice() {
+	global $gigpress_db_bootstrap_result;
+	if (current_user_can('activate_plugins') && is_array($gigpress_db_bootstrap_result) && $gigpress_db_bootstrap_result['status'] === 'blocked') {
+		echo '<div class="notice notice-warning"><p>' . esc_html('GigPress data upgrade is paused (' . $gigpress_db_bootstrap_result['code'] . '). Correct the database condition and reload this page to retry safely.') . '</p></div>';
+	}
 }
 
 

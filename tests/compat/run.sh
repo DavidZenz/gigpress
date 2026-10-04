@@ -623,7 +623,7 @@ if [[ "$MODE" == matrix ]]; then
 fi
 
 [[ "$MODE" == cell ]] || fail "supported commands: cell, matrix, lint, metadata, self-test, runtime-floor, menu-contract"
-WP_VERSION=''; PHP_VERSION=''; SCENARIO='activation-menu'; UPGRADE_CASE='tracer-1.4'; CONFLICT_FIXTURE=''; CONFLICT_MODE=''; CONFLICT_POSITION=''
+WP_VERSION=''; PHP_VERSION=''; SCENARIO='activation-menu'; UPGRADE_CASE='tracer-1.4'; TABLE_PREFIX='wp_'; CONFLICT_FIXTURE=''; CONFLICT_MODE=''; CONFLICT_POSITION=''
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --wp) WP_VERSION=${2:-}; shift 2 ;;
@@ -645,6 +645,7 @@ case "$SCENARIO" in
   upgrade-preservation) [[ "$UPGRADE_CASE" =~ ^(tracer-1\.4|safety-1\.4|metadata-classification)$ ]] || fail "unsupported upgrade-preservation case: $UPGRADE_CASE" ;;
   *) fail "unsupported cell scenario: $SCENARIO" ;;
 esac
+[[ "$SCENARIO" != upgrade-preservation ]] || TABLE_PREFIX='compat_legacy_'
 if [[ -n "$CONFLICT_FIXTURE" || -n "$CONFLICT_MODE" ]]; then
   [[ "$CONFLICT_FIXTURE" == 'tests/compat/fixtures/menu-conflict-plugin.php' && "$CONFLICT_MODE" == order-only ]] || fail "cell conflict coverage requires the order-only fixture"
   [[ -n "$CONFLICT_POSITION" ]] || CONFLICT_POSITION=before
@@ -667,7 +668,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 compose_env() {
   env -u COMPOSE_FILE -u COMPOSE_PROJECT_NAME -u WORDPRESS_DB_HOST -u MYSQL_HOST -u DB_HOST -u DATABASE_URL \
-    REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" WORDPRESS_IMAGE_VERSION="$WORDPRESS_IMAGE_VERSION" PHP_VERSION="$PHP_VERSION" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" "$@"
+    REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" WORDPRESS_IMAGE_VERSION="$WORDPRESS_IMAGE_VERSION" PHP_VERSION="$PHP_VERSION" COMPAT_TABLE_PREFIX="$TABLE_PREFIX" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" "$@"
 }
 
 CLEANUP_NEEDED=true

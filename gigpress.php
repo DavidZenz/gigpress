@@ -49,6 +49,12 @@ define('GIGPRESS_DEBUG', '');
 
 require('admin/db.php');
 
+$gigpress_bootstrap = gigpress_db_bootstrap();
+if ($gigpress_bootstrap['status'] !== 'ready') {
+    add_action('admin_notices', 'gigpress_db_upgrade_notice');
+    return;
+}
+
 define('GIGPRESS_URL', ($gpo['shows_page']) ? esc_url($gpo['shows_page']) : get_bloginfo('url'));
 
 // Pull in all of our required files
