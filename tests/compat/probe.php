@@ -169,61 +169,94 @@ $upgradeFixture = null;
 
 function upgrade_preservation_source_schema($version) {
     $shows = array(
-        'show_id' => 'bigint(20) unsigned NOT NULL AUTO_INCREMENT',
-        'show_artist_id' => 'bigint(20) NOT NULL DEFAULT 0',
-        'show_venue_id' => 'bigint(20) NOT NULL DEFAULT 0',
-        'show_tour_id' => 'bigint(20) NOT NULL DEFAULT 0',
-        'show_date' => 'date NOT NULL',
-        'show_multi' => 'tinyint(1) NULL',
-        'show_time' => 'time NOT NULL',
-        'show_price' => 'varchar(255) NULL',
-        'show_tix_url' => 'varchar(255) NULL',
-        'show_tix_phone' => 'varchar(255) NULL',
-        'show_ages' => 'varchar(255) NULL',
-        'show_notes' => 'text NULL',
-        'show_related' => 'bigint(20) NOT NULL DEFAULT 0',
-        'show_tour_restore' => 'tinyint(1) NOT NULL DEFAULT 0',
-        'show_address' => 'varchar(255) NULL',
-        'show_locale' => 'varchar(255) NULL',
-        'show_country' => 'varchar(2) NULL',
-        'show_venue' => 'varchar(255) NULL',
-        'show_venue_url' => 'varchar(255) NULL',
-        'show_venue_phone' => 'varchar(255) NULL',
+        'show_id' => 'INTEGER(4) AUTO_INCREMENT',
+        'show_artist_id' => 'INTEGER(4) NOT NULL',
+        'show_venue_id' => 'INTEGER(4) NOT NULL',
+        'show_tour_id' => 'INTEGER(4) DEFAULT 0',
+        'show_date' => 'DATE NOT NULL',
+        'show_multi' => 'INTEGER(1)',
+        'show_time' => 'TIME NOT NULL',
+        'show_price' => 'VARCHAR(255)',
+        'show_tix_url' => 'VARCHAR(255)',
+        'show_tix_phone' => 'VARCHAR(255)',
+        'show_ages' => 'VARCHAR(255)',
+        'show_notes' => 'TEXT',
+        'show_related' => 'BIGINT(20) DEFAULT 0',
+        'show_tour_restore' => 'INTEGER(1) DEFAULT 0',
+        'show_address' => 'VARCHAR(255)',
+        'show_locale' => 'VARCHAR(255)',
+        'show_country' => 'VARCHAR(2)',
+        'show_venue' => 'VARCHAR(255)',
+        'show_venue_url' => 'VARCHAR(255)',
+        'show_venue_phone' => 'VARCHAR(255)',
     );
-    if ($version !== '1.0') $shows['show_expire'] = 'date NOT NULL DEFAULT \'0000-00-00\'';
-    if (in_array($version, array('1.2', '1.3', '1.4', '1.5', '1.6'), true)) $shows['show_status'] = 'varchar(32) NOT NULL DEFAULT \'\'';
-    if ($version === '1.6') $shows['show_external_url'] = 'varchar(255) NULL';
+    if ($version !== '1.0') $shows['show_expire'] = 'DATE NOT NULL';
+    if (in_array($version, array('1.2', '1.3', '1.4', '1.5', '1.6'), true)) $shows['show_status'] = 'VARCHAR(32) DEFAULT \'active\'';
+    if ($version === '1.6') $shows['show_external_url'] = 'VARCHAR(255)';
 
     $artists = array(
-        'artist_id' => 'bigint(20) unsigned NOT NULL AUTO_INCREMENT',
-        'artist_name' => 'varchar(255) NOT NULL',
+        'artist_id' => 'INTEGER(4) AUTO_INCREMENT',
+        'artist_name' => 'VARCHAR(255) NOT NULL',
     );
     $venues = array(
-        'venue_id' => 'bigint(20) unsigned NOT NULL AUTO_INCREMENT',
-        'venue_name' => 'varchar(255) NOT NULL',
-        'venue_address' => 'varchar(255) NULL',
-        'venue_city' => 'varchar(255) NOT NULL',
-        'venue_country' => 'varchar(2) NOT NULL',
-        'venue_url' => 'varchar(255) NULL',
-        'venue_phone' => 'varchar(255) NULL',
+        'venue_id' => 'INTEGER(4) AUTO_INCREMENT',
+        'venue_name' => 'VARCHAR(255) NOT NULL',
+        'venue_address' => 'VARCHAR(255)',
+        'venue_city' => 'VARCHAR(255) NOT NULL',
+        'venue_country' => 'VARCHAR(2) NOT NULL',
+        'venue_url' => 'VARCHAR(255)',
+        'venue_phone' => 'VARCHAR(255)',
     );
     $tours = array(
-        'tour_id' => 'bigint(20) unsigned NOT NULL AUTO_INCREMENT',
-        'tour_name' => 'varchar(255) NOT NULL',
+        'tour_id' => 'INTEGER(4) AUTO_INCREMENT',
+        'tour_name' => 'VARCHAR(255) NOT NULL',
     );
-    if (in_array($version, array('1.2', '1.3', '1.4', '1.5', '1.6'), true)) $tours['tour_status'] = 'varchar(32) NOT NULL DEFAULT \'\'';
+    if (in_array($version, array('1.2', '1.3', '1.4', '1.5', '1.6'), true)) $tours['tour_status'] = 'VARCHAR(32) DEFAULT \'active\'';
     if ($version === '1.6') {
-        $artists['artist_alpha'] = 'varchar(255) NOT NULL';
-        $artists['artist_url'] = 'varchar(255) NULL';
-        $artists['artist_order'] = 'bigint(20) NOT NULL DEFAULT 0';
-        $venues['venue_state'] = 'varchar(255) NULL';
-        $venues['venue_postal_code'] = 'varchar(32) NULL';
+        $artists['artist_alpha'] = 'VARCHAR(255) NOT NULL';
+        $artists['artist_url'] = 'VARCHAR(255)';
+        $artists['artist_order'] = 'INTEGER(4) DEFAULT 0';
+        $venues['venue_state'] = 'VARCHAR(255)';
+        $venues['venue_postal_code'] = 'VARCHAR(32)';
     }
     return array('shows' => $shows, 'artists' => $artists, 'venues' => $venues, 'tours' => $tours);
 }
 
 function upgrade_preservation_current_schema() {
-    return upgrade_preservation_source_schema('1.6');
+    $column = function ($field, $type, $null, $key = '', $default = null, $extra = '') {
+        return array('Field' => $field, 'Type' => $type, 'Null' => $null, 'Key' => $key, 'Default' => $default, 'Extra' => $extra);
+    };
+    return array(
+        'shows' => array(
+            $column('show_id', 'int(4)', 'NO', 'PRI', null, 'auto_increment'),
+            $column('show_artist_id', 'int(4)', 'NO'), $column('show_venue_id', 'int(4)', 'NO'),
+            $column('show_tour_id', 'int(4)', 'YES', '', '0'), $column('show_date', 'date', 'NO'),
+            $column('show_multi', 'int(1)', 'YES'), $column('show_time', 'time', 'NO'), $column('show_expire', 'date', 'NO'),
+            $column('show_price', 'varchar(255)', 'YES'), $column('show_tix_url', 'varchar(255)', 'YES'),
+            $column('show_tix_phone', 'varchar(255)', 'YES'), $column('show_ages', 'varchar(255)', 'YES'),
+            $column('show_notes', 'text', 'YES'), $column('show_related', 'bigint(20)', 'YES', '', '0'),
+            $column('show_status', 'varchar(32)', 'YES', '', 'active'), $column('show_external_url', 'varchar(255)', 'YES'),
+            $column('show_tour_restore', 'int(1)', 'YES', '', '0'), $column('show_address', 'varchar(255)', 'YES'),
+            $column('show_locale', 'varchar(255)', 'YES'), $column('show_country', 'varchar(2)', 'YES'),
+            $column('show_venue', 'varchar(255)', 'YES'), $column('show_venue_url', 'varchar(255)', 'YES'),
+            $column('show_venue_phone', 'varchar(255)', 'YES'),
+        ),
+        'artists' => array(
+            $column('artist_id', 'int(4)', 'NO', 'PRI', null, 'auto_increment'), $column('artist_name', 'varchar(255)', 'NO'),
+            $column('artist_alpha', 'varchar(255)', 'NO'), $column('artist_url', 'varchar(255)', 'YES'),
+            $column('artist_order', 'int(4)', 'YES', '', '0'),
+        ),
+        'venues' => array(
+            $column('venue_id', 'int(4)', 'NO', 'PRI', null, 'auto_increment'), $column('venue_name', 'varchar(255)', 'NO'),
+            $column('venue_address', 'varchar(255)', 'YES'), $column('venue_city', 'varchar(255)', 'NO'),
+            $column('venue_state', 'varchar(255)', 'YES'), $column('venue_postal_code', 'varchar(32)', 'YES'),
+            $column('venue_country', 'varchar(2)', 'NO'), $column('venue_url', 'varchar(255)', 'YES'), $column('venue_phone', 'varchar(255)', 'YES'),
+        ),
+        'tours' => array(
+            $column('tour_id', 'int(4)', 'NO', 'PRI', null, 'auto_increment'), $column('tour_name', 'varchar(255)', 'NO'),
+            $column('tour_status', 'varchar(32)', 'YES', '', 'active'),
+        ),
+    );
 }
 
 function upgrade_preservation_create_table($name, $columns, $primary) {

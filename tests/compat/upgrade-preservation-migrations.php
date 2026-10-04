@@ -5,12 +5,28 @@ function gigpress_upgrade_preservation_fixture($version) {
     return is_readable($path) ? require $path : null;
 }
 
+function gigpress_upgrade_preservation_schema_columns($columns) {
+	$fields = array('Field', 'Type', 'Null', 'Key', 'Default', 'Extra');
+	$definitions = array();
+	foreach ((array) $columns as $column) {
+		$definition = array();
+		foreach ($fields as $field) $definition[$field] = array_key_exists($field, $column) ? $column[$field] : null;
+		$definitions[$definition['Field']] = $definition;
+	}
+	ksort($definitions);
+	return $definitions;
+}
+
+function gigpress_upgrade_preservation_schema_matches($actual, $expected) {
+	return gigpress_upgrade_preservation_schema_columns($actual) === gigpress_upgrade_preservation_schema_columns($expected);
+}
+
 function gigpress_upgrade_preservation_snapshot() {
     global $wpdb;
     $data = array('prefix' => $wpdb->prefix, 'settings' => get_option('gigpress_settings'));
     foreach (array('shows' => 'show_id', 'artists' => 'artist_id', 'venues' => 'venue_id', 'tours' => 'tour_id') as $kind => $id) {
         $data[$kind] = $wpdb->get_results('SELECT * FROM ' . $wpdb->prefix . 'gigpress_' . $kind . ' ORDER BY ' . $id, ARRAY_A);
-		$data['schema'][$kind] = array_map(function ($column) { return $column['Field']; }, (array) $wpdb->get_results('SHOW COLUMNS FROM ' . $wpdb->prefix . 'gigpress_' . $kind, ARRAY_A));
+		$data['schema'][$kind] = gigpress_upgrade_preservation_schema_columns($wpdb->get_results('SHOW COLUMNS FROM ' . $wpdb->prefix . 'gigpress_' . $kind, ARRAY_A));
     }
 	$data['linked_posts'] = array();
 	foreach ($data['shows'] as $show) {
@@ -76,10 +92,15 @@ function gigpress_upgrade_preservation_manifest_matches($fixture, $snapshot, $so
     $currentSchema = upgrade_preservation_current_schema();
 	$schemaMatches = true;
 	foreach ($currentSchema as $kind => $columns) {
-		$actualColumns = $snapshot['schema'][$kind] ?? array();
-		$expectedColumns = array_keys($columns);
-		sort($actualColumns); sort($expectedColumns);
-		$schemaMatches = $schemaMatches && $actualColumns === $expectedColumns;
+		$schemaMatches = $schemaMatches && gigpress_upgrade_preservation_schema_matches($snapshot['schema'][$kind] ?? array(), $columns);
+	}
+	$wrongDefinition = $snapshot['schema'];
+	foreach ($wrongDefinition['shows'] ?? array() as $index => $column) {
+		if ($column['Field'] === 'show_tour_id') {
+			$wrongDefinition['shows'][$index]['Type'] = 'varchar(255)';
+			$wrongDefinition['shows'][$index]['Default'] = '';
+			break;
+		}
 	}
     $checks = array(
         'prefix' => $snapshot['prefix'] === $fixture['prefix'],
@@ -91,9 +112,10 @@ function gigpress_upgrade_preservation_manifest_matches($fixture, $snapshot, $so
         'artist_alpha' => ($snapshot['artists'][0]['artist_alpha'] ?? null) === $expected['artist_alpha'],
         'venue_city' => ($snapshot['venues'][0]['venue_city'] ?? null) === $expected['venue_city'],
         'venue_state' => ($snapshot['venues'][0]['venue_state'] ?? null) === $expected['venue_state'],
-        'journal_removed' => !get_option('gigpress_upgrade_state', false),
+		'journal_removed' => !get_option('gigpress_upgrade_state', false),
 		'schema' => $schemaMatches,
-    );
+		'schema_rejects_wrong_type_default' => !gigpress_upgrade_preservation_schema_matches($wrongDefinition['shows'] ?? array(), $currentSchema['shows']),
+	);
 	if ($source !== null) {
 		$checks['source_values'] = gigpress_upgrade_preservation_rows_match($source, $snapshot);
 		$checks['relationships'] = gigpress_upgrade_preservation_relationships_match($source, $snapshot);
