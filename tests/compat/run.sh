@@ -104,7 +104,7 @@ run_lint() {
   for branch in "${php_branches[@]}"; do
     [[ "$branch" =~ ^[0-9]+[.][0-9]+$ ]] || fail "PHP must be a major.minor version"
     [[ "$branch" != 8.2 ]] || fail "PHP 8.2 is diagnostic-only and cannot satisfy lint"
-    image="wordpress:7.1.2-php${branch}-apache"
+    image="wordpress:php${branch}-apache"
     docker pull "$image" >/dev/null || fail "could not resolve official image $image"
     printf 'lint image %s (%s)\n' "$image" "$(docker image inspect --format '{{.Id}}' "$image")"
     for file in "${php_files[@]}"; do
@@ -135,24 +135,66 @@ wait_for_database() {
   fail "disposable MariaDB application account did not become ready"
 }
 
-wordpress_image_version() {
-  case "$1" in
-    # The current 7.0.6 release is archived by WordPress.org but no longer
-    # has a matching Official Image tag. Use the current official image only
-    # as the PHP/Apache base, then replace its core from the official archive.
-    7.0.6) printf '%s' '7.1.2' ;;
-    *) printf '%s' "$1" ;;
-  esac
-}
-
 install_archived_wordpress_core() {
-  [[ "$WP_VERSION" == '7.0.6' ]] || return 0
-  compose_env exec -T wordpress sh -ec '
-    archive=/tmp/wordpress-7.0.6.tar.gz
-    curl -fsSL https://wordpress.org/wordpress-7.0.6.tar.gz -o "$archive"
+  compose_env exec -T -e COMPAT_EXPECTED_WP_VERSION="$WP_VERSION" wordpress sh -ec '
+    current=$(awk "/wp_version = / { print; exit }" /var/www/html/wp-includes/version.php | tr -cd "0-9.\\n")
+    [ "$current" = "$COMPAT_EXPECTED_WP_VERSION" ] && exit 0
+    archive="/tmp/wordpress-${COMPAT_EXPECTED_WP_VERSION}.tar.gz"
+    curl -fsSL "https://wordpress.org/wordpress-${COMPAT_EXPECTED_WP_VERSION}.tar.gz" -o "$archive"
     find /var/www/html -mindepth 1 -maxdepth 1 ! -name wp-content ! -name wp-config.php -exec rm -rf {} +
     tar -xzf "$archive" --strip-components=1 --exclude="wordpress/wp-content" -C /var/www/html
   '
+}
+
+latest_wordpress_patch_from_json() {
+  local line=$1
+  jq -er --arg line "$line" '
+    [ .offers[]?.version? | strings
+      | select(test("^[0-9]+[.][0-9]+[.][0-9]+$"))
+      | select((split(".")[0:2] | join(".")) == $line)
+    ]
+    | unique
+    | sort_by(split(".") | map(tonumber))
+    | last // empty
+  '
+}
+
+resolve_latest_wordpress_patch() {
+  local line=$1 php_min=$2 response version
+  [[ "$line" =~ ^[0-9]+[.][0-9]+$ ]] || fail "WordPress line must be major.minor"
+  response=$(curl -fsSL --connect-timeout 5 --max-time 30 \
+    "https://api.wordpress.org/core/version-check/1.7/?version=${line}.0&php=${php_min}.0&locale=en_US") \
+    || fail "could not resolve the latest stable WordPress patch for ${line} from WordPress.org"
+  version=$(printf '%s' "$response" | latest_wordpress_patch_from_json "$line") \
+    || fail "WordPress.org returned no stable patch release for WordPress ${line}"
+  [[ "$version" =~ ^[0-9]+[.][0-9]+[.][0-9]+$ && "${version%.*}" == "$line" ]] \
+    || fail "WordPress.org returned an invalid patch release for WordPress ${line}"
+  printf '%s' "$version"
+}
+
+php_supported_branches_from_html() {
+  local minimum=$1
+  awk '/<h3>Currently Supported Versions<\/h3>/ { section=1; next }
+       section && /<\/table>/ { exit }
+       section { print }' \
+    | grep -Eo 'href="/downloads\.php\?version=[0-9]+\.[0-9]+"' \
+    | sed -E 's/.*version=([0-9]+\.[0-9]+).*/\1/' \
+    | awk -F. -v minimum="$minimum" '
+        BEGIN { split(minimum, floor, ".") }
+        ($1 + 0) > (floor[1] + 0) || (($1 + 0) == (floor[1] + 0) && ($2 + 0) >= (floor[2] + 0))
+      ' \
+    | sort -u -t. -k1,1n -k2,2n \
+    | paste -sd, -
+}
+
+resolve_upstream_php_branches() {
+  local minimum=$1 html branches
+  html=$(curl -fsSL --connect-timeout 5 --max-time 30 'https://www.php.net/supported-versions.php') \
+    || fail "could not read PHP's upstream supported-version list"
+  branches=$(printf '%s' "$html" | php_supported_branches_from_html "$minimum") \
+    || fail "could not parse PHP's upstream supported-version list"
+  [[ -n "$branches" ]] || fail "PHP upstream reports no supported branches at or above PHP ${minimum}"
+  printf '%s' "$branches"
 }
 
 normalise_matrix() {
@@ -173,7 +215,7 @@ normalise_matrix() {
 }
 
 run_self_test() {
-  local one one_count unique_count ordered lifecycle_summary
+  local one one_count unique_count ordered lifecycle_summary resolved_wp upstream_php
   one=$(normalise_matrix '7.1' '8.3') || fail "single-cell matrix was rejected"
   one_count=$(printf '%s\n' "$one" | wc -l | tr -d ' ')
   unique_count=$(normalise_matrix '7.1,7.0,7.1' '8.4,8.3,8.3' | wc -l | tr -d ' ')
@@ -183,6 +225,10 @@ run_self_test() {
   [[ "$ordered" == '7.0,8.3 7.0,8.4 7.1,8.3 7.1,8.4 ' ]] || fail "matrix result ordering is not stable"
   lifecycle_summary=$(printf '%s\n' '{"active":true,"data":[1]}' '{"active":true,"data":[1]}' | rtk jq -s '{active_preserved:(.[0].active == .[1].active),data_preserved:(.[0].data == .[1].data)}') || fail "runtime-floor result summary has invalid jq syntax"
   printf '%s\n' "$lifecycle_summary" | rtk jq -e '.active_preserved and .data_preserved' >/dev/null || fail "runtime-floor result summary does not preserve comparison results"
+  resolved_wp=$(printf '%s' '{"offers":[{"version":"7.1.2"},{"version":"7.0.6"},{"version":"7.0.4"},{"version":"7.2.0"}]}' | latest_wordpress_patch_from_json '7.0') || fail "WordPress patch resolver rejected valid version-check data"
+  [[ "$resolved_wp" == '7.0.6' ]] || fail "WordPress patch resolver did not choose the latest patch in the requested line"
+  upstream_php=$(printf '%s\n' '<h3>Currently Supported Versions</h3>' '<table>' '<tr><td><a href="/downloads.php?version=8.2">8.2</a></td></tr>' '<tr><td><a href="/downloads.php?version=8.3">8.3</a></td></tr>' '<tr><td><a href="/downloads.php?version=8.4">8.4</a></td></tr>' '</table>' '<h3>Unsupported Branches</h3>' '<a href="/downloads.php?version=9.9">9.9</a>' | php_supported_branches_from_html '8.3') || fail "PHP support-page parser rejected valid official version data"
+  [[ "$upstream_php" == '8.3,8.4' ]] || fail "PHP support-page parser included the below-minimum or unsupported branch"
   normalise_matrix '' '8.3' >/dev/null 2>&1 && fail "empty matrix was accepted"
   normalise_matrix '7.1' '8.2' >/dev/null 2>&1 && fail "diagnostic PHP 8.2 was accepted as supported"
   (run_matrix --php-branches 8.3) >/dev/null 2>&1 && fail "matrix accepted missing WordPress lines"
@@ -201,7 +247,7 @@ run_self_test() {
   grep -Fq 'menu_trace.menu_warnings | any(' "$COMPAT_DIR/run.sh" || fail "exact-key diagnostic does not require the WordPress warning"
   cleanup_paths=$(grep -v 'cleanup_paths=' "$COMPAT_DIR/run.sh" | grep -Fc 'compose_env down --volumes --remove-orphans')
   [[ "$cleanup_paths" == 3 ]] || fail "all disposable Compose targets must use the configured cleanup environment"
-  printf '%s\n' '{"status":"PASS","self_test":"matrix ordering, diagnostic exclusion, distinct runtime targets, supported recovery bootstrap, and Compose cleanup"}'
+  printf '%s\n' '{"status":"PASS","self_test":"matrix ordering, upstream WordPress patch resolution, PHP support-page parsing, diagnostic exclusion, recovery bootstrap, and Compose cleanup"}'
 }
 
 normalise_menu_cases() {
@@ -368,7 +414,7 @@ PHP
 }
 
 run_matrix() {
-  local wp_lines='' php_branches='' php_supported='' scenario='activation-menu' upgrade_case='' conflict_fixture='' conflict_mode='' conflict_position='' wp_patches='' php_min='' error_reporting=''
+  local wp_lines='' php_branches='' php_supported='' scenario='activation-menu' upgrade_case='' conflict_fixture='' conflict_mode='' conflict_position='' wp_patches='latest' php_min='' error_reporting=''
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --wp-lines) wp_lines=${2:-}; shift 2 ;;
@@ -387,13 +433,15 @@ run_matrix() {
   done
   if [[ -n "$php_supported" ]]; then
     [[ -z "$php_branches" && "$php_supported" == upstream ]] || fail "--php-supported upstream cannot be combined with --php-branches"
-    php_branches='8.3,8.4,8.5'
   fi
   require_value --wp-lines "$wp_lines"
-  require_value --php-branches "$php_branches"
   [[ -z "$wp_patches" || "$wp_patches" == latest ]] || fail "matrix supports only --wp-patches latest"
   [[ -z "$php_min" || "$php_min" == 8.3 ]] || fail "matrix PHP minimum must be the supported 8.3 floor"
   [[ -z "$error_reporting" || "$error_reporting" == E_ALL ]] || fail "matrix error reporting must be E_ALL"
+  if [[ "$php_supported" == upstream ]]; then
+    php_branches=$(resolve_upstream_php_branches "${php_min:-8.3}")
+  fi
+  require_value --php-branches "$php_branches"
   if [[ -n "$conflict_fixture" || -n "$conflict_mode" ]]; then
     [[ "$conflict_fixture" == 'tests/compat/fixtures/menu-conflict-plugin.php' && "$conflict_mode" == order-only ]] || fail "matrix conflict coverage requires the order-only fixture"
     [[ -n "$conflict_position" ]] || conflict_position=before
@@ -441,21 +489,26 @@ run_preservation_evidence() {
   evidence=$(rtk sed -n 's/^<!-- preservation-evidence: \(.*\) -->$/\1/p' "$ROOT/$report")
   [[ $(printf '%s\n' "$evidence" | wc -l | tr -d ' ') == 1 ]] || fail "preservation report must contain exactly one machine evidence record"
   printf '%s\n' "$evidence" | rtk jq -e '
-    .schema == "gigpress-preservation-evidence/v1"
+    . as $evidence
+    | .schema == "gigpress-preservation-evidence/v1"
     and .support_boundary.php_min == "8.3"
     and (.support_boundary.diagnostic_only_php | index("8.2"))
     and (.wordpress_lines | sort == ["7.0", "7.1"])
-    and (.php_branches | sort == ["8.3", "8.4", "8.5"])
+    and (.php_branches | length > 0)
+    and ([.php_branches[] | test("^[0-9]+[.][0-9]+$")] | all)
+    and ([.php_branches[] | select(. == "8.3")] | length == 1)
+    and (.php_branches == (.php_branches | unique | sort_by(split(".") | map(tonumber))))
     and ([.commands[] | contains("matrix --scenario upgrade-preservation --case all --wp-lines 7.0,7.1 --wp-patches latest --php-supported upstream --php-min 8.3 --error-reporting E_ALL")] | any)
     and ([.commands[] | contains("matrix --scenario full-workflows --wp-lines 7.0,7.1 --wp-patches latest --php-supported upstream --php-min 8.3 --error-reporting E_ALL")] | any)
     and (.fixtures | sort == ["1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6"])
     and (.requirements["DATA-01"].status == "PASS")
     and (.requirements["DATA-02"].status == "PASS")
-    and (.required_case_statuses | keys | sort == ["current-1.6", "entity-guards", "metadata-classification", "safety-1.4", "settings-repeat", "show-lifecycle", "tour-undo", "tracer-1.4", "versions-1.0-1.2", "versions-1.3-1.5"])
+    and (.required_case_statuses | keys | sort == ["current-1.6", "entity-guards", "metadata-classification", "optional-request-fields", "safety-1.4", "settings-repeat", "show-lifecycle", "tour-undo", "tracer-1.4", "versions-1.0-1.2", "versions-1.3-1.5"])
     and ([.required_case_statuses[] | . == "PASS"] | all)
-    and (.cells | length == 6)
+    and ((.cells | length) == (2 * (.php_branches | length)))
     and ([.cells[] | .wordpress_line] | unique | sort == ["7.0", "7.1"])
-    and ([.cells[] | .php_branch] | unique | sort == ["8.3", "8.4", "8.5"])
+    and (([.cells[] | [.wordpress_line, .php_branch] | join("/")] | unique | length) == (2 * (.php_branches | length)))
+    and ([.cells[] | .php_branch] | unique | sort_by(split(".") | map(tonumber)) == ($evidence.php_branches | sort_by(split(".") | map(tonumber))))
     and ([.cells[] |
       .status == "PASS"
       and .upgrade_preservation.status == "PASS"
@@ -464,6 +517,8 @@ run_preservation_evidence() {
       and .fatal_count == 0
       and .plugin_error_count == 0
       and .required_case_status == "PASS"
+      and (.image | test("^wordpress:php[0-9]+[.][0-9]+-apache$"))
+      and (.image_id | test("^sha256:[0-9a-f]{64}$"))
     ] | all)
   ' >/dev/null || fail "preservation report does not contain complete passing supported evidence"
   printf '{"status":"PASS","report":"%s","wordpress_lines":"%s","php_min":"%s"}\n' "$report" "$wp_lines" "$php_min"
@@ -471,8 +526,7 @@ run_preservation_evidence() {
 
 runtime_wp_version() {
   case "$1" in
-    7.0) printf '%s' '7.0.6' ;;
-    7.1) printf '%s' '7.1.2' ;;
+    7.0|7.1) resolve_latest_wordpress_patch "$1" '8.3' ;;
     *) fail "unsupported WordPress line $1" ;;
   esac
 }
@@ -523,7 +577,6 @@ run_runtime_floor() {
   IFS=',' read -r -a target_lines <<< "$wp_lines"
   for line in "${target_lines[@]}"; do
     WP_VERSION=$(runtime_wp_version "$line")
-    WORDPRESS_IMAGE_VERSION=$(wordpress_image_version "$WP_VERSION")
     PHP_VERSION=$supported_php
     PROJECT="gigpress_floor_${line//./}_${RANDOM}_$$_$(date +%s)"
     DB_PASSWORD="compat_${RANDOM}_${RANDOM}"
@@ -534,7 +587,7 @@ run_runtime_floor() {
       compose_env down --volumes --remove-orphans >/dev/null 2>&1 || true
     }
     compose_env() {
-      env -u COMPOSE_FILE -u COMPOSE_PROJECT_NAME -u WORDPRESS_DB_HOST -u MYSQL_HOST -u DB_HOST -u DATABASE_URL REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" WORDPRESS_IMAGE_VERSION="$WORDPRESS_IMAGE_VERSION" PHP_VERSION="$PHP_VERSION" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" "$@"
+      env -u COMPOSE_FILE -u COMPOSE_PROJECT_NAME -u WORDPRESS_DB_HOST -u MYSQL_HOST -u DB_HOST -u DATABASE_URL REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" WORDPRESS_IMAGE="wordpress:php${PHP_VERSION}-apache" PHP_VERSION="$PHP_VERSION" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" "$@"
     }
     trap cleanup_floor EXIT INT TERM
     if ! compose_env pull --quiet wordpress db >/dev/null || ! compose_env up -d db >/dev/null; then cleanup_floor; fail "could not start isolated fixture database $line/PHP $supported_php"; fi
@@ -604,7 +657,6 @@ run_diagnose_menu() {
     git -C "$ROOT" log --all -S'separator-gigpress' --format=%H -- gigpress.php | rtk grep -q . && fail "repository history unexpectedly contains separator-gigpress in gigpress.php"
   fi
   PROJECT="gigpress_menu_diagnosis_${RANDOM}_$$_$(date +%s)"
-  WORDPRESS_IMAGE_VERSION="$WP_VERSION"
   DB_PASSWORD="compat_${RANDOM}_${RANDOM}"; DB_ROOT_PASSWORD="root_${RANDOM}_${RANDOM}"
   COMPOSE=(docker compose --project-name "$PROJECT" --file "$COMPAT_DIR/compose.yaml")
   CLEANUP_NEEDED=false
@@ -615,7 +667,7 @@ run_diagnose_menu() {
   }
   trap cleanup EXIT INT TERM
   compose_env() {
-    env -u COMPOSE_FILE -u COMPOSE_PROJECT_NAME -u WORDPRESS_DB_HOST -u MYSQL_HOST -u DB_HOST -u DATABASE_URL REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" WORDPRESS_IMAGE_VERSION="$WORDPRESS_IMAGE_VERSION" PHP_VERSION="$PHP_VERSION" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" "$@"
+    env -u COMPOSE_FILE -u COMPOSE_PROJECT_NAME -u WORDPRESS_DB_HOST -u MYSQL_HOST -u DB_HOST -u DATABASE_URL REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" WORDPRESS_IMAGE="wordpress:php${PHP_VERSION}-apache" PHP_VERSION="$PHP_VERSION" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" "$@"
   }
   CLEANUP_NEEDED=true
   compose_env pull wordpress db
@@ -712,7 +764,6 @@ if [[ -n "$CONFLICT_FIXTURE" || -n "$CONFLICT_MODE" ]]; then
 fi
 
 PROJECT="gigpress_compat_${RANDOM}_$$_$(date +%s)"
-WORDPRESS_IMAGE_VERSION=$(wordpress_image_version "$WP_VERSION")
 DB_PASSWORD="compat_${RANDOM}_${RANDOM}"
 DB_ROOT_PASSWORD="root_${RANDOM}_${RANDOM}"
 COMPOSE=(docker compose --project-name "$PROJECT" --file "$COMPAT_DIR/compose.yaml")
@@ -727,7 +778,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 compose_env() {
   env -u COMPOSE_FILE -u COMPOSE_PROJECT_NAME -u WORDPRESS_DB_HOST -u MYSQL_HOST -u DB_HOST -u DATABASE_URL \
-    REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" WORDPRESS_IMAGE_VERSION="$WORDPRESS_IMAGE_VERSION" PHP_VERSION="$PHP_VERSION" COMPAT_TABLE_PREFIX="$TABLE_PREFIX" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" "$@"
+    REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" WORDPRESS_IMAGE="wordpress:php${PHP_VERSION}-apache" PHP_VERSION="$PHP_VERSION" COMPAT_TABLE_PREFIX="$TABLE_PREFIX" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" "$@"
 }
 
 CLEANUP_NEEDED=true
@@ -756,7 +807,7 @@ if [[ "$probe_status" -ne 0 ]]; then
   fi
   fail "probe failed"
 fi
-image="wordpress:${WORDPRESS_IMAGE_VERSION}-php${PHP_VERSION}-apache"
+image="wordpress:php${PHP_VERSION}-apache"
 image_id=$(rtk docker image inspect --format '{{.Id}}' "$image")
 result=$(printf '%s\n' "$output" | rtk proxy jq -c --arg image "$image" --arg image_id "$image_id" --arg source_revision "$(rtk proxy git rev-parse HEAD)" '. + {image: $image, image_id: $image_id, source_revision: $source_revision}')
 printf '%s\n' "$result" | tee "$RESULT_DIR/${WP_VERSION}-php${PHP_VERSION}-${SCENARIO}.json"

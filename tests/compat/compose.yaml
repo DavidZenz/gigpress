@@ -15,7 +15,7 @@ services:
       - wordpress_db:/var/lib/mysql
 
   wordpress:
-    image: wordpress:${WORDPRESS_IMAGE_VERSION:?runner must provide WORDPRESS_IMAGE_VERSION}-php${PHP_VERSION:?runner must provide PHP_VERSION}-apache
+    image: ${WORDPRESS_IMAGE:?runner must provide WORDPRESS_IMAGE}
     depends_on:
       db:
         condition: service_healthy
