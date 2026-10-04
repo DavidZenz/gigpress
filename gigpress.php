@@ -490,6 +490,8 @@ function gigpress_sanitize_settings($submitted) {
 		/* Preserve exact existing types as well as uncommon current choices on an
 		 * unchanged submission. An arbitrary new unsupported choice is rejected. */
 		if ($valid && array_key_exists($key, $stored) && is_scalar($stored[$key]) && (string) $value === (string) $stored[$key]) continue;
+		if ($valid && in_array($key, $flags, true) && array_key_exists($key, $stored) && is_scalar($stored[$key])
+			&& empty($stored[$key]) && (string) $value === '0') continue;
 		if ($valid) {
 			$value = (string) $value;
 			if (in_array($key, $flags, true)) {
@@ -498,6 +500,10 @@ function gigpress_sanitize_settings($submitted) {
 			} elseif (isset($choices[$key])) {
 				$valid = in_array($value, $choices[$key], true);
 			} elseif ($key === 'rss_limit' || $key === 'related_category') {
+				if ($key === 'rss_limit' && $value === '') {
+					$stored[$key] = '';
+					continue;
+				}
 				$valid = preg_match('/^[0-9]+$/D', $value) === 1 && (float) $value <= PHP_INT_MAX;
 				if ($valid && $key === 'related_category') $valid = (bool) term_exists((int) $value, 'category');
 				$value = (int) $value;

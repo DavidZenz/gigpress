@@ -220,3 +220,23 @@ legend {
 	font-weight: bold;
 	font-size: 1.2em;
 }
+/* Settings stay on one visible page, with focusable section jump targets. */
+.gp-options .gp-settings-jump ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .5em 1.5em;
+	margin-bottom: 2em;
+}
+.gp-options .gp-settings-section {
+	margin: 2em 0;
+}
+.gp-options .gp-settings-section h2 {
+	scroll-margin-top: 3em;
+}
+.gp-options .gp-settings-section h2:focus {
+	outline: 2px solid currentColor;
+	outline-offset: .3em;
+}
+.gp-options .gp-settings-section .regular-text {
+	max-width: 100%;
+}

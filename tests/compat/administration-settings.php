@@ -28,7 +28,7 @@ function gigpress_administration_settings_dom($html) {
 function gigpress_administration_settings_values($xpath, $uncheck = false) {
     $values = array();
     foreach ($xpath->query('//form//input | //form//select') as $control) {
-        if (!preg_match('/^gigpress_settings\[([^]]+)\]$/', $control->getAttribute('name'), $match)) continue;
+        if ($control->hasAttribute('disabled') || !preg_match('/^gigpress_settings\[([^]]+)\]$/', $control->getAttribute('name'), $match)) continue;
         $type = $control->getAttribute('type');
         if (($type === 'checkbox' && ($uncheck || !$control->hasAttribute('checked'))) || ($type === 'radio' && !$control->hasAttribute('checked'))) continue;
         $value = $control->getAttribute('value');
@@ -60,7 +60,10 @@ function gigpress_administration_settings_sections($baseline) {
     $baseline['user_level'] = 'custom_capability';
     $baseline['related_category'] = 'gone \"/><script>alert(3)</script>';
     $baseline['country_view'] = 'custom-country';
+    $hostile_category = function ($title) { return '<img src=x onerror="alert(4)">' . $title; };
+    add_filter('the_title', $hostile_category);
     $html = gigpress_administration_settings_render($baseline);
+    remove_filter('the_title', $hostile_category);
     $xpath = gigpress_administration_settings_dom($html);
     $checks['six_visible_sections'] = $xpath->query('//section[contains(@class,"gp-settings-section")]')->length === 6;
     $checks['one_options_form'] = $xpath->query('//form[@action="options.php"]')->length === 1;
@@ -98,11 +101,15 @@ function gigpress_administration_settings_sections($baseline) {
     $checks['hostile_attributes_encoded'] = $xpath->query('//input[@name="gigpress_settings[artist_label]"]')->item(0)->getAttribute('value') === $baseline['artist_label'] && $xpath->query('//script | //*[@autofocus]')->length === 0;
     $checks['format_example_encoded'] = strpos($html, '&lt;b&gt;') !== false && $xpath->query('//p[contains(@class,"description")]//b')->length === 0;
     $checks['format_guidance_link'] = $xpath->query('//a[@href="https://wordpress.org/documentation/article/customize-date-and-time-format/"]')->length > 0;
+    $checks['category_titles_encoded'] = $xpath->query('//select[@name="gigpress_settings[related_category]"]//img')->length === 0 && strpos($html, '&lt;img') !== false;
     $checks['no_duplicate_ids'] = true;
     $seen = array();
-    foreach ($xpath->query('//*[@id]') as $node) {
+    foreach ($xpath->query('//div[contains(@class,"gp-options")]//*[@id]') as $node) {
         $id = $node->getAttribute('id');
-        if (isset($seen[$id])) $checks['no_duplicate_ids'] = false;
+        if (isset($seen[$id])) {
+            $checks['no_duplicate_ids'] = false;
+            $checks['duplicate_id_' . $id] = false;
+        }
         $seen[$id] = true;
     }
     return $checks;
@@ -115,7 +122,8 @@ function gigpress_administration_settings_case($case) {
     $baseline = get_option('gigpress_settings');
     $baseline = array_merge($baseline, array(
         'unknown_scalar' => 'extension setting', 'unknown_nested' => array('zero' => 0, 'false' => false, 'empty' => '', 'list' => array(1, '2')),
-        'unknown_false' => false, 'unknown_zero' => 0, 'unknown_empty' => '',
+        'unknown_false' => false, 'unknown_zero' => 0, 'unknown_empty' => '', 'unknown_null' => null,
+        'relatedlink_date' => false, 'relatedlink_city' => '', 'rss_limit' => 0,
         'default_date' => '2033-03-04', 'default_time' => '19:17:00', 'default_artist' => 42, 'default_venue' => 43,
         'default_ages' => '', 'default_title' => 'Stored title', 'welcome' => 'no', 'related_date' => 'now',
     ));
@@ -161,6 +169,7 @@ function gigpress_administration_settings_case($case) {
     $checks['unchanged_complete_form_exact_storage'] = get_option('gigpress_settings') === $expected;
     update_option('gigpress_settings', $values);
     $checks['repeated_complete_form_idempotent'] = get_option('gigpress_settings') === $expected;
+    $checks['known_falsey_types_unchanged'] = get_option('gigpress_settings')['relatedlink_date'] === false && get_option('gigpress_settings')['relatedlink_city'] === '' && get_option('gigpress_settings')['rss_limit'] === 0;
     foreach ($unknown as $key => $value) $checks['untouched_unknown_' . $key] = (get_option('gigpress_settings')[$key] ?? null) === $value;
     $GLOBALS['wp_settings_errors'] = array();
     update_option('gigpress_settings', array('user_level' => 'arbitrary-cap', 'country_view' => 'arbitrary-country', 'related_position' => 'arbitrary-position', 'output_schema_json' => 'arbitrary-schema', 'related_category' => 'arbitrary-category'));
@@ -186,7 +195,14 @@ function gigpress_administration_settings_case($case) {
             $checks['supported_' . $key . '_' . ($choice === '' ? 'empty' : $choice)] = get_option('gigpress_settings') === $expected;
         }
     }
+    foreach (array('', '0', '1', '250') as $limit) {
+        update_option('gigpress_settings', array('rss_limit' => $limit));
+        $expected['rss_limit'] = $limit === '' ? '' : (int) $limit;
+        $checks['supported_feed_limit_' . ($limit === '' ? 'empty' : $limit)] = get_option('gigpress_settings') === $expected;
+    }
+    $GLOBALS['wp_settings_errors'] = array();
     gigpress_administration_settings_form_context(false);
+    require_once WP_PLUGIN_DIR . '/gigpress/admin/handlers.php';
     require_once WP_PLUGIN_DIR . '/gigpress/tests/compat/administration-entry.php';
     $GLOBALS['gpo'] = $expected;
     $request = gigpress_administration_entry_base();

@@ -1,224 +1,135 @@
 <?php
 
 function gigpress_settings() {
+    global $gpo;
+    require ABSPATH . 'wp-admin/options-head.php';
 
-	global $wpdb, $gpo;
-	
-	// This gives us the magic fading menu when we update.  Yes - magic.
-	require(ABSPATH . 'wp-admin/options-head.php');
-	
-	?>
-
-	<div class="wrap gigpress gp-options">
-
-	<?php screen_icon('gigpress'); ?>			
-	<h2><?php _e("Settings", "gigpress"); ?></h2>
-	
-	<form method="post" action="options.php">
-	
-	<table class="gp-table form-table">
-
-		<tr>
-			<th scope="row"><?php _e("Full URL to your 'Upcoming Shows' page", "gigpress") ?>:</th>
-			<td>
-				<input type="text" size="48" name="gigpress_settings[shows_page]" value="<?php echo $gpo['shows_page']; ?>" />				</td>
-		</tr>	
-		<tr>
-			<th scope="row"><?php _e("No upcoming shows message", "gigpress") ?>:</th>
-			<td>
-				<input type="text" name="gigpress_settings[noupcoming]" size="48" value="<?php echo $gpo['noupcoming']; ?>" />
-			</td>
-		</tr>	
-		<tr>
-			<th scope="row"><?php _e("No past shows message", "gigpress") ?>:</th>
-			<td>
-				<input type="text" name="gigpress_settings[nopast]" size="48" value="<?php echo $gpo['nopast']; ?>" />
-			</td>
-		</tr>
-
-		<tr>
-			<th scope="row"><?php _e("User level required to use GigPress", "gigpress") ?>:</th>
-			<td>
-				<select name="gigpress_settings[user_level]">
-					<option value="activate_plugins"<?php if ($gpo['user_level'] == 'activate_plugins') echo (' selected="selected"'); ?>><?php _e("Administrator", "gigpress"); ?></option>
-					<option value="edit_published_posts"<?php if ($gpo['user_level'] == 'edit_published_posts') echo (' selected="selected"'); ?>><?php _e("Editor", "gigpress"); ?></option>
-					<option value="publish_posts"<?php if ($gpo['user_level'] == 'publish_posts') echo (' selected="selected"'); ?>><?php _e("Author", "gigpress"); ?></option>
-					<option value="edit_posts"<?php if ($gpo['user_level'] == 'edit_posts') echo (' selected="selected"'); ?>><?php _e("Contributor", "gigpress"); ?></option>
-				</select>
-			</td>
-		</tr>
-		
-		<tr>
-			<th scope="row"><?php _e("Short date format", "gigpress") ?>:</th>
-			<td>
-				<input type="text" name="gigpress_settings[date_format]" value="<?php echo $gpo['date_format']; ?>" />
-				<span><?php _e("Output", "gigpress") ?>: <strong><?php echo mysql2date($gpo['date_format'], current_time('mysql')); ?></strong></span>
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><?php _e("Long date format", "gigpress") ?>:</th>
-			<td>
-				<input type="text" name="gigpress_settings[date_format_long]" value="<?php echo $gpo['date_format_long']; ?>" />
-				<span><?php _e("Output", "gigpress") ?>: <strong><?php echo mysql2date($gpo['date_format_long'], current_time('mysql')); ?></strong></span>
-			</td>
-		</tr>			
-		<tr>
-			<th scope="row"><?php _e("Time format", "gigpress") ?>:</th>
-			<td>
-				<input type="text" name="gigpress_settings[time_format]" value="<?php echo $gpo['time_format']; ?>" /> 
-				<span><?php _e("Output", "gigpress") ?>: <strong><?php echo gmdate($gpo['time_format'], current_time('timestamp')); ?></strong></span><br />
-				<a href="http://codex.wordpress.org/Formatting_Date_and_Time"><?php _e("Here's some documentation on date and time formatting", "gigpress") ?></a>.<br />
-				<label><input type="checkbox" name="gigpress_settings[alternate_clock]" value="1"<?php if(!empty($gpo['alternate_clock'])) echo(' checked="checked"'); ?> />&nbsp;<?php _e("I use a 24 hour clock", "gigpress"); ?></label><br />
-			</td>
-		</tr>	
-		<tr>
-			<th scope="row"><?php _e("Artist label", "gigpress") ?>:</th>
-			<td>
-				<input type="text" name="gigpress_settings[artist_label]" size="48" value="<?php echo $gpo['artist_label']; ?>" />
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><?php _e("Tour label", "gigpress") ?>:</th>
-			<td>
-				<input type="text" name="gigpress_settings[tour_label]" size="48" value="<?php echo $gpo['tour_label']; ?>" />
-			</td>
-		</tr>				
-		<tr>
-			<th scope="row"><?php _e("External link label", "gigpress") ?>:</th>
-			<td>
-				<input type="text" name="gigpress_settings[external_link_label]" size="48" value="<?php echo $gpo['external_link_label']; ?>" />
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><?php _e("Buy tickets label", "gigpress") ?>:</th>
-			<td>
-				<input type="text" name="gigpress_settings[buy_tickets_label]" size="48" value="<?php echo $gpo['buy_tickets_label']; ?>" />
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><?php _e("Age restrictions", "gigpress") ?>:</th>
-			<td>
-				<input type="text" name="gigpress_settings[age_restrictions]" size="48" value="<?php echo $gpo['age_restrictions']; ?>" /> <span class="description"><?php _e("A pipe-separated list of available age restrictions.", "gigpress"); ?></span>
-			</td>
-		</tr>		<tr>
-			<th scope="row"><?php _e("Related posts", "gigpress") ?></th>
-			<td>
-				<p><?php _e("Display gig info in related posts", "gigpress"); ?> &hellip;</p>
-				<p><label><input type="radio" name="gigpress_settings[related_position]" value="before"<?php if($gpo['related_position'] == "before") echo(' checked="checked"'); ?> /> <?php _e("before the post content", "gigpress"); ?></label> &hellip; 
-				<label><input type="radio" name="gigpress_settings[related_position]" value="after"<?php if($gpo['related_position'] == "after") echo(' checked="checked"'); ?> /> <?php _e("after the post content", "gigpress"); ?></label> &hellip; 
-				<label><input type="radio" name="gigpress_settings[related_position]" value="nowhere"<?php if($gpo['related_position'] == "nowhere") echo(' checked="checked"'); ?> /> <?php _e("using <code>[gigpress_related_shows]</code>", "gigpress"); ?></label></p>
-				<span class="description"><?php _e("If a gig has a related post, that gig's details will appear at the specified position in that post.", "gigpress"); ?></span>
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><?php _e("Related show heading", "gigpress") ?>:</th>
-			<td>
-				<input type="text" name="gigpress_settings[related_heading]" size="48" value="<?php echo $gpo['related_heading']; ?>" />
-				<span class="description"><?php _e("This appears before the gig details in your related post.", "gigpress") ?></span>
-			</td>
-		</tr>			
-		<tr>
-			<th scope="row"><?php _e("Related posts category", "gigpress") ?></th>
-			<td>
-				<p><label><input type="checkbox" name="gigpress_settings[autocreate_post]" value="1"<?php if(!empty($gpo['autocreate_post'])) echo(' checked="checked"'); ?> /> <?php _e("Automatically create a related post for every new show I enter.", "gigpress"); ?></label></p>
-				<p><label><?php _e("When creating related posts, put them in this category", "gigpress"); ?>: &nbsp; 
-				<select name="gigpress_settings[related_category]">
-					<?php $categories = get_categories('hide_empty=0');
-					foreach($categories as $cat) {
-						$title = $cat->cat_name; ?>
-						<option value="<?php echo $cat->cat_ID; ?>"<?php if(isset($gpo['related_category']) && $gpo['related_category'] == $cat->cat_ID) echo(' selected="selected"'); ?>><?php echo apply_filters("the_title", $title); ?></option>
-					<?php } ?> 
-				</select></label></p>
-				<p><label><input type="checkbox" name="gigpress_settings[category_exclude]" value="1"<?php if(!empty($gpo['category_exclude'])) echo(' checked="checked"'); ?> /> <?php _e("Exclude this category from my normal post listings.", "gigpress"); ?></label></p>
-			</td>
-		</tr>
-		
-		<tr>
-			<th scope="row"><?php _e("Related posts linking", "gigpress") ?></th>
-			<td>
-				<p><?php _e("Place a link to each show's related post in the following fields", "gigpress"); ?> &hellip;</p>
-				<p><label><input type="checkbox" name="gigpress_settings[relatedlink_date]" value="1"<?php if(isset($gpo['relatedlink_date'] ) && $gpo['relatedlink_date'] == "1") echo(' checked="checked"'); ?> /> <?php _e("Date", "gigpress"); ?></label> &nbsp; 
-				<label><input type="checkbox" name="gigpress_settings[relatedlink_city]" value="1"<?php if(isset($gpo['relatedlink_city'] ) && $gpo['relatedlink_city'] == "1") echo(' checked="checked"'); ?> /> <?php _e("City", "gigpress"); ?></label> &nbsp; 
-				<label><input type="checkbox" name="gigpress_settings[relatedlink_notes]" value="1"<?php if(isset($gpo['relatedlink_notes']) && $gpo['relatedlink_notes'] == "1") echo(' checked="checked"'); ?> /> <?php _e("Notes", "gigpress"); ?></label> &nbsp; </p>
-			</td>
-		</tr>				
-		<tr>
-			<th scope="row"><?php _e("Related post phrase", "gigpress") ?>:</th>
-			<td>
-				<input type="text" name="gigpress_settings[related]" size="48" value="<?php echo $gpo['related']; ?>" />
-				<span class="description"><?php _e("This appears in your shows listing.", "gigpress") ?></span>
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><?php _e("Artist URLs", "gigpress") ?></th>
-			<td><p><label><input type="checkbox" name="gigpress_settings[artist_link]" value="1" <?php if(!empty($gpo['artist_link'])) echo('checked="checked"'); ?> /> <?php _e("Link artist names to their URLs.", "gigpress") ?></label>
-			</td>
-		</tr>			
-		<tr>
-			<th scope="row"><?php _e("RSS/iCal", "gigpress") ?></th>
-			<td>
-				<p><label><input type="checkbox" name="gigpress_settings[rss_head]" value="1" <?php if(!empty($gpo['rss_head'])) echo('checked="checked"'); ?> /> <?php _e("Make the GigPress RSS feed auto-discoverable.", "gigpress"); ?></label></p>
-				<p><label><input type="checkbox" name="gigpress_settings[display_subscriptions]" value="1" <?php if(!empty($gpo['display_subscriptions'])) echo('checked="checked"'); ?> /> <?php _e("Show RSS and iCal subscription links.", "gigpress"); ?></label></p>
-				<span class="description"><?php _e("Note that the FeedBurner FeedSmith plugin will kill your GigPress RSS and iCal feeds, but the FD FeedBurner plugin will not.", "gigpress"); ?></span>
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><?php _e("RSS/iCal feed title", "gigpress") ?>:</th>
-			<td>
-				<input type="text" name="gigpress_settings[rss_title]" size="48" value="<?php echo $gpo['rss_title']; ?>" />
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><?php _e("RSS/iCal feed limit", "gigpress") ?>:</th>
-			<td>
-				<input type="text" name="gigpress_settings[rss_limit]" size="48" value="<?php echo $gpo['rss_limit']; ?>" />
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><?php _e("Country display", "gigpress") ?></th>
-			<td>	
-				<p><label><input type="checkbox" name="gigpress_settings[display_country]" value="1" <?php if(!empty($gpo['display_country'])) echo('checked="checked"'); ?> /> <?php _e("Display country column.", "gigpress") ?></label> &nbsp; <label><input type="checkbox" name="gigpress_settings[country_view]" value="long" <?php if(isset($gpo['country_view']) && $gpo['country_view'] == 'long') echo('checked="checked"'); ?> /> <?php _e("Use full country names.", "gigpress") ?></label></p>
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><?php _e("Link behaviour", "gigpress") ?></th>
-			<td><p><label><input type="checkbox" name="gigpress_settings[target_blank]" value="1" <?php if(!empty($gpo['target_blank'])) echo('checked="checked"'); ?> /> <?php _e("Open external links in new windows.", "gigpress") ?></label>
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><?php _e("Microdata", "gigpress") ?></th>
-			<td>
-				<p><?php _e("Include Schema.org/Event structured data as JSON-LD", "gigpress") ?></p>	
-				<p>
-					<label><input type="radio" name="gigpress_settings[output_schema_json]" value="y" <?php if($gpo['output_schema_json'] == 'y') echo('checked="checked"'); ?> /> <?php _e("Yes", "gigpress"); ?></label> &nbsp; 
-					<label><input type="radio" name="gigpress_settings[output_schema_json]" value="n" <?php if($gpo['output_schema_json'] == 'n') echo('checked="checked"'); ?> /> <?php _e("No", "gigpress"); ?></label>
-				</p>
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><?php _e("jQuery", "gigpress") ?></th>
-			<td>	
-				<p><label><input type="checkbox" name="gigpress_settings[load_jquery]" value="1" <?php if(!empty($gpo['load_jquery'])) echo('checked="checked"'); ?> /> <?php _e("Load jQuery into my theme.", "gigpress") ?></label>
-				<br /><span class="description"><?php _e("Uncheck this if you have a hard-coded link to the jQuery library in your theme.", "gigpress"); ?></span>
-				</p>
-			</td>
-		</tr>
-		<tr>
-			<th scope="row"><?php _e("Advanced", "gigpress"); ?></th>
-			<td>	
-				<p><label><input type="checkbox" name="gigpress_settings[disable_css]" value="1" <?php if(!empty($gpo['disable_css'])) echo('checked="checked"'); ?> /> <?php _e("Disable the default GigPress CSS.", "gigpress") ?></label> &nbsp; <label><input type="checkbox" name="gigpress_settings[disable_js]" value="1" <?php if(!empty($gpo['disable_js'])) echo('checked="checked"'); ?> /> <?php _e("Disable the default GigPress JavaScript.", "gigpress") ?></label></p>
-			</td>
-		</tr>		
-		
-	</table>
-			
-		<?php // Unrendered settings are preserved from storage by the registered sanitizer. ?>
-		
-		<?php settings_fields('gigpress'); ?>
-		
-		<p class="submit"><input type="submit" name="Submit" class="button-primary" value="<?php _e("Save Changes", "gigpress") ?>" /></p>
-
-	</form>
-
-	</div>
-<?php }
+    /* These are the established option keys. Unrendered metadata stays in storage. */
+    $sections = array(
+        'display-formatting' => array(__('Display & formatting', 'gigpress'), array(
+            'date_format' => array('format', __('Short date format', 'gigpress'), __('Used in show lists. For example, m/d/y gives a short numeric date.', 'gigpress')),
+            'date_format_long' => array('format', __('Long date format', 'gigpress'), __('Used when a full date is needed. For example, l, F jS Y includes the weekday.', 'gigpress')),
+            'time_format' => array('format', __('Time format', 'gigpress'), __('Controls published show times. For example, g:ia uses a 12 hour clock and H:i uses a 24 hour clock.', 'gigpress')),
+            'alternate_clock' => array('checkbox', __('Use a 24 hour clock for show entry', 'gigpress'), __('Changes the hour choices in the show form; published times use the time format above.', 'gigpress')),
+            'display_country' => array('checkbox', __('Display country column', 'gigpress'), __('Include the venue country in your show lists.', 'gigpress')),
+            'country_view' => array('select', __('Country names', 'gigpress'), __('Choose full country names or two-letter country codes.', 'gigpress'), array('' => __('Two-letter codes', 'gigpress'), 'long' => __('Full country names', 'gigpress'))),
+        )),
+        'show-labels-links' => array(__('Show labels & links', 'gigpress'), array(
+            'shows_page' => array('url', __('Full URL to your Upcoming Shows page', 'gigpress'), __('Enter the full http or https address of the page containing your shows, or leave it empty.', 'gigpress')),
+            'noupcoming' => array('text', __('No upcoming shows message', 'gigpress'), __('Shown when there are no upcoming shows.', 'gigpress')),
+            'nopast' => array('text', __('No past shows message', 'gigpress'), __('Shown when the show archive is empty.', 'gigpress')),
+            'artist_label' => array('text', __('Artist label', 'gigpress'), __('The heading used for artists in show lists.', 'gigpress')),
+            'tour_label' => array('text', __('Tour label', 'gigpress'), __('The heading used for tours in show lists.', 'gigpress')),
+            'external_link_label' => array('text', __('External link label', 'gigpress'), __('The text used for a show’s external information link.', 'gigpress')),
+            'buy_tickets_label' => array('text', __('Buy tickets label', 'gigpress'), __('The text used for a show’s ticket link.', 'gigpress')),
+            'age_restrictions' => array('text', __('Age restrictions', 'gigpress'), __('Separate the available choices with a pipe, for example: All Ages | No Minors.', 'gigpress')),
+            'artist_link' => array('checkbox', __('Link artist names to their URLs', 'gigpress'), __('Artists with a saved URL will have a link in show listings.', 'gigpress')),
+            'target_blank' => array('checkbox', __('Open external links in new windows', 'gigpress'), __('Applies to external links published by GigPress.', 'gigpress')),
+        )),
+        'related-posts' => array(__('Related posts', 'gigpress'), array(
+            'related_position' => array('radio', __('Display show information in related posts', 'gigpress'), __('Choose where linked show details appear. For manual placement, use the [gigpress_related_shows] shortcode.', 'gigpress'), array('before' => __('Before the post content', 'gigpress'), 'after' => __('After the post content', 'gigpress'), 'nowhere' => __('Use the shortcode', 'gigpress'))),
+            'related_heading' => array('text', __('Related show heading', 'gigpress'), __('Appears before the show details in a related post.', 'gigpress')),
+            'autocreate_post' => array('checkbox', __('Automatically create a related post for every new show', 'gigpress'), __('New shows receive a related post using the category below.', 'gigpress')),
+            'related_category' => array('category', __('Related posts category', 'gigpress'), __('Put newly created related posts in this category.', 'gigpress')),
+            'category_exclude' => array('checkbox', __('Exclude this category from normal post listings', 'gigpress'), __('Related posts remain accessible directly while being omitted from normal listings.', 'gigpress')),
+            'relatedlink_date' => array('checkbox', __('Link the show date to its related post', 'gigpress'), __('Use the date as a link when a show has a related post.', 'gigpress')),
+            'relatedlink_city' => array('checkbox', __('Link the show city to its related post', 'gigpress'), __('Use the city as a link when a show has a related post.', 'gigpress')),
+            'relatedlink_notes' => array('checkbox', __('Link the show notes to its related post', 'gigpress'), __('Use the notes as a link when a show has a related post.', 'gigpress')),
+            'related' => array('text', __('Related post phrase', 'gigpress'), __('The link text that appears in your show listing.', 'gigpress')),
+        )),
+        'feeds' => array(__('Feeds', 'gigpress'), array(
+            'rss_head' => array('checkbox', __('Make the GigPress RSS feed discoverable', 'gigpress'), __('Add the feed address to your site’s page headers for feed readers.', 'gigpress')),
+            'display_subscriptions' => array('checkbox', __('Show RSS and iCalendar subscription links', 'gigpress'), __('Display subscription links alongside your shows. Feed redirect plugins may affect these feeds.', 'gigpress')),
+            'rss_title' => array('text', __('RSS and iCalendar feed title', 'gigpress'), __('The title shown in feed readers and calendar applications.', 'gigpress')),
+            'rss_limit' => array('number', __('RSS and iCalendar feed limit', 'gigpress'), __('Maximum shows included in each feed. An empty or zero limit uses the existing default of 100.', 'gigpress')),
+        )),
+        'permissions' => array(__('Permissions', 'gigpress'), array(
+            'user_level' => array('select', __('User level required to use GigPress', 'gigpress'), __('Choose who may manage shows. Saving these settings still requires a WordPress administrator.', 'gigpress'), array('activate_plugins' => __('Administrator', 'gigpress'), 'edit_published_posts' => __('Editor', 'gigpress'), 'publish_posts' => __('Author', 'gigpress'), 'edit_posts' => __('Contributor', 'gigpress'))),
+        )),
+        'advanced' => array(__('Advanced', 'gigpress'), array(
+            'output_schema_json' => array('radio', __('Include Schema.org Event structured data', 'gigpress'), __('Add JSON-LD event details to published shows for search engines.', 'gigpress'), array('y' => __('Yes', 'gigpress'), 'n' => __('No', 'gigpress'))),
+            'load_jquery' => array('checkbox', __('Load jQuery into my theme', 'gigpress'), __('Disable this if your theme already loads the jQuery library itself.', 'gigpress')),
+            'disable_css' => array('checkbox', __('Disable the default GigPress CSS', 'gigpress'), __('Use your own styles for published show displays.', 'gigpress')),
+            'disable_js' => array('checkbox', __('Disable the default GigPress JavaScript', 'gigpress'), __('Use your own scripts for published show displays.', 'gigpress')),
+        )),
+    );
+    ?>
+    <div class="wrap gigpress gp-options">
+        <h1><?php esc_html_e('Settings', 'gigpress'); ?></h1>
+        <nav class="gp-settings-jump" aria-label="<?php esc_attr_e('Jump to section', 'gigpress'); ?>">
+            <p><strong><?php esc_html_e('Jump to section', 'gigpress'); ?></strong></p>
+            <ul>
+            <?php foreach ($sections as $slug => $section) { ?>
+                <li><a href="#gp-settings-<?php echo esc_attr($slug); ?>"><?php echo esc_html($section[0]); ?></a></li>
+            <?php } ?>
+            </ul>
+        </nav>
+        <form method="post" action="options.php">
+            <?php settings_fields('gigpress'); ?>
+            <?php foreach ($sections as $slug => $section) { ?>
+                <section class="gp-settings-section" aria-labelledby="gp-settings-<?php echo esc_attr($slug); ?>">
+                    <h2 id="gp-settings-<?php echo esc_attr($slug); ?>" tabindex="-1"><?php echo esc_html($section[0]); ?></h2>
+                    <table class="gp-table form-table" role="presentation">
+                    <?php foreach ($section[1] as $key => $field) {
+                        list($type, $label, $help) = $field;
+                        $raw = array_key_exists($key, $gpo) ? $gpo[$key] : '';
+                        $value = is_scalar($raw) ? (string) $raw : '';
+                        $disabled = !is_scalar($raw);
+                        $id = 'gp-setting-' . $key;
+                        $help_id = $id . '-help';
+                        $name = 'gigpress_settings[' . $key . ']';
+                        ?>
+                        <tr id="gp-setting-row-<?php echo esc_attr($key); ?>">
+                            <th scope="row">
+                                <?php if ($type === 'radio') { echo esc_html($label); } else { ?>
+                                    <label for="<?php echo esc_attr($id); ?>"><?php echo esc_html($label); ?></label>
+                                <?php } ?>
+                            </th>
+                            <td>
+                            <?php if ($type === 'checkbox') { ?>
+                                <input type="hidden" name="<?php echo esc_attr($name); ?>" value="0" <?php disabled($disabled); ?> />
+                                <input type="checkbox" id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" value="<?php echo esc_attr(!empty($raw) ? $value : '1'); ?>" <?php checked(!empty($raw)); disabled($disabled); ?> aria-describedby="<?php echo esc_attr($help_id); ?>" />
+                            <?php } elseif ($type === 'radio' || $type === 'select' || $type === 'category') {
+                                $choices = $field[3] ?? array();
+                                if ($type === 'category') {
+                                    foreach (get_categories(array('hide_empty' => false)) as $category) $choices[(string) $category->term_id] = apply_filters('the_title', $category->name);
+                                }
+                                if (!array_key_exists($value, $choices)) $choices = array($value => sprintf(__('Current value: %s', 'gigpress'), $value)) + $choices;
+                                if ($type === 'radio') { ?>
+                                    <fieldset>
+                                        <legend class="screen-reader-text"><?php echo esc_html($label); ?></legend>
+                                        <?php $index = 0; foreach ($choices as $choice => $choice_label) { $choice_id = $id . '-' . $index++; ?>
+                                            <p><input type="radio" id="<?php echo esc_attr($choice_id); ?>" name="<?php echo esc_attr($name); ?>" value="<?php echo esc_attr($choice); ?>" <?php checked($value, (string) $choice); disabled($disabled); ?> aria-describedby="<?php echo esc_attr($help_id); ?>" />
+                                            <label for="<?php echo esc_attr($choice_id); ?>"><?php echo esc_html($choice_label); ?></label></p>
+                                        <?php } ?>
+                                    </fieldset>
+                                <?php } else { ?>
+                                    <select id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" <?php disabled($disabled); ?> aria-describedby="<?php echo esc_attr($help_id); ?>">
+                                    <?php foreach ($choices as $choice => $choice_label) { ?>
+                                        <option value="<?php echo esc_attr($choice); ?>" <?php selected($value, (string) $choice); ?>><?php echo esc_html($choice_label); ?></option>
+                                    <?php } ?>
+                                    </select>
+                                <?php }
+                            } else { ?>
+                                <input type="<?php echo esc_attr($type === 'format' ? 'text' : $type); ?>" class="regular-text" id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" value="<?php echo esc_attr($value); ?>" <?php disabled($disabled); ?> <?php if ($type === 'number') echo 'min="0" step="1"'; ?> aria-describedby="<?php echo esc_attr($help_id); ?>" />
+                            <?php } ?>
+                                <p class="description" id="<?php echo esc_attr($help_id); ?>"><?php echo esc_html($help); ?>
+                                <?php if ($type === 'format') {
+                                    $example = $key === 'time_format' ? gmdate($value, current_time('timestamp')) : mysql2date($value, current_time('mysql'));
+                                    ?>
+                                    <br /><?php esc_html_e('Output', 'gigpress'); ?>: <strong><?php echo esc_html($example); ?></strong>
+                                    <br /><a href="<?php echo esc_url('https://wordpress.org/documentation/article/customize-date-and-time-format/'); ?>"><?php esc_html_e('Date and time formatting guide', 'gigpress'); ?></a>
+                                <?php } ?>
+                                <?php if ($disabled) { echo ' ' . esc_html__('This stored value cannot be edited here and will be kept when you save.', 'gigpress'); } ?>
+                                </p>
+                            </td>
+                        </tr>
+                    <?php } ?>
+                    </table>
+                </section>
+            <?php } ?>
+            <?php submit_button(__('Save changes', 'gigpress')); ?>
+        </form>
+    </div>
+<?php
+}
