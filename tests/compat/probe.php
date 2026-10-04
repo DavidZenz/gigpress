@@ -194,10 +194,11 @@ function upgrade_preservation_seed($fixture) {
     return true;
 }
 if ($purpose === 'upgrade-preservation') {
-    $fixturePath = '/var/www/html/wp-content/plugins/gigpress/tests/compat/fixtures/upgrade-preservation/1.4.php';
+    $fixtureVersion = $upgradeCase === 'versions-1.0-1.2' ? '1.0' : '1.4';
+    $fixturePath = '/var/www/html/wp-content/plugins/gigpress/tests/compat/fixtures/upgrade-preservation/' . $fixtureVersion . '.php';
     $upgradeFixture = is_readable($fixturePath) ? require $fixturePath : null;
-    if (!is_array($upgradeFixture) || ($upgradeFixture['label'] ?? '') !== 'reconstructed-1.4') {
-        $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Reconstructed 1.4 fixture is unavailable', 'file' => $fixturePath, 'line' => 0);
+    if (!is_array($upgradeFixture) || ($upgradeFixture['label'] ?? '') !== 'reconstructed-' . $fixtureVersion) {
+        $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Reconstructed upgrade fixture is unavailable', 'file' => $fixturePath, 'line' => 0);
     }
     if (!upgrade_preservation_seed($upgradeFixture)) {
         $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Upgrade fixture did not receive its nondefault prefix', 'file' => __FILE__, 'line' => __LINE__);
@@ -225,7 +226,7 @@ if (($purpose === 'fixture-activate' || !$fixturePurpose) && !$skipGigPressActiv
 } elseif (!$skipGigPressActivation && !is_plugin_active($plugin)) {
     $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Controlled fixture lost active state', 'file' => __FILE__, 'line' => __LINE__);
 }
-if ($purpose === 'upgrade-preservation') {
+if ($purpose === 'upgrade-preservation' && $upgradeCase !== 'versions-1.0-1.2') {
     $snapshot = function () use ($wpdb) {
         $data = array('prefix' => $wpdb->prefix, 'settings' => get_option('gigpress_settings'));
         foreach (array('shows' => 'show_id', 'artists' => 'artist_id', 'venues' => 'venue_id', 'tours' => 'tour_id') as $kind => $id) {
@@ -330,6 +331,11 @@ if ($purpose === 'upgrade-preservation') {
     if (!$ok) {
         $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Upgrade coordinator is not available for the reconstructed fixture', 'file' => WP_PLUGIN_DIR . '/gigpress/admin/db.php', 'line' => 0);
     }
+}
+if ($purpose === 'upgrade-preservation' && $upgradeCase === 'versions-1.0-1.2') {
+    require WP_PLUGIN_DIR . '/gigpress/tests/compat/upgrade-preservation-migrations.php';
+    $upgradePreservation = gigpress_upgrade_preservation_run_versions(array('1.0', '1.1', '1.2'));
+    if ($upgradePreservation['status'] !== 'PASS') $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Early-version migration matrix did not converge', 'file' => __FILE__, 'line' => __LINE__);
 }
 if (($purpose === 'diagnose-menu' && (getenv('COMPAT_CONFLICT_MODE') ?: '') === 'exact-key-late-add')
     || ($purpose === 'admin-menu' && (getenv('COMPAT_CONFLICT_MODE') ?: '') === 'order-only')) {

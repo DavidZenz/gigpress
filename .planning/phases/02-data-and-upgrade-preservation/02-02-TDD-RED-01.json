@@ -1,0 +1,9 @@
+{
+  "command": "rtk bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario upgrade-preservation --case versions-1.0-1.2",
+  "exitCode": 2,
+  "targetTest": "upgrade-preservation.versions-1.0-1.2",
+  "targetFile": "tests/compat/upgrade-preservation-migrations.php",
+  "expected": "Each reconstructed 1.0, 1.1, and 1.2 installation reaches the 1.6 preservation manifest through its exact legacy chain.",
+  "actual": "not ok 1 - upgrade-preservation.versions-1.0-1.2; the 1.0, 1.1, and 1.2 checks retain their source marker and no generated artist or venue mapping exists.",
+  "output": "not ok 1 - upgrade-preservation.versions-1.0-1.2\n# tests 1\n# pass 0\n# fail 1"
+}
