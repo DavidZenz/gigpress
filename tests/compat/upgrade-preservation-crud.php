@@ -2,6 +2,7 @@
 /* Mutation coverage for the reconstructed upgraded 1.4 fixture. */
 
 function gigpress_upgrade_preservation_request($handler, $request, $files = array(), &$outcome = null) {
+	if ($handler === 'gigpress_delete_show') return gigpress_upgrade_preservation_confirmed_trash($request, $outcome);
 	$nonce = wp_create_nonce('gigpress-action');
 	$_GET = $request;
 	$_POST = $request;
@@ -12,6 +13,26 @@ function gigpress_upgrade_preservation_request($handler, $request, $files = arra
 	ob_start();
 	$outcome = call_user_func($handler);
 	return ob_get_clean();
+}
+
+/* Trash now travels through the same preview and issued confirmation as the UI. */
+function gigpress_upgrade_preservation_confirmed_trash($request, &$outcome = null) {
+	$_SERVER['REQUEST_METHOD'] = 'POST';
+	$_GET = array();
+	$_POST = array_merge($request, array('gpaction' => 'delete', 'trash_stage' => 'preview', '_wpnonce' => wp_create_nonce('gigpress-action')));
+	$_REQUEST = $_POST;
+	ob_start();
+	$preview = gigpress_delete_show();
+	$html = ob_get_clean();
+	if (($preview['status'] ?? '') !== 'preview') { $outcome = $preview; return $html; }
+	preg_match('/name="trash_token" value="([^"]+)"/', $html, $matches);
+	$token = html_entity_decode($matches[1] ?? '', ENT_QUOTES, 'UTF-8');
+	$_POST = array_merge($request, array('gpaction' => 'delete', 'trash_stage' => 'confirm', 'trash_token' => $token,
+		'_wpnonce' => wp_create_nonce('gigpress-trash-confirm-' . $token)));
+	$_REQUEST = $_POST;
+	ob_start();
+	$outcome = gigpress_delete_show();
+	return $html . ob_get_clean();
 }
 
 function gigpress_upgrade_preservation_forged_request($handler, $request, $files = array()) {

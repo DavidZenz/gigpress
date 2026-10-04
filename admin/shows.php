@@ -1,10 +1,13 @@
 <?php
 
 function gigpress_admin_shows() {
+	require_once __DIR__ . '/handlers.php';
 	
 	if(isset($_REQUEST['gpaction']) && $_REQUEST['gpaction'] == "delete") {
 		require_once('handlers.php');
-		gigpress_delete_show();		
+		$outcome = gigpress_delete_show();
+		if (is_array($outcome) && ($outcome['status'] ?? '') === 'preview') return $outcome;
+		if (is_array($outcome) && isset($outcome['state'])) $_GET = array_merge($_GET, $outcome['state']);
 	}
 	
 	if(isset($_GET['gpaction']) && $_GET['gpaction'] == "undo") {
@@ -111,8 +114,9 @@ function gigpress_admin_shows() {
 	);
 	if($show_count) {
 		$pagination_args['page'] = 'gigpress-shows';
-		$pagination = gigpress_admin_pagination($show_count, $limit, $pagination_args);			
+		$pagination = gigpress_admin_pagination($show_count, $limit, $pagination_args);
 	}
+	if (!is_array($pagination ?? null)) $pagination = array('offset' => 0, 'records_per_page' => (int) $limit, 'output' => '');
 
 	$limit = (isset($_GET['gp-page'])) ? $pagination['offset'].','.$pagination['records_per_page'] : $limit;
 	
@@ -213,9 +217,11 @@ function gigpress_admin_shows() {
 			<div class="clear"></div>
 		</div>
 
-		<form action="" method="post">
+		<form action="<?php echo esc_url(gigpress_list_url(gigpress_list_state($_GET))); ?>" method="post">
 			<?php wp_nonce_field('gigpress-action') ?>
 			<input type="hidden" name="gpaction" value="delete" />
+			<input type="hidden" name="trash_stage" value="preview" />
+			<?php gigpress_list_state_fields(gigpress_list_state($_GET)); ?>
 
 		<table class="widefat">
 			<thead>
@@ -263,6 +269,7 @@ function gigpress_admin_shows() {
 					<td><?php echo $showdata['country']; ?></td>
 					<td><?php echo $showdata['tour']; ?></td>
 					<td class="gp-centre">
+						<button type="submit" class="button-link" name="trash_single_id" value="<?php echo esc_attr($show->show_id); ?>" aria-label="<?php echo esc_attr(sprintf(__('Trash show #%d', 'gigpress'), $show->show_id)); ?>"><?php esc_html_e('Trash', 'gigpress'); ?></button>&nbsp;|&nbsp;
 						<a href="<?php echo admin_url('admin.php?page=gigpress/gigpress.php&amp;gpaction=edit&amp;show_id='.$show->show_id); ?>" class="edit" title="<?php _e("Edit", "gigpress"); ?>"><?php _e("Edit", "gigpress"); ?></a>&nbsp;|&nbsp;<a href="<?php echo admin_url('admin.php?page=gigpress/gigpress.php&amp;gpaction=copy&amp;show_id='. $show->show_id); ?>" class="edit" title="<?php _e("Copy", "gigpress"); ?>"><?php _e("Copy", "gigpress"); ?></a>
 					</td>
 				</tr>

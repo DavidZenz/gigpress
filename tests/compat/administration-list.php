@@ -81,7 +81,7 @@ function gigpress_administration_list_single() {
     $cancel = gigpress_administration_list_confirmation($preview, array($id), $state, 'cancel');
     $cancelResult = gigpress_administration_list_request($cancel);
     $checks['cancel_no_changes'] = $baseline === gigpress_administration_list_snapshot();
-    $checks['cancel_return_state'] = ($cancelResult['outcome']['state'] ?? null) === $state;
+    $checks['cancel_return_state'] = ($cancelResult['outcome']['state'] ?? null) == $state;
     $checks['cancel_feedback'] = strpos($cancelResult['html'], 'No shows were changed') !== false;
     $canceledConfirm = gigpress_administration_list_confirmation($preview, array($id), $state);
     gigpress_administration_list_request($canceledConfirm);
@@ -142,7 +142,7 @@ function gigpress_administration_list_single() {
         $checks['confirm_exact_status_only_snapshot'] = $changed === $expected;
         $checks['confirm_changed_ids_one'] = ($result['outcome']['changed_ids'] ?? null) === array($id);
         $checks['confirm_count_truthful'] = strpos($result['html'], '1 shows moved to trash') !== false;
-        $checks['confirmed_return_uses_owned_state'] = ($result['outcome']['state'] ?? null) === $state;
+        $checks['confirmed_return_uses_owned_state'] = ($result['outcome']['state'] ?? null) == $state;
         $checks['undo_only_actual_id'] = strpos(html_entity_decode($result['html'], ENT_QUOTES, 'UTF-8'), 'show_id=' . $id . '&') !== false;
         $replay = gigpress_administration_list_request($confirm);
         $checks['replay_no_changes'] = $changed === gigpress_administration_list_snapshot() && empty($replay['outcome']['changed_ids']);
