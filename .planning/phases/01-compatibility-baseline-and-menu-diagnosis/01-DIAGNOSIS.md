@@ -2,9 +2,9 @@
 
 ## Fixture-only attribution
 
-The disposable `diagnose-menu` command on WordPress 7.1.2 / PHP 8.2 runs the controlled `menu-conflict-plugin.php` fixture. Its `gigpress_menu_conflict_late_add` callback runs at priority 20, appends the synthetic `separator-gigpress` row after WordPress has taken its default order snapshot, and returns the incoming order unchanged. The request-local trace records that row creator, callback identity, priority, its absence from both ordering maps, and the final global menu slugs as separate evidence. PHP 8.2 is diagnostic-only evidence, never a supported compatibility result.
+The disposable `diagnose-menu` command on WordPress 7.1.2 reproduces the warning with the controlled `menu-conflict-plugin.php` fixture under both diagnostic PHP 8.2 and supported PHP 8.3. Its `gigpress_menu_conflict_late_add` callback runs at priority 20, appends the synthetic `separator-gigpress` row after WordPress has taken its default order snapshot, and returns an incompatible empty custom order. That leaves the late row unranked alongside rows absent from the custom order, exercising WordPress core's fallback to the earlier snapshot and emitting the exact `Undefined array key "separator-gigpress"` warning. The request-local trace records the row creator, callback identity, priority, warning, input/returned maps, and final global menu slugs. PHP 8.2 is diagnostic-only evidence, never a supported compatibility result; the PHP 8.3 run is a controlled diagnostic scenario and is excluded from the clean supported matrix pass count.
 
-This is fixture-only attribution. It proves the repository diagnostic can reproduce and identify the exact reported key under controlled conditions; it does not identify a callback from the unavailable production installation.
+This is fixture-only attribution. It proves the repository diagnostic can reproduce and identify the exact reported warning under controlled conditions; it does not identify a callback from the unavailable production installation.
 
 ## Checkout evidence: `separator-gp`
 

@@ -46,7 +46,7 @@ status: complete
 
 - Added `diagnose-menu`, which runs a disposable WordPress cell, returns only request-local JSON evidence, and rejects unsupported diagnostic inputs.
 - Traced each `menu_order` callback's identity, priority, input and returned ordering; captured controlled row creation and redacted final menu evidence with the deployed GigPress version and hash.
-- Reproduced the synthetic `separator-gigpress` order-map mismatch through `gigpress_menu_conflict_late_add` at priority 20 on PHP 8.2 and PHP 8.3.
+- Reproduced the exact `Undefined array key "separator-gigpress"` warning on WordPress 7.1.2 with PHP 8.2 and 8.3 by adding the key after WordPress's default-order snapshot and returning an incompatible empty custom order; the trace attributes it to `gigpress_menu_conflict_late_add` at priority 20.
 - Recorded that the checkout's `separator-gp` mutation, the historical report, the synthetic fixture, and the unavailable production callback are separate evidence classes.
 
 ## Verification

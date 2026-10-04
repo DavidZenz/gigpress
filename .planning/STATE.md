@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 01
-current_phase_name: Compatibility Baseline and Menu Diagnosis
-status: verifying
-stopped_at: Completed 01-05-PLAN.md
-last_updated: "2026-10-04T07:22:22.772Z"
-last_activity: 2026-10-03
-last_activity_desc: Phase 01 execution started
-state_head: 4af75bd230f7350ca9eb5b29bda3c2c4386b68aa
+current_phase: 2
+current_phase_name: Data and Upgrade Preservation
+status: planning
+stopped_at: Phase 01 complete, ready to plan Phase 2
+last_updated: "2026-10-04T09:05:00.076Z"
+last_activity: 2026-10-04
+last_activity_desc: Phase 01 complete, transitioned to Phase 2
+state_head: 8ac118d604305e084e41d38018fa74d4b342282f
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
   completed_plans: 5
-  percent: 0
+  percent: 20
 ---
 
 # Project State
@@ -23,21 +23,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-03)
 
 **Core value:** Site owners can manage show information and reliably publish it on their WordPress sites.
-**Current focus:** Phase 01 — Compatibility Baseline and Menu Diagnosis
+**Current focus:** Phase 02 — Data and Upgrade Preservation
 
 ## Current Position
 
-Phase: 01 (Compatibility Baseline and Menu Diagnosis) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
-Last activity: 2026-10-03 — Phase 01 execution started
+Phase: 2 — Data and Upgrade Preservation
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-04 — Phase 01 complete, transitioned to Phase 2
 
-Progress: ░░░░░░░░░░ [░░░░░░░░░░] 0%
+Progress: ░░░░░░░░░░ [██░░░░░░░░] 20%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 0
+- Total plans completed: 5
 - Average duration: -
 - Total execution time: -
 
@@ -45,7 +45,7 @@ Progress: ░░░░░░░░░░ [░░░░░░░░░░] 0%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01 | 5 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: none
@@ -74,8 +74,8 @@ Recent decisions affecting current work:
 - Preserve existing records, settings, data model, public output, theme overrides, and CSV contracts.
 - Deliver the five approved workflow improvements after the compatibility baseline.
 - [Phase 01]: PHP 8.2 remains diagnostic-only and cannot enter supported lint or matrix results.
-- [Phase 01]: Controlled fixture transitions retain the same disposable database and use a narrow plugin API facade when old core bootstrap cannot run under diagnostic PHP 8.2.
-- [Phase 01]: Real GigPress runtime-floor execution fails closed until Plan 01-03 adds the production guard.
+- [Phase 01]: The controlled fixture's original PHP 8.2 test uses a narrow plugin API facade; the separate real-GigPress low-floor path boots WordPress 7.0.6 and 7.1.2 directly on PHP 8.2.34.
+- [Phase 01]: The real GigPress runtime-floor lifecycle keeps an already-active plugin inert under diagnostic PHP 8.2 and restores its normal bootstrap on PHP 8.3+.
 - [Phase 01]: The exact separator-gigpress reproduction is attributed only to the controlled fixture callback at priority 20.
 - [Phase 01]: GigPress separator-gp is independently actionable while the unavailable live callback remains unproven.
 - [Phase 01]: Declared WordPress 7.0 and PHP 8.3 floors in plugin and readme metadata.
@@ -90,9 +90,9 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 1 must reproduce and trace the reported admin-menu warning; its cause is not yet confirmed.
-- Refresh supported WordPress/PHP release branches during planning and validation.
-- Verify the active-but-inert PHP-floor guard on both target WordPress lines, including active-state retention, hook/function absence, capability-scoped repeated notices, public-request inertness, and automatic recovery on PHP 8.3+.
+- The reported warning is reproduced and attributed to a controlled fixture callback; the unavailable live site's callback identity remains unproven.
+- The selected PHP and WordPress release branches were refreshed for the Phase 01 compatibility matrix.
+- The active-but-inert PHP-floor lifecycle is verified on both target WordPress lines, including active-state retention, hook/function absence, capability-scoped repeated notices, public-request inertness, and automatic recovery on PHP 8.3+.
 - Phase 2 must characterize historical schema and upgrade behavior before migration-adjacent changes.
 - Phases 4 and 5 must verify template/feed and CSV edge cases with representative fixtures.
 
@@ -105,5 +105,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-10-04T07:22:22.754Z
-Stopped at: Completed 01-05-PLAN.md
+Stopped at: Phase 01 complete, ready to plan Phase 2
 Resume file: None

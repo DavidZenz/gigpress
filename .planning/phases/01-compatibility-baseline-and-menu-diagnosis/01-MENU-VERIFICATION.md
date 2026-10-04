@@ -1,5 +1,8 @@
 # Menu Verification Record
 
+**Verified:** 2026-10-04T08:44:16Z
+Source revision: `259c0ca92cc99e8b3bfc2f6da16719ea3805f90e`
+
 ## Scope
 
 This record distinguishes the controlled `separator-gigpress` fixture from the
@@ -14,16 +17,16 @@ Command:
 rtk bash tests/compat/run.sh diagnose-menu --wp 7.1.2 --php 8.2 --diagnostic tests/compat/diagnostics/menu-trace.php --conflict-fixture tests/compat/fixtures/menu-conflict-plugin.php --conflict-mode exact-key-late-add --expect-key separator-gigpress
 ```
 
-The disposable WordPress 7.1.2 / PHP 8.2.34 request recorded the fixture
-callback `gigpress_menu_conflict_late_add` at priority 20 as the sole creator
-of `separator-gigpress`. The synthetic key was absent from the input and
-returned ordering maps. This is diagnostic-only evidence: GigPress was not
-activated because its declared PHP 8.3 floor correctly rejects PHP 8.2.
-
-The captured request had no surfaced `menu_warnings` entry despite the
-controlled missing-map state. It therefore proves fixture attribution and the
-failure class, but does not claim to reproduce every display condition of the
-reported live warning. PHP 8.2 is excluded from every supported pass count.
+Disposable WordPress 7.1.2 requests on PHP 8.2.34 and PHP 8.3.35 recorded the
+fixture callback `gigpress_menu_conflict_late_add` at priority 20 as the sole
+creator of `separator-gigpress`. The callback adds the row after the
+default-order snapshot and returns an empty custom order. WordPress core then
+emits the exact `Undefined array key "separator-gigpress"` warning from its
+fallback sort; the request-local trace captures the message, row creator,
+callback, priority, and ordering maps. Under PHP 8.2 GigPress was not activated
+because its declared PHP 8.3 floor correctly rejects that runtime. PHP 8.2 is
+excluded from every supported pass count; the PHP 8.3 fixture run is a separate
+diagnostic scenario, not a clean compatibility cell.
 
 ## Supported preferred-order cells
 
@@ -36,9 +39,9 @@ edit-comments.php -> separator-gp -> gigpress.php
 
 | WordPress | PHP | WordPress image ID |
 | --- | --- | --- |
-| 7.0.3 | 8.3.33 | `sha256:a09147f15a882b956f67a617e9e1e053adf9322c45c797c2ff7c0e66522bf204` |
-| 7.0.3 | 8.4.24 | `sha256:322fedc0b666dfdbbb7c940fc934ec9f5ac4d8b1c4c6147838291b6c7eb197db` |
-| 7.0.3 | 8.5.9 | `sha256:33231db025d51deb8963bf8b01c39c07b5686d2559fb20a6263cc1c84d83c938` |
+| 7.0.6 | 8.3.35 | `sha256:4abf7a450ee477dde967584f8174d7e03221d224c4971a0c38d84e7254426e64` |
+| 7.0.6 | 8.4.26 | `sha256:85ee71a393b0f3f7a45b2e293978f1c9ab94fb421161080e54f911eeb2501bdc` |
+| 7.0.6 | 8.5.11 | `sha256:9d881655fccdcfd19b779320ca819310b51061e1ba3c086012ecbf69a177d521` |
 | 7.1.2 | 8.3.35 | `sha256:4abf7a450ee477dde967584f8174d7e03221d224c4971a0c38d84e7254426e64` |
 | 7.1.2 | 8.4.26 | `sha256:85ee71a393b0f3f7a45b2e293978f1c9ab94fb421161080e54f911eeb2501bdc` |
 | 7.1.2 | 8.5.11 | `sha256:9d881655fccdcfd19b779320ca819310b51061e1ba3c086012ecbf69a177d521` |
@@ -55,8 +58,8 @@ The controlled fixture was run before (priority 5) and after (priority 20)
 GigPress's filter across the same six supported cells. In both positions it
 marked the ordering contract as unsafe before menu ordering and the GigPress
 callback returned WordPress's incoming standard order unchanged. Each cell had
-zero captured menu warnings, no duplicate slugs, no `separator-gp`, and a
-usable `gigpress.php` row in standard position after Comments.
+zero captured menu warnings, no duplicate slugs, and no owned `separator-gp`;
+GigPress remained present in WordPress's default menu order.
 
 ```text
 rtk bash tests/compat/run.sh matrix --scenario admin-menu --wp-lines 7.0,7.1 --php-supported upstream --conflict-fixture tests/compat/fixtures/menu-conflict-plugin.php --conflict-mode order-only --conflict-position before
@@ -71,6 +74,16 @@ after its pages are registered and before WordPress creates the ordering map.
 Comments/GigPress/separator slug, and otherwise returns the incoming standard
 order unchanged. It does not mutate global `$menu`.
 
-The exact `separator-gigpress` diagnostic remains attributable only to the
-fixture. The unavailable live site's callback identity remains unproven from
-repository evidence.
+The exact `separator-gigpress` warning remains attributable only to the
+controlled fixture. The unavailable live site's callback identity remains
+unproven from repository evidence.
+
+## Visual admin check
+
+In disposable WordPress 7.1.2 / PHP 8.3 admin cells, the preferred view showed
+Comments → GigPress separator → GigPress. The GigPress Add a show screen opened
+without warning or raw diagnostic output. With the order-only conflict fixture,
+WordPress's default menu order remained intact, GigPress stayed available at
+the end of the sidebar without its owned separator, and the same Add a show
+screen opened successfully. The live-site callback identity remains outside
+this check's scope.

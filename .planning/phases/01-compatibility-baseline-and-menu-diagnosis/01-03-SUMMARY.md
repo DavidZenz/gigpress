@@ -99,7 +99,7 @@ status: complete
 
 ## Issues Encountered
 
-- The legacy WordPress 7.0 core cannot fully re-bootstrap its disposable install after the PHP 8.2 image transition. The runner preserves the real low-runtime assertion, verifies the return to PHP 8.3, and reuses the already-passed supported bootstrap snapshot to assert unchanged active state and GigPress data/options.
+- During initial implementation, the runner's PHP 8.2 transition path did not complete its expected bootstrap, so it reused supported-runtime state for assertions. A later direct recheck in Plan 01-04 showed that WordPress 7.0.6 and 7.1.2 can fully boot on PHP 8.2.34. The real-plugin low-floor scenario now boots WordPress directly; the narrow facade remains confined to the separate controlled fixture path.
 
 ## User Setup Required
 

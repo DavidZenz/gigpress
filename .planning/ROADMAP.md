@@ -6,7 +6,7 @@ Modernize GigPress in compatibility-first slices. Establish the WordPress 7.0+ a
 
 ## Phases
 
-- [ ] **Phase 1: Compatibility Baseline and Menu Diagnosis** - Establish supported runtime metadata and warning-free core workflows.
+- [x] **Phase 1: Compatibility Baseline and Menu Diagnosis** - Establish supported runtime metadata and warning-free core workflows. (completed 2026-10-04)
 - [ ] **Phase 2: Data and Upgrade Preservation** - Keep existing records, relationships, settings, and CRUD behavior usable through updates.
 - [ ] **Phase 3: Administration Workflows** - Improve show entry, show-list management, and settings while keeping established behavior.
 - [ ] **Phase 4: Public Publishing** - Make default show listings responsive and preserve public output and theme override contracts.
@@ -26,7 +26,7 @@ Modernize GigPress in compatibility-first slices. Establish the WordPress 7.0+ a
   3. Plugin metadata and readme declare WordPress 7.0 and PHP 8.3 minimums; the tested-up-to value names only a WordPress release that has passed compatibility checks.
   4. On an already-active site below PHP 8.3, GigPress remains active but loads no normal modules, hooks, functions, or workflows; only a persistent plugin-manager compatibility notice is registered, and normal behavior resumes automatically without that notice on PHP 8.3+.
 
-**Plans**: 5/5 plans executed
+**Plans**: 5/5 plans complete
 
 Plans:
 **Wave 1**
@@ -107,7 +107,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Compatibility Baseline and Menu Diagnosis | 5/5 | In Progress|  |
+| 1. Compatibility Baseline and Menu Diagnosis | 5/5 | Complete    | 2026-10-04 |
 | 2. Data and Upgrade Preservation | 0/TBD | Not started | - |
 | 3. Administration Workflows | 0/TBD | Not started | - |
 | 4. Public Publishing | 0/TBD | Not started | - |

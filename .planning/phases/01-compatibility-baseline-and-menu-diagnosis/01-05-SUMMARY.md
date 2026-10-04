@@ -53,6 +53,10 @@ status: complete
 - `rtk bash tests/compat/run.sh metadata --plugin gigpress.php --readme readme.txt --matrix-evidence .planning/phases/01-compatibility-baseline-and-menu-diagnosis/01-COMPATIBILITY-MATRIX.md --expect-wp-min 7.0 --expect-php-min 8.3 --require-tested-line-pass` — PASS.
 - `rtk bash tests/compat/run.sh self-test` and containerized PHP 8.3–8.5 lint of all tracked PHP files — PASS.
 
+### Runtime-floor summary correction — 2026-10-04
+
+The independent phase re-verification found that the lifecycle transitions themselves passed, but the final `jq` object failed to parse comparison expressions without parentheses, so the command exited non-zero before returning its summary. The runner now parenthesizes those expressions and `self-test` checks the summary serialization contract. Re-runs of `rtk bash tests/compat/run.sh runtime-floor --plugin gigpress/gigpress.php --wp-lines 7.0,7.1 --supported-php 8.3 --diagnostic-php 8.2` exit 0 for both WordPress 7.0.6 and 7.1.2: active plugin state and stored data/options persist over PHP 8.3 → 8.2 → 8.3, the below-floor plugin has no normal surface/modules/hooks, the authorized notice repeats, unauthorized/public requests do not see it, and the recovery request restores normal behavior.
+
 ## Deviations from Plan
 
 ### Auto-fixed Issues

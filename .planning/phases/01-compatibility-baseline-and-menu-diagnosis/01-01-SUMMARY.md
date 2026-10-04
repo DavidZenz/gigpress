@@ -21,7 +21,7 @@ key-files:
   modified: [gigpress.php, lib/parsecsv.lib.php, lib/upgrade.php, tests/compat/compose.yaml, tests/compat/run.sh, tests/compat/probe.php]
 key-decisions:
   - "PHP 8.2 remains a diagnostic-only runtime and cannot enter lint or supported matrix results."
-  - "The controlled fixture uses the preserved disposable active_plugins option and a narrow plugin API facade when old core bootstrap cannot run under diagnostic PHP 8.2."
+  - "The controlled fixture's original diagnostic path used a narrow plugin API facade; a later Phase 01 recheck established that the target WordPress releases can boot on diagnostic PHP 8.2."
   - "The real GigPress runtime-floor target fails closed until Plan 01-03 supplies the production guard."
 patterns-established:
   - "Compatibility commands create a unique Compose project and remove its volumes through cleanup traps."
@@ -100,7 +100,7 @@ status: complete
 
 - PHP 8.2 is diagnostic-only and is rejected from supported lint and matrix paths.
 - The real GigPress runtime-floor assertion remains intentionally gated until Plan 01-03 adds the production guard.
-- The controlled fixture uses the same disposable database across transitions; its diagnostic PHP 8.2 step reads the active option and evaluates only the fixture APIs because the target WordPress core cannot complete its full bootstrap on that diagnostic runtime.
+- The controlled fixture uses the same disposable database across transitions. Its original diagnostic PHP 8.2 step read the active option and evaluated only fixture APIs through a narrow facade after the initial runner path failed to bootstrap.
 
 ## Deviations from Plan
 
@@ -108,7 +108,7 @@ status: complete
 
 **1. [Rule 3 - Blocking] Stabilized the fixture lifecycle across the diagnostic PHP transition**
 - **Found during:** Task 01-01-03
-- **Issue:** WordPress 7.0 and 7.1 core could not complete its full bootstrap on PHP 8.2 after the fixture was activated, despite the same isolated MariaDB tables remaining available.
+- **Issue:** The initial harness's PHP 8.2 fixture request did not complete its expected WordPress bootstrap after activation, despite the same isolated MariaDB tables remaining available. A later direct recheck showed this was a limitation of that harness path, not of the target WordPress releases.
 - **Fix:** Kept the activation in a supported WordPress request, read the same `active_plugins` option through the container's mysqli driver for diagnostic and recovery requests, and supplied only the fixture's `add_action()` and capability APIs.
 - **Files modified:** `tests/compat/probe.php`, `tests/compat/run.sh`
 - **Verification:** The complete fixture flow passed on WordPress 7.0 and 7.1 with PHP 8.3 → 8.2 → 8.3 transitions.
@@ -139,6 +139,10 @@ The diagnostic PHP 8.2 image can connect to the disposable MariaDB database dire
 ## User Setup Required
 
 None.
+
+## Later Phase 01 Correction
+
+The initial investigation incorrectly generalized a runner/bootstrap failure into a claim that WordPress 7.0 and 7.1 could not boot on PHP 8.2. A later direct recheck in Plan 01-04 booted WordPress 7.0.6 and 7.1.2 under PHP 8.2.34. The controlled fixture still uses its narrow facade for its own fixture contract, but the real GigPress below-floor lifecycle now uses the actual WordPress plugin-loading path and does not use that facade.
 
 ## Next Phase Readiness
 
