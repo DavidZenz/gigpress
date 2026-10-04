@@ -183,6 +183,9 @@ run_self_test() {
   [[ "$ordered" == '7.0,8.3 7.0,8.4 7.1,8.3 7.1,8.4 ' ]] || fail "matrix result ordering is not stable"
   normalise_matrix '' '8.3' >/dev/null 2>&1 && fail "empty matrix was accepted"
   normalise_matrix '7.1' '8.2' >/dev/null 2>&1 && fail "diagnostic PHP 8.2 was accepted as supported"
+  (run_matrix --php-branches 8.3) >/dev/null 2>&1 && fail "matrix accepted missing WordPress lines"
+  (run_matrix --wp-lines 7.1) >/dev/null 2>&1 && fail "matrix accepted missing PHP branches"
+  (run_matrix --wp-lines ',' --php-branches 8.3) >/dev/null 2>&1 && fail "matrix accepted an invalid normalized pair list"
   (run_runtime_floor --fixture tests/compat/fixtures/php-floor-plugin.php --plugin gigpress/gigpress.php --wp-lines 7.1 --supported-php 8.3 --diagnostic-php 8.2) >/dev/null 2>&1 && fail "runtime-floor accepted both targets"
   (run_runtime_floor --plugin unknown/plugin.php --wp-lines 7.1 --supported-php 8.3 --diagnostic-php 8.2) >/dev/null 2>&1 && fail "runtime-floor accepted an unknown real-plugin target"
   grep -q "fixture-activate" "$COMPAT_DIR/probe.php" || fail "fixture lifecycle probe is missing"
@@ -365,6 +368,8 @@ run_matrix() {
     [[ -z "$php_branches" && "$php_supported" == upstream ]] || fail "--php-supported upstream cannot be combined with --php-branches"
     php_branches='8.3,8.4,8.5'
   fi
+  require_value --wp-lines "$wp_lines"
+  require_value --php-branches "$php_branches"
   [[ -z "$wp_patches" || "$wp_patches" == latest ]] || fail "matrix supports only --wp-patches latest"
   [[ -z "$php_min" || "$php_min" == 8.3 ]] || fail "matrix PHP minimum must be the supported 8.3 floor"
   [[ -z "$error_reporting" || "$error_reporting" == E_ALL ]] || fail "matrix error reporting must be E_ALL"
@@ -374,7 +379,9 @@ run_matrix() {
     [[ "$conflict_position" == before || "$conflict_position" == after ]] || fail "matrix conflict coverage requires a before or after position"
   fi
   [[ "$scenario" == activation-menu || "$scenario" == admin-menu || "$scenario" == csv-roundtrip || "$scenario" == full-workflows ]] || fail "unsupported matrix scenario: $scenario"
-  local pair line branch wp_version matrix_failed=false
+  local line branch wp_version pairs matrix_failed=false
+  pairs=$(normalise_matrix "$wp_lines" "$php_branches") || fail "invalid compatibility matrix"
+  [[ -n "$pairs" ]] || fail "compatibility matrix is empty"
   while IFS=, read -r line branch; do
     wp_version=$(runtime_wp_version "$line")
     local -a cell_args=(cell --wp "$wp_version" --php "$branch" --scenario "$scenario")
@@ -384,7 +391,7 @@ run_matrix() {
     if ! bash "$COMPAT_DIR/run.sh" "${cell_args[@]}" </dev/null; then
       matrix_failed=true
     fi
-  done < <(normalise_matrix "$wp_lines" "$php_branches")
+  done <<< "$pairs"
   [[ "$matrix_failed" == false ]] || fail "matrix cell failed"
 }
 
