@@ -60,7 +60,104 @@ function gigpress_administration_list_case($case) {
     require_once WP_PLUGIN_DIR . '/gigpress/admin/shows.php';
     $checks = array();
     if ($case === 'list-single') $checks = gigpress_administration_list_single();
+    if ($case === 'list-navigation') $checks = gigpress_administration_list_navigation();
     return array('case' => $case, 'checks' => $checks);
+}
+
+function gigpress_administration_list_document($html) {
+    $previous = libxml_use_internal_errors(true);
+    $dom = new DOMDocument(); $dom->loadHTML('<?xml encoding="UTF-8">' . $html);
+    libxml_clear_errors(); libxml_use_internal_errors($previous);
+    return new DOMXPath($dom);
+}
+
+function gigpress_administration_list_row_ids($html) {
+    $xpath = gigpress_administration_list_document($html); $ids = array();
+    foreach ($xpath->query('//input[@name="show_id[]" and @type="checkbox"]') as $node) $ids[] = (int) $node->getAttribute('value');
+    return $ids;
+}
+
+function gigpress_administration_list_navigation() {
+    $fixture = gigpress_administration_list_seed(23);
+    $state = array_merge($fixture['state'], array('gp-page' => 2));
+    $owner = get_current_user_id();
+    update_user_meta($owner, 'gigpress_sort', 'ASC');
+    $view = gigpress_administration_list_request(array(), $state, true, 'GET');
+    $xpath = gigpress_administration_list_document($view['html']); $checks = array();
+    foreach (array('artist_id', 'venue_id', 'tour_id', 'sort', 'limit') as $key) {
+        $nodes = $xpath->query('//select[@name="' . $key . '"]/option[@selected]');
+        $checks['visible_' . $key] = $nodes->length === 1 && $nodes->item(0)->getAttribute('value') === (string) $state[$key];
+        $checks['label_' . $key] = $xpath->query('//label[@for="gp-list-' . $key . '"]')->length === 1;
+    }
+    $checks['visible_scope'] = $xpath->query('//input[@name="scope" and @value="all"]')->length > 0;
+    $checks['sort_not_persisted'] = get_user_meta($owner, 'gigpress_sort', true) === 'ASC';
+    $checks['scope_and_size_persisted'] = get_user_meta($owner, 'gigpress_scope', true) === 'all' && (int) get_user_meta($owner, 'gigpress_limit', true) === 10;
+    $classes = array('scope' => 0, 'pagination' => 0, 'edit' => 0, 'copy' => 0, 'reset' => 0);
+    foreach ($xpath->query('//a[@href]') as $node) {
+        $href = $node->getAttribute('href'); parse_str((string) parse_url($href, PHP_URL_QUERY), $args);
+        $class = null;
+        if (strpos($node->getAttribute('class'), 'page-numbers') !== false) $class = 'pagination';
+        elseif (($args['gpaction'] ?? '') === 'edit') $class = 'edit';
+        elseif (($args['gpaction'] ?? '') === 'copy') $class = 'copy';
+        elseif (($args['reset_filters'] ?? '') === '1') $class = 'reset';
+        elseif ($node->parentNode->parentNode->getAttribute('class') === 'subsubsub') $class = 'scope';
+        if (!$class) continue;
+        $classes[$class]++;
+        foreach ($state as $key => $value) {
+            if (($class === 'scope' && $key === 'scope') || ($class === 'pagination' && $key === 'gp-page') || ($class === 'reset' && in_array($key, array('artist_id', 'venue_id', 'tour_id', 'gp-page'), true))) continue;
+            $checks[$class . '_' . $classes[$class] . '_retains_' . $key] = isset($args[$key]) && (string) $args[$key] === (string) $value;
+        }
+        if ($class === 'reset') $checks['reset_link_narrow'] = ($args['gp-page'] ?? null) == 1 && ($args['artist_id'] ?? null) == -1 && ($args['venue_id'] ?? null) == -1 && ($args['tour_id'] ?? null) == -1;
+    }
+    foreach ($classes as $class => $count) $checks['links_exist_' . $class] = $count > 0;
+    foreach ($xpath->query('//input[@type="checkbox"]') as $node) {
+        $id = $node->getAttribute('id');
+        $checks['checkbox_labeled_' . ($id ?: $node->getAttribute('value'))] = $id !== '' && $xpath->query('//label[@for="' . $id . '"]')->length === 1;
+    }
+    $checks['semantic_column_headings'] = $xpath->query('//thead/tr/th[@scope="col"]')->length === 8;
+    $checks['integer_page_size_not_sql_limit'] = $xpath->query('//select[@name="limit"]/option[@value="10" and @selected]')->length === 1;
+    $reset = gigpress_administration_list_request(array(), array_merge($state, array('reset_filters' => '1')), true, 'GET');
+    $resetState = array_merge($state, array('artist_id' => -1, 'tour_id' => -1, 'venue_id' => -1, 'gp-page' => 1));
+    $checks['reset_normalized_state'] = ($reset['outcome']['state'] ?? null) == $resetState;
+    $fresh = gigpress_administration_list_request(array(), array(), true, 'GET');
+    $checks['fresh_sort_asc_ignores_legacy_meta'] = ($fresh['outcome']['state']['sort'] ?? '') === 'asc';
+    foreach (array('artist_id', 'venue_id', 'tour_id') as $key) $checks['fresh_request_only_' . $key] = ($fresh['outcome']['state'][$key] ?? 0) === -1 && get_user_meta($owner, 'gigpress_' . $key, true) === '';
+    $second = wp_create_user('list-preferences', 'disposable-preferences-password', 'list-preferences@example.invalid');
+    $user = new WP_User($second); $user->set_role('administrator'); wp_set_current_user($second);
+    $secondView = gigpress_administration_list_request(array(), array(), true, 'GET');
+    $checks['independent_user_defaults'] = ($secondView['outcome']['state']['scope'] ?? '') === 'upcoming' && ($secondView['outcome']['state']['limit'] ?? 0) === 25;
+    wp_set_current_user($owner);
+    $checks['first_user_preferences_retained'] = get_user_meta($owner, 'gigpress_scope', true) === 'all' && (int) get_user_meta($owner, 'gigpress_limit', true) === 10;
+    $asc = array_merge($fixture['state'], array('sort' => 'asc'));
+    $all = array();
+    for ($page = 1; $page <= 3; $page++) {
+        $pageView = gigpress_administration_list_request(array(), array_merge($asc, array('gp-page' => $page)), true, 'GET');
+        $all = array_merge($all, gigpress_administration_list_row_ids($pageView['html']));
+        $checks['safe_page_metadata_' . $page] = ($pageView['outcome']['pagination']['offset'] ?? -1) === ($page - 1) * 10;
+    }
+    $checks['equal_keys_distinct_ids_stable_asc'] = $all === $fixture['ids'];
+    $desc = array();
+    for ($page = 1; $page <= 3; $page++) $desc = array_merge($desc, gigpress_administration_list_row_ids(gigpress_administration_list_request(array(), array_merge($fixture['state'], array('gp-page' => $page)), true, 'GET')['html']));
+    $checks['equal_keys_stable_desc'] = $desc === array_reverse($fixture['ids']);
+    $outOfRange = gigpress_administration_list_request(array(), array_merge($asc, array('gp-page' => 999)), true, 'GET');
+    $checks['clamped_last_page'] = ($outOfRange['outcome']['state']['gp-page'] ?? 0) === 3 && gigpress_administration_list_row_ids($outOfRange['html']) === array_slice($fixture['ids'], 20);
+    $zero = gigpress_administration_list_request(array(), array_merge($state, array('artist_id' => 999999)), true, 'GET');
+    $checks['zero_matches_text_and_reset'] = strpos($zero['html'], 'No shows match these filters') !== false && strpos($zero['html'], 'Reset filters') !== false;
+    $checks['zero_matches_safe_page'] = ($zero['outcome']['state']['gp-page'] ?? 0) === 1 && ($zero['outcome']['pagination']['offset'] ?? -1) === 0;
+    $one = gigpress_administration_list_seed(1);
+    $oneView = gigpress_administration_list_request(array(), array_merge($one['state'], array('gp-page' => 99)), true, 'GET');
+    $checks['single_match_safe_page'] = ($oneView['outcome']['state']['gp-page'] ?? 0) === 1 && gigpress_administration_list_row_ids($oneView['html']) === $one['ids'];
+    // The prior renderer lacks domain guards. Keep RED about behavior, avoiding unrelated PHP fixture errors.
+    if (isset($view['outcome']['state'])) {
+        foreach (array('scope' => array('all'), 'sort' => array('desc'), 'limit' => array(10), 'gp-page' => array(2), 'artist_id' => array(1), 'venue_id' => '1 OR 1=1', 'tour_id' => '-2') as $key => $bad) {
+            $invalid = gigpress_administration_list_request(array(), array_merge($state, array($key => $bad)), true, 'GET');
+            $checks['malformed_safe_' . $key] = strpos($invalid['html'], 'Invalid list choices') !== false && isset($invalid['outcome']['state']) && !is_array($invalid['outcome']['state'][$key]);
+        }
+        update_user_meta($owner, 'gigpress_scope', array('all')); update_user_meta($owner, 'gigpress_limit', '0,10');
+        $invalidStored = gigpress_administration_list_request(array(), array(), true, 'GET');
+        $checks['malformed_saved_preferences_safe'] = $invalidStored['outcome']['state']['scope'] === 'upcoming' && $invalidStored['outcome']['state']['limit'] === 25;
+    } else $checks['malformed_domains_covered'] = false;
+    return $checks;
 }
 
 function gigpress_administration_list_single() {
