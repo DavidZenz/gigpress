@@ -25,157 +25,244 @@ function gigpress_block_dependent_entity_deletion($label) {
 // ===================
 
 
-function gigpress_prepare_show_fields($context = 'new') {
+/* Show-only request handling; other entity handlers keep their established contracts. */
+function gigpress_show_raw_state() {
+	$raw = array();
+	foreach ($_POST as $key => $value) {
+		if (is_scalar($value)) $raw[$key] = wp_unslash((string) $value);
+	}
+	return $raw;
+}
 
+function gigpress_show_calendar_date($value) {
+	if (!is_string($value) || !preg_match('/\A([0-9]{4})-([0-9]{2})-([0-9]{2})\z/', $value, $parts)) return false;
+	return checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]) ? $value : false;
+}
+
+function gigpress_show_received_date($raw, $end = false) {
+	$key = $end ? 'show_end_date' : 'show_date';
+	$prefix = $end ? 'exp_' : 'gp_';
+	if (($raw['replace_' . $key] ?? '') === '1') return $raw[$key . '_picker'] ?? '';
+	if (array_key_exists($key, $raw) || array_key_exists($key, $_POST)) return $raw[$key] ?? '';
+	$year = $raw[$prefix . 'yy'] ?? '';
+	$month = $raw[$prefix . 'mm'] ?? '';
+	$day = $raw[$prefix . 'dd'] ?? '';
+	if (!preg_match('/\A[0-9]{4}\z/', $year) || !preg_match('/\A[0-9]{1,2}\z/', $month) || !preg_match('/\A[0-9]{1,2}\z/', $day)) {
+		return $year . '-' . $month . '-' . $day;
+	}
+	return sprintf('%s-%02d-%02d', $year, (int) $month, (int) $day);
+}
+
+function gigpress_show_completed_ids($raw) {
+	$created = array();
+	foreach (array('artist' => 'show_artist_id', 'venue' => 'show_venue_id', 'tour' => 'show_tour_id', 'post' => 'show_related') as $kind => $field) {
+		$id = $raw['created_' . $kind . '_id'] ?? '';
+		if (preg_match('/\A[1-9][0-9]*\z/', $id) && $id === ($raw[$field] ?? '')) $created[$kind] = (int) $id;
+	}
+	return $created;
+}
+
+function gigpress_show_validate($raw, $mode) {
 	global $wpdb;
-	$gpo = get_option('gigpress_settings');
 	$errors = array();
-	$show = array();
-	
-	
-	$show['show_date'] = sprintf("%02d", $_POST['gp_yy']) . '-' . sprintf("%02d", $_POST['gp_mm']) . '-' . sprintf("%02d", $_POST['gp_dd']);
-	if($_POST['gp_hh'] == "na") {
-		$show['show_time'] = "00:00:01";
-	} else {
-		$min = ($_POST['gp_min'] == "na") ? '00' : sprintf("%02d", $_POST['gp_min']);
-		$show['show_time'] = sprintf("%02d", $_POST['gp_hh']) . ':' . $min . ':00';
+	$fields = array('gpaction', 'show_id', 'show_date', 'show_end_date', 'show_date_picker', 'show_end_date_picker', 'replace_show_date', 'replace_show_end_date',
+		'gp_yy', 'gp_mm', 'gp_dd', 'exp_yy', 'exp_mm', 'exp_dd', 'gp_hh', 'gp_min', 'show_multi',
+		'show_artist_id', 'artist_name', 'artist_url', 'show_venue_id', 'venue_name', 'venue_address', 'venue_city', 'venue_state', 'venue_postal_code',
+		'venue_country', 'venue_url', 'venue_phone', 'show_tour_id', 'tour_name', 'show_related', 'show_related_title', 'show_related_date',
+		'show_price', 'show_tix_url', 'show_tix_phone', 'show_external_url', 'show_ages', 'show_notes', 'show_status',
+		'created_artist_id', 'created_venue_id', 'created_tour_id', 'created_post_id');
+	foreach ($fields as $field) {
+		if (array_key_exists($field, $_POST) && !is_scalar($_POST[$field])) $errors[$field] = __('Enter a single value for this field.', 'gigpress');
 	}
-	// If it's not a multi-day show, we need to set the expire date to match the show date
-	if(!isset($_POST['show_multi']) || (isset($_POST['show_multi']) && empty($_POST['show_multi']) ) ) {
-		$show['show_expire'] = $show['show_date'];
-		$show['show_multi'] = 0;
-	} else {
-		$show['show_expire'] = sprintf("%02d", $_POST['exp_yy']) . '-' . sprintf("%02d", $_POST['exp_mm']) . '-' . sprintf("%02d", $_POST['exp_dd']);
-		$show['show_multi'] = 1;
+	if (isset($raw['gpaction']) && $raw['gpaction'] !== $mode) $errors['gpaction'] = __('This form action is invalid. Open Add a show or Edit from the show list and retry.', 'gigpress');
+	foreach (array('show_multi', 'replace_show_date', 'replace_show_end_date') as $field) {
+		if (isset($raw[$field]) && !in_array($raw[$field], array('', '0', '1'), true)) $errors[$field] = __('Choose whether this option is checked.', 'gigpress');
 	}
-	$show['show_price'] = gigpress_db_in($_POST['show_price'] ?? null);
-	$show['show_tix_url'] = gigpress_db_in($_POST['show_tix_url'] ?? null, FALSE);
-	$show['show_tix_phone'] = gigpress_db_in($_POST['show_tix_phone'] ?? null);
-	$show['show_external_url'] = gigpress_db_in($_POST['show_external_url'] ?? null, FALSE);
-	$show['show_ages'] = gigpress_db_in($_POST['show_ages'] ?? null);
-	$show['show_notes'] = gigpress_db_in($_POST['show_notes'] ?? null, FALSE);
-	$show['show_status'] = gigpress_db_in($_POST['show_status']);
-	
-	// Create a new artist
-	if($_POST['show_artist_id'] == 'new') {
-		
-		$alpha = preg_replace("/^the /uix", "", strtolower($_POST['artist_name']));
-		$artist = array(
-			'artist_name' => gigpress_db_in($_POST['artist_name']),
-			'artist_alpha' => gigpress_db_in($alpha),
-			'artist_url' => gigpress_db_in($_POST['artist_url'] ?? null, FALSE)
-		);
-		$insert_artist = $wpdb->insert(GIGPRESS_ARTISTS, $artist);
-		
-		if($insert_artist) { 
-			$show['show_artist_id'] = $wpdb->insert_id;
-		} else {
-			$errors[] = __("We had trouble creating your new artist. Sorry.", "gigpress");
+	if (!gigpress_show_calendar_date(gigpress_show_received_date($raw))) $errors['show_date'] = __('Enter a valid date in YYYY-MM-DD format.', 'gigpress');
+	if (($raw['show_multi'] ?? '') === '1' && !gigpress_show_calendar_date(gigpress_show_received_date($raw, true))) $errors['show_end_date'] = __('Enter a valid end date in YYYY-MM-DD format.', 'gigpress');
+	$hour = $raw['gp_hh'] ?? 'na';
+	$minute = $raw['gp_min'] ?? 'na';
+	if ($hour !== 'na' && !preg_match('/\A(?:[01]?[0-9]|2[0-3])\z/', $hour)) $errors['gp_hh'] = __('Select an hour from 00 to 23, or Not specified.', 'gigpress');
+	if ($minute !== 'na' && !preg_match('/\A[0-5]?[0-9]\z/', $minute)) $errors['gp_min'] = __('Select a minute from 00 to 59.', 'gigpress');
+	if (!in_array($raw['show_status'] ?? 'active', array('active', 'soldout', 'cancelled'), true)) $errors['show_status'] = __('Select an available show status.', 'gigpress');
+	if (isset($raw['show_related_date']) && !in_array($raw['show_related_date'], array('now', 'show'), true)) $errors['show_related_date'] = __('Select when to publish the related post.', 'gigpress');
+	if (isset($raw['venue_country'])) {
+		global $gp_countries;
+		if (!array_key_exists($raw['venue_country'], $gp_countries)) $errors['venue_country'] = __('Select a country from the list.', 'gigpress');
+	}
+	foreach (array('artist' => array('show_artist_id', GIGPRESS_ARTISTS, 'artist_id'), 'venue' => array('show_venue_id', GIGPRESS_VENUES, 'venue_id'),
+		'tour' => array('show_tour_id', GIGPRESS_TOURS, 'tour_id'), 'post' => array('show_related', $wpdb->posts, 'ID')) as $kind => $spec) {
+		list($field, $table, $column) = $spec;
+		$value = $raw[$field] ?? ($kind === 'tour' || $kind === 'post' ? '0' : '');
+		if ($value === 'new') {
+			$required = $kind === 'venue' ? array('venue_name', 'venue_city') : ($kind === 'post' ? array() : array($kind . '_name'));
+			foreach ($required as $requiredField) if (trim($raw[$requiredField] ?? '') === '') $errors[$requiredField] = __('Enter a value for this required field.', 'gigpress');
+		} elseif (($kind === 'tour' || $kind === 'post') && $value === '0') {
+			continue;
+		} elseif (!preg_match('/\A[1-9][0-9]*\z/', $value) || strlen($value) > 18 || !$wpdb->get_var($wpdb->prepare('SELECT ' . $column . ' FROM ' . $table . ' WHERE ' . $column . ' = %d', $value))) {
+			$errors[$field] = __('Select an existing entry or choose Add a new entry.', 'gigpress');
 		}
-	} else {
-		$show['show_artist_id'] = gigpress_db_in($_POST['show_artist_id']);
 	}
-	
-	// Create a new venue
-	if($_POST['show_venue_id'] == 'new') {
-		
-		$venue = gigpress_prepare_venue_fields();
-		$insert_venue = $wpdb->insert(GIGPRESS_VENUES, $venue);
-		
-		if($insert_venue) { 
-			$show['show_venue_id'] = $wpdb->insert_id;
-		} else {
-			$errors[] = __("We had trouble creating your new venue. Sorry.", "gigpress");
-		}
-		$gpo['default_country'] = gigpress_db_in($_POST['venue_country']);
-	} else {
-		$show['show_venue_id'] = gigpress_db_in($_POST['show_venue_id']);
-	}
-	
-	// Create a new tour
-	if($_POST['show_tour_id'] == 'new') {
-		
-		$tour = array('tour_name' => gigpress_db_in($_POST['tour_name']));
-		
-		$insert_tour = $wpdb->insert(GIGPRESS_TOURS, $tour);
-		
-		if($insert_tour) { 
-			$show['show_tour_id'] = $wpdb->insert_id;
-		} else {
-			$errors[] = __("We had trouble creating your new tour. Sorry.", "gigpress");
-		}
-	} else {
-		$show['show_tour_id'] = gigpress_db_in($_POST['show_tour_id']);
-	}	
-	
-	// Create a new related post
-	if($_POST['show_related'] == "new")
-	{
-		
-		// Find the variables we need for token replacement
-		$artist = $wpdb->get_var(
-			$wpdb->prepare("SELECT artist_name FROM " . GIGPRESS_ARTISTS . " WHERE artist_id = '%d'", $show['show_artist_id'])
-		);
-		$venue = $wpdb->get_results(
-			$wpdb->prepare("SELECT venue_name, venue_city FROM " . GIGPRESS_VENUES . " WHERE venue_id = '%d'", $show['show_venue_id']),
-		ARRAY_A);
-		
-		// Prepare the post title
-		$token_title = (isset($_POST['show_related_title'])) ? stripslashes(strip_tags(trim($_POST['show_related_title']))) : $gpo['default_title'];
-		$find = array('%date%', '%long_date%', '%artist%', '%venue%', '%city%');
-		$replace = array(
-			mysql2date($gpo['date_format'], $show['show_date']),
-			mysql2date($gpo['date_format_long'], $show['show_date']),
-			gigpress_db_in($artist),
-			gigpress_db_in($venue[0]['venue_name']),
-			gigpress_db_in($venue[0]['venue_city'])
-		);
-		
-		$post_date = ($_POST['show_related_date'] == 'show') ? $show['show_date'] . ' ' . $show['show_time'] : '';
-		
-		$related_post = array(
-			'post_title' => str_replace($find, $replace, $token_title),
-			'post_category' => array($gpo['related_category']),
-			'post_date' => $post_date,
-			'post_status' => "publish",
-			'post_content' => ''
-		);
-		
-		$insert = wp_insert_post($related_post);
+	if ($mode === 'update' && (!preg_match('/\A[1-9][0-9]*\z/', $raw['show_id'] ?? '') || strlen($raw['show_id'] ?? '') > 18)) $errors['show_id'] = __('The show identity is invalid. Open it again from the show list.', 'gigpress');
+	return $errors;
+}
 
-		if ( $insert == 0 ) {
-			$show['show_related'] = 0;
-			$errors[] = __("We had trouble creating your Related Post. Sorry.", "gigpress");
+function gigpress_prepare_show_fields($context = 'new', $raw = null) {
+	global $wpdb;
+	if ($raw === null) $raw = gigpress_show_raw_state();
+	$mode = $context === 'edit' ? 'update' : 'add';
+	$prepared = array('fields' => array(), 'field_errors' => gigpress_show_validate($raw, $mode), 'system_errors' => array(),
+		'created_ids' => gigpress_show_completed_ids($raw), 'raw_state' => $raw);
+	if ($prepared['field_errors']) return $prepared;
+	$gpo = get_option('gigpress_settings');
+	$date = gigpress_show_received_date($raw);
+	$hour = $raw['gp_hh'] ?? 'na';
+	$minute = $raw['gp_min'] ?? 'na';
+	$show = array('show_date' => $date, 'show_time' => $hour === 'na' ? '00:00:01' : sprintf('%02d:%02d:00', (int) $hour, $minute === 'na' ? 0 : (int) $minute),
+		'show_multi' => ($raw['show_multi'] ?? '') === '1' ? 1 : 0,
+		'show_expire' => ($raw['show_multi'] ?? '') === '1' ? gigpress_show_received_date($raw, true) : $date,
+		'show_status' => $raw['show_status'] ?? 'active');
+	foreach (array('show_price', 'show_tix_phone', 'show_ages') as $field) $show[$field] = sanitize_text_field(trim($raw[$field] ?? ''));
+	foreach (array('show_tix_url', 'show_external_url', 'show_notes') as $field) $show[$field] = wp_kses_post(trim($raw[$field] ?? ''));
+
+	/* Validate the whole form before the first creation, then stop at the first failed substep. */
+	foreach (array('artist' => 'show_artist_id', 'venue' => 'show_venue_id', 'tour' => 'show_tour_id', 'post' => 'show_related') as $kind => $field) {
+		$value = $raw[$field] ?? '0';
+		if ($value !== 'new') {
+			$show[$field] = (int) $value;
+			continue;
 		}
-		else
-		{
-			$show['show_related'] = $insert;
+		if ($kind === 'artist') {
+			$name = sanitize_text_field(trim($raw['artist_name']));
+			$data = array('artist_name' => $name, 'artist_alpha' => preg_replace('/^the /iu', '', strtolower($name)), 'artist_url' => wp_kses_post(trim($raw['artist_url'] ?? '')));
+			$write = $wpdb->insert(GIGPRESS_ARTISTS, $data);
+			$id = $write === false ? 0 : (int) $wpdb->insert_id;
+		} elseif ($kind === 'venue') {
+			$data = array();
+			foreach (array('venue_name', 'venue_address', 'venue_city', 'venue_state', 'venue_postal_code', 'venue_country', 'venue_url', 'venue_phone') as $key) {
+				$data[$key] = $key === 'venue_url' ? wp_kses_post(trim($raw[$key] ?? '')) : sanitize_text_field(trim($raw[$key] ?? ''));
+			}
+			$write = $wpdb->insert(GIGPRESS_VENUES, $data);
+			$id = $write === false ? 0 : (int) $wpdb->insert_id;
+		} elseif ($kind === 'tour') {
+			$write = $wpdb->insert(GIGPRESS_TOURS, array('tour_name' => sanitize_text_field(trim($raw['tour_name']))));
+			$id = $write === false ? 0 : (int) $wpdb->insert_id;
+		} else {
+			$artist = $wpdb->get_var($wpdb->prepare('SELECT artist_name FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_id = %d', $show['show_artist_id']));
+			$venue = $wpdb->get_row($wpdb->prepare('SELECT venue_name, venue_city FROM ' . GIGPRESS_VENUES . ' WHERE venue_id = %d', $show['show_venue_id']), ARRAY_A);
+			$title = strip_tags(trim($raw['show_related_title'] ?? $gpo['default_title']));
+			$title = str_replace(array('%date%', '%long_date%', '%artist%', '%venue%', '%city%'), array(mysql2date($gpo['date_format'], $date), mysql2date($gpo['date_format_long'], $date), $artist, $venue['venue_name'], $venue['venue_city']), $title);
+			$write = wp_insert_post(wp_slash(array('post_title' => $title, 'post_category' => array($gpo['related_category']),
+				'post_date' => ($raw['show_related_date'] ?? $gpo['related_date']) === 'show' ? $date . ' ' . $show['show_time'] : '',
+				'post_status' => 'publish', 'post_content' => '')), true);
+			$id = is_wp_error($write) ? 0 : (int) $write;
 		}
-		
-		$gpo['default_title'] = $token_title;
-		$gpo['related_date'] = gigpress_db_in($_POST['show_related_date']);
+		if ($id === 0) {
+			$labels = array('artist' => __('artist', 'gigpress'), 'venue' => __('venue', 'gigpress'), 'tour' => __('tour', 'gigpress'), 'post' => __('related post', 'gigpress'));
+			$prepared['system_errors'][] = sprintf(__('The new %s could not be created. Keep these values and retry. Entries already created are selected below.', 'gigpress'), $labels[$kind]);
+			$prepared['fields'] = $show;
+			return $prepared;
+		}
+		$show[$field] = $id;
+		$prepared['created_ids'][$kind] = $id;
+		$prepared['raw_state'][$field] = (string) $id;
+		$prepared['raw_state']['created_' . $kind . '_id'] = (string) $id;
 	}
-	else
-	{
-		$show['show_related'] = absint($_POST['show_related']);
+	$prepared['fields'] = $show;
+	return $prepared;
+}
+
+function gigpress_show_save($mode) {
+	global $wpdb;
+	$raw = gigpress_show_raw_state();
+	$outcome = array('status' => 'invalid', 'mode' => $mode, 'raw_state' => $raw, 'field_errors' => array(), 'system_errors' => array(), 'created_ids' => gigpress_show_completed_ids($raw));
+	$gpo = get_option('gigpress_settings');
+	if (!current_user_can($gpo['user_level'])) {
+		$outcome['status'] = 'blocked';
+		$outcome['system_errors'][] = __('You do not have permission to save shows. Ask a site administrator for access.', 'gigpress');
+		return $outcome;
 	}
-	
-	if($context == 'new')
-	{
-		// Sticky stuff for the next entry
-		$gpo['default_date'] = $show['show_date'];
-		$gpo['default_time'] = $show['show_time'];
-		$gpo['default_ages'] = $show['show_ages'];
-		$gpo['default_artist'] = $show['show_artist_id'];
-		$gpo['default_venue'] = $show['show_venue_id'];
-		$gpo['default_tour'] = $show['show_tour_id'];
+	check_admin_referer('gigpress-action');
+	/* Reuse the readiness guard without its legacy output: this form renders its own actionable outcome. */
+	ob_start();
+	$ready = gigpress_require_database_ready();
+	ob_end_clean();
+	if (!$ready) {
+		$outcome['status'] = 'blocked';
+		$outcome['system_errors'][] = __('Show data is unavailable while its upgrade is paused. Keep these values and retry after your site administrator resolves the database condition.', 'gigpress');
+		return $outcome;
+	}
+	$outcome['field_errors'] = gigpress_show_validate($raw, $mode);
+	$id = 0;
+	if ($mode === 'update' && !isset($outcome['field_errors']['show_id'])) {
+		$id = (int) ($raw['show_id'] ?? 0);
+		$existing = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . GIGPRESS_SHOWS . ' WHERE show_id = %d', $id), ARRAY_A);
+		if (!$existing) {
+			$outcome['status'] = 'failed';
+			$outcome['system_errors'][] = __('This show is no longer available. Return to the show list and open the show you want to edit.', 'gigpress');
+			return $outcome;
+		}
+		$outcome['show_id'] = $id;
+	}
+	if ($outcome['field_errors']) return $outcome;
+	$prepared = gigpress_prepare_show_fields($mode === 'add' ? 'new' : 'edit', $raw);
+	foreach (array('raw_state', 'field_errors', 'system_errors', 'created_ids') as $key) $outcome[$key] = $prepared[$key];
+	if ($prepared['field_errors'] || $prepared['system_errors']) {
+		$outcome['status'] = $prepared['field_errors'] ? 'invalid' : 'failed';
+		return $outcome;
+	}
+	$show = $prepared['fields'];
+	$write = $mode === 'add' ? $wpdb->insert(GIGPRESS_SHOWS, $show)
+		: $wpdb->update(GIGPRESS_SHOWS, $show, array('show_id' => $id), null, array('%d'));
+	if ($mode === 'add') $id = $write === false ? 0 : (int) $wpdb->insert_id;
+	$saved = $id > 0 ? $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . GIGPRESS_SHOWS . ' WHERE show_id = %d', $id), ARRAY_A) : null;
+	$matches = $saved !== null;
+	foreach ($show as $field => $value) if (!$saved || (string) $saved[$field] !== (string) $value) $matches = false;
+	if ($write === false || !$matches) {
+		$outcome['status'] = 'failed';
+		$outcome['system_errors'][] = __('The show could not be saved. Keep these values and try saving again. Entries already created are selected below.', 'gigpress');
+		return $outcome;
+	}
+	$outcome['status'] = 'saved';
+	$outcome['show_id'] = $id;
+	if ($mode === 'add') {
+		foreach (array('date','time','ages','artist_id','venue_id','tour_id') as $key) {
+			$setting = array('artist_id' => 'artist', 'venue_id' => 'venue', 'tour_id' => 'tour')[$key] ?? $key;
+			$gpo['default_' . $setting] = $show['show_' . $key];
+		}
+		if (($raw['show_venue_id'] ?? '') === 'new') $gpo['default_country'] = $raw['venue_country'];
+		if (($raw['show_related'] ?? '') === 'new') {
+			$gpo['default_title'] = strip_tags(trim($raw['show_related_title'] ?? $gpo['default_title']));
+			$gpo['related_date'] = $raw['show_related_date'] ?? $gpo['related_date'];
+		}
 		update_option('gigpress_settings', $gpo);
 	}
-	
-	// Not doing anything with $errors I suppose? Was I on crack when I wrote this?
-	
-	return $show;
+	/* Preserve output for established handler callers, while returning machine-readable success. */
+	gigpress_show_outcome_notice($outcome);
+	$_POST = array();
+	return $outcome;
 }
+
+function gigpress_show_outcome_notice($outcome) {
+	if ($outcome['status'] === 'saved') {
+		echo '<div id="message" class="notice notice-success" role="status" tabindex="-1"><p>' . esc_html($outcome['mode'] === 'add'
+			? __('Your show was successfully added. Add another show below.', 'gigpress') : __('Your show was successfully updated.', 'gigpress')) . ' ';
+		echo '<a href="' . esc_url(admin_url('admin.php?page=gigpress/gigpress.php&gpaction=edit&show_id=' . $outcome['show_id'])) . '">' . esc_html__('Edit saved show', 'gigpress') . '</a> | ';
+		echo '<a href="' . esc_url(admin_url('admin.php?page=gigpress-shows')) . '">' . esc_html__('View list', 'gigpress') . '</a></p></div>';
+		return;
+	}
+	echo '<div id="gigpress-errors" class="notice notice-error" role="alert" tabindex="-1"><p>' . esc_html__('The show has not been saved. Correct the fields below or retry after the problem is resolved.', 'gigpress') . '</p>';
+	if ($outcome['field_errors']) {
+		echo '<ul>';
+		foreach ($outcome['field_errors'] as $field => $error) echo '<li><a href="#' . esc_attr($field) . '">' . esc_html($error) . '</a></li>';
+		echo '</ul>';
+	}
+	foreach ($outcome['system_errors'] as $error) echo '<p>' . esc_html($error) . '</p>';
+	echo '<p><a href="' . esc_url(admin_url('admin.php?page=gigpress-shows')) . '">' . esc_html__('View list', 'gigpress') . '</a></p></div>';
+}
+
+function gigpress_add_show() { return gigpress_show_save('add'); }
+function gigpress_update_show() { return gigpress_show_save('update'); }
 
 
 function gigpress_prepare_venue_fields() {
@@ -201,23 +288,7 @@ function gigpress_error_checking($context) {
 	
 	switch($context) {
 		case 'show':
-			if(empty($_POST['show_venue_id']))
-				$errors['show_venue_id'] = __("You must select a venue.", "gigpress");
-			if(empty($_POST['show_artist_id']))
-				$errors['artist_name'] = __("You must select an artist.", "gigpress");
-			if($_POST['show_artist_id'] == 'new' && empty($_POST['artist_name']))
-				$errors['artist_name'] = __("You must enter an artist name.", "gigpress");
-			if($_POST['show_venue_id'] == 'new' && empty($_POST['venue_name']))
-				$errors['venue_name'] = __("You must enter a venue name.", "gigpress");
-			if($_POST['show_venue_id'] == 'new' && empty($_POST['venue_city']))
-				$errors['venue_city'] = __("You must enter a city.", "gigpress");
-			if($_POST['show_tour_id'] == 'new' && empty($_POST['tour_name']))
-				$errors['tour_name'] = __("You must enter a tour name.", "gigpress");
-			if(!checkdate($_POST['gp_mm'], $_POST['gp_dd'], $_POST['gp_yy']))
-				$errors['show_date'] = __("That's not a valid date.", "gigpress");
-			if(isset($_POST['show_multi']) && !checkdate($_POST['exp_mm'], $_POST['exp_dd'], $_POST['exp_yy']))
-				$errors['expire_date'] = __("That's not a valid end date.", "gigpress");	
-			break;
+			return gigpress_show_validate(gigpress_show_raw_state(), ($_POST['gpaction'] ?? 'add') === 'update' ? 'update' : 'add');
 		case 'artist':
 			if(empty($_POST['artist_name']))
 				$errors['artist_name'] = __("You must enter an artist name.", "gigpress");
@@ -235,69 +306,6 @@ function gigpress_error_checking($context) {
 	}
 
 	return $errors;
-}
-
-
-/* Explicit outcomes keep successful saves distinct from recoverable failures. */
-function gigpress_show_calendar_date($value) {
-	if (!is_string($value) || !preg_match('/\A([0-9]{4})-([0-9]{2})-([0-9]{2})\z/', $value, $parts)) return false;
-	return checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]) ? $value : false;
-}
-
-function gigpress_show_save($mode) {
-	global $wpdb;
-	$raw = array();
-	foreach ($_POST as $key => $value) $raw[$key] = is_scalar($value) ? wp_unslash((string) $value) : '';
-	$outcome = array('status' => 'invalid', 'mode' => $mode, 'raw_state' => $raw, 'field_errors' => array(), 'system_errors' => array(), 'created_ids' => array());
-	$gpo = get_option('gigpress_settings');
-	if (!current_user_can($gpo['user_level'])) {
-		$outcome['status'] = 'blocked';
-		$outcome['system_errors'][] = __('You do not have permission to save shows. Ask a site administrator for access.', 'gigpress');
-		return $outcome;
-	}
-	check_admin_referer('gigpress-action');
-	if (!gigpress_require_database_ready()) {
-		$outcome['status'] = 'blocked';
-		$outcome['system_errors'][] = __('Show data is unavailable while its upgrade is paused. Keep these values and retry after your site administrator resolves the database condition.', 'gigpress');
-		return $outcome;
-	}
-	if (array_key_exists('show_date', $_POST)) {
-		$date = gigpress_show_calendar_date($raw['show_date']);
-		if ($date === false) {
-			$outcome['field_errors']['show_date'] = __('Enter a valid date in YYYY-MM-DD format.', 'gigpress');
-			return $outcome;
-		}
-		list($_POST['gp_yy'], $_POST['gp_mm'], $_POST['gp_dd']) = explode('-', $date);
-	}
-	$outcome['field_errors'] = gigpress_error_checking('show');
-	if ($outcome['field_errors']) return $outcome;
-	$show = gigpress_prepare_show_fields($mode === 'add' ? 'new' : 'edit');
-	$id = $mode === 'update' ? absint($_POST['show_id'] ?? 0) : 0;
-	$write = $mode === 'add' ? $wpdb->insert(GIGPRESS_SHOWS, $show)
-		: $wpdb->update(GIGPRESS_SHOWS, $show, array('show_id' => $id), null, array('%d'));
-	if ($mode === 'add') $id = (int) $wpdb->insert_id;
-	if ($write === false || $id === 0) {
-		$outcome['status'] = 'failed';
-		$outcome['system_errors'][] = __('The show could not be saved. Keep these values and try saving again.', 'gigpress');
-		return $outcome;
-	}
-	$outcome['status'] = 'saved';
-	$outcome['show_id'] = $id;
-	echo '<div id="message" class="notice notice-success" role="status"><p>' . esc_html($mode === 'add'
-		? __('Your show was successfully added. Add another show below.', 'gigpress')
-		: __('Your show was successfully updated.', 'gigpress')) . ' ';
-	echo '<a href="' . esc_url(admin_url('admin.php?page=gigpress/gigpress.php&gpaction=edit&show_id=' . $id)) . '">' . esc_html__('Edit saved show', 'gigpress') . '</a> | ';
-	echo '<a href="' . esc_url(admin_url('admin.php?page=gigpress-shows')) . '">' . esc_html__('View list', 'gigpress') . '</a></p></div>';
-	$_POST = array();
-	return $outcome;
-}
-
-function gigpress_add_show() {
-	return gigpress_show_save('add');
-}
-
-function gigpress_update_show() {
-	return gigpress_show_save('update');
 }
 
 

@@ -57,9 +57,9 @@ function gigpress_administration_entry_case($case) {
         $checks['invalid_date_no_side_effects'] = $before === gigpress_administration_entry_snapshot();
         $checks['invalid_date_editable'] = preg_match('/type="text"[^>]*name="show_date"[^>]*value="2032-02-31"/', $result['html']) === 1;
         $checks['linked_field_error'] = strpos($result['html'], 'href="#show_date"') !== false && strpos($result['html'], 'id="show_date-error"') !== false;
-        $checks['all_new_markers_retained'] = substr_count($result['html'], 'value="new" selected="selected"') === 4;
+        $checks['all_new_markers_retained'] = preg_match_all('/value="new" selected=[\'"]selected[\'"]/', $result['html']) === 4;
         $checks['notes_escaped_exactly'] = strpos($result['html'], esc_textarea($hostile) . '</textarea>') !== false && strpos($result['html'], '<script>') === false;
-        $checks['radio_and_checked_state_retained'] = strpos($result['html'], 'value="show" checked="checked"') !== false && preg_match('/id="show_multi"[^>]*checked="checked"/', $result['html']) === 1;
+        $checks['radio_and_checked_state_retained'] = preg_match('/value="show" checked=[\'"]checked[\'"]/', $result['html']) === 1 && preg_match('/id="show_multi"[^>]*checked=[\'"]checked[\'"]/', $result['html']) === 1;
         if ($checks['invalid_date_editable']) $checks = array_merge($checks, gigpress_administration_entry_recovery_checks($request, $bad, $hostile));
     }
     return array('case' => $case, 'checks' => $checks);
@@ -123,10 +123,14 @@ function gigpress_administration_entry_recovery_checks($request, $bad, $hostile)
     foreach (array('abc', array('1')) as $i => $value) $checks['invalid_edit_id_' . $i] = gigpress_administration_entry_request(array_merge($edit, array('show_id' => $value)))['outcome']['status'] === 'invalid';
     $copy = gigpress_administration_entry_request($request)['outcome'];
     $checks['copy_source_immutable'] = $copy['show_id'] !== $id && $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . GIGPRESS_SHOWS . ' WHERE show_id = %d', $id), ARRAY_A) === $row;
+    // A deliberately invalid historical row needs MariaDB's invalid-date fixture mode.
+    $sqlMode = $wpdb->get_var('SELECT @@SESSION.sql_mode');
+    $wpdb->query("SET SESSION sql_mode = 'ALLOW_INVALID_DATES'");
     $wpdb->query($wpdb->prepare('UPDATE ' . GIGPRESS_SHOWS . ' SET show_date = %s WHERE show_id = %d', '2032-02-31', $id));
     $view = gigpress_administration_entry_request(array(), true, array('gpaction' => 'edit', 'show_id' => $id));
     $checks['impossible_stored_date_editable'] = strpos($view['html'], 'value="2032-02-31"') !== false && preg_match('/type="text"[^>]*name="show_date"/', $view['html']) === 1;
     $wpdb->update(GIGPRESS_SHOWS, array('show_date' => $row['show_date']), array('show_id' => $id));
+    $wpdb->query($wpdb->prepare('SET SESSION sql_mode = %s', $sqlMode));
     $before = gigpress_administration_entry_snapshot();
     $adminId = get_current_user_id();
     wp_set_current_user(0);

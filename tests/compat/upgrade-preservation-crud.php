@@ -1,7 +1,7 @@
 <?php
 /* Mutation coverage for the reconstructed upgraded 1.4 fixture. */
 
-function gigpress_upgrade_preservation_request($handler, $request, $files = array()) {
+function gigpress_upgrade_preservation_request($handler, $request, $files = array(), &$outcome = null) {
 	$nonce = wp_create_nonce('gigpress-action');
 	$_GET = $request;
 	$_POST = $request;
@@ -10,7 +10,7 @@ function gigpress_upgrade_preservation_request($handler, $request, $files = arra
 	$_GET['_wpnonce'] = $nonce;
 	$_POST['_wpnonce'] = $nonce;
 	ob_start();
-	call_user_func($handler);
+	$outcome = call_user_func($handler);
 	return ob_get_clean();
 }
 
@@ -55,7 +55,7 @@ function gigpress_upgrade_preservation_show_request($show, $overrides = array())
 		'show_multi' => (int) $show['show_multi'],
 		'exp_mm' => $expire[1], 'exp_dd' => $expire[2], 'exp_yy' => $expire[0],
 		'show_price' => $show['show_price'], 'show_tix_url' => $show['show_tix_url'],
-		'show_tix_phone' => $show['show_tix_phone'], 'show_external_url' => $show['show_external_url'],
+		'show_tix_phone' => $show['show_tix_phone'], 'show_external_url' => (string) ($show['show_external_url'] ?? ''),
 		'show_ages' => $show['show_ages'], 'show_notes' => $show['show_notes'],
 		'show_status' => $show['show_status'], 'show_artist_id' => (int) $show['show_artist_id'],
 		'show_venue_id' => (int) $show['show_venue_id'], 'show_tour_id' => (int) $show['show_tour_id'],
@@ -157,26 +157,28 @@ function gigpress_upgrade_preservation_run_show_lifecycle() {
 		'gp_yy' => '2032', 'gp_mm' => '05', 'gp_dd' => '06', 'exp_yy' => '2032', 'exp_mm' => '05', 'exp_dd' => '08',
 		'show_notes' => 'Created after upgrade', 'show_status' => 'active',
 	));
-	gigpress_upgrade_preservation_request('gigpress_add_show', $addRequest);
-	$createdId = (int) $wpdb->insert_id;
+	// Keep the legacy component request; successful identity now comes from the explicit outcome.
+	gigpress_upgrade_preservation_request('gigpress_add_show', $addRequest, array(), $addOutcome);
+	$createdId = (int) ($addOutcome['show_id'] ?? 0);
 	$created = gigpress_upgrade_preservation_show_row($createdId);
-	$ok = $ok && $createdId > 0 && $created && $created['show_notes'] === 'Created after upgrade'
+	if (!$created) return array('status' => 'FAIL', 'case' => 'show-lifecycle', 'fixture' => 'reconstructed-1.4', 'manifest_matches' => false, 'repeat_matches' => false, 'add_outcome' => $addOutcome);
+	$ok = $ok && ($addOutcome['status'] ?? '') === 'saved' && $createdId > 0 && $created && $created['show_notes'] === 'Created after upgrade'
 		&& (int) $created['show_artist_id'] === (int) $source['show_artist_id']
 		&& (int) $created['show_venue_id'] === (int) $source['show_venue_id']
 		&& (int) $created['show_tour_id'] === (int) $source['show_tour_id']
 		&& (int) $created['show_related'] === (int) $source['show_related'];
 
 	$editRequest = gigpress_upgrade_preservation_show_request($created, array('show_id' => $createdId, 'show_notes' => 'Edited after upgrade'));
-	gigpress_upgrade_preservation_request('gigpress_update_show', $editRequest);
+	gigpress_upgrade_preservation_request('gigpress_update_show', $editRequest, array(), $editOutcome);
 	$edited = gigpress_upgrade_preservation_show_row($createdId);
-	$ok = $ok && $edited && (int) $edited['show_id'] === $createdId && $edited['show_notes'] === 'Edited after upgrade';
+	$ok = $ok && ($editOutcome['status'] ?? '') === 'saved' && $edited && (int) $edited['show_id'] === $createdId && $edited['show_notes'] === 'Edited after upgrade';
 
 	$copyRequest = gigpress_upgrade_preservation_show_request($source, array('show_notes' => 'Copied after upgrade'));
-	gigpress_upgrade_preservation_request('gigpress_add_show', $copyRequest);
-	$copyId = (int) $wpdb->insert_id;
+	gigpress_upgrade_preservation_request('gigpress_add_show', $copyRequest, array(), $copyOutcome);
+	$copyId = (int) ($copyOutcome['show_id'] ?? 0);
 	$copy = gigpress_upgrade_preservation_show_row($copyId);
 	$sourceAfterCopy = gigpress_upgrade_preservation_show_row(109);
-	$ok = $ok && $copyId > 0 && $copyId !== 109 && $copy && $sourceAfterCopy === $source
+	$ok = $ok && ($copyOutcome['status'] ?? '') === 'saved' && $copyId > 0 && $copyId !== 109 && $copy && $sourceAfterCopy === $source
 		&& (int) $copy['show_artist_id'] === (int) $source['show_artist_id']
 		&& (int) $copy['show_venue_id'] === (int) $source['show_venue_id']
 		&& (int) $copy['show_tour_id'] === (int) $source['show_tour_id']
@@ -224,8 +226,8 @@ function gigpress_upgrade_preservation_run_optional_request_fields() {
 		'venue_city' => 'Vienna', 'venue_country' => 'AT', 'show_tour_id' => 29,
 		'show_related' => 0, 'show_status' => 'active',
 	);
-	gigpress_upgrade_preservation_request('gigpress_add_show', $request);
-	$show = gigpress_upgrade_preservation_show_row((int) $wpdb->insert_id);
+	gigpress_upgrade_preservation_request('gigpress_add_show', $request, array(), $outcome);
+	$show = gigpress_upgrade_preservation_show_row((int) ($outcome['show_id'] ?? 0));
 	$venue = $show ? $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . GIGPRESS_VENUES . ' WHERE venue_id = %d', $show['show_venue_id']), ARRAY_A) : null;
 	$warnings = array_slice($pluginErrors, $warningCount);
 	$showOptional = array('show_price', 'show_tix_url', 'show_tix_phone', 'show_external_url', 'show_ages', 'show_notes');
