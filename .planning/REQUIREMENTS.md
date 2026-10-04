@@ -9,7 +9,7 @@ Requirements for the first compatibility and UX delivery. Each maps to a roadmap
 
 ### Platform Compatibility
 
-- [ ] **COMP-01**: GigPress declares WordPress 7.0 and PHP 8.3 as its minimum versions in its plugin metadata and readme; its tested-up-to version reflects a WordPress release that has passed the project’s compatibility checks.
+- [x] **COMP-01**: GigPress declares WordPress 7.0 and PHP 8.3 as its minimum versions in its plugin metadata and readme; its tested-up-to version reflects a WordPress release that has passed the project’s compatibility checks.
 - [x] **COMP-02**: GigPress activates and completes its existing administration, public-display, feed, and CSV workflows on WordPress 7.0 and the latest 7.1 release with PHP 8.3 and every newer PHP release branch still supported upstream at validation time, without PHP warnings or fatal errors in those workflows.
 - [x] **COMP-03**: A controlled late-menu fixture reproduces the exact reported `separator-gigpress` key and is attributed by the repository diagnostic; GigPress’s own equivalent late `separator-gp` mutation is corrected so this checkout’s admin menu is warning-free on the supported WordPress/PHP matrix. Because the reported installation is unavailable and this repository has no `separator-gigpress` occurrence, the original live site’s callback identity is recorded as unprovable from repository evidence rather than inferred from the fixture.
 - [x] **COMP-04**: An already-active GigPress installation below PHP 8.3 remains active but inert: before plugin modules or normal hooks/functions load, an early guard registers only a persistent compatibility notice for users who can manage plugins and returns. The notice repeats on later authorized admin requests while the runtime remains below PHP 8.3, is absent for unauthorized users and public requests, and disappears automatically when PHP 8.3+ returns; new activation below the floor is blocked by the `Requires PHP: 8.3` header.
@@ -63,7 +63,7 @@ Which phases cover which requirements.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| COMP-01 | Phase 1 | Pending |
+| COMP-01 | Phase 1 | Complete |
 | COMP-02 | Phase 1 | Complete |
 | COMP-03 | Phase 1 | Complete |
 | COMP-04 | Phase 1 | Complete |

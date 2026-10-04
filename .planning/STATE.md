@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Compatibility Baseline and Menu Diagnosis
 status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-10-03T21:00:48.198Z"
+stopped_at: Completed 01-03-PLAN.md
+last_updated: "2026-10-04T06:33:58.840Z"
 last_activity: 2026-10-03
 last_activity_desc: Phase 01 execution started
-state_head: e30375c9273763c673e744224725375393cdafc0
+state_head: 448860009a80db3053a6d7025a5e9071087cab8f
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 5
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 ## Current Position
 
 Phase: 01 (Compatibility Baseline and Menu Diagnosis) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-10-03 — Phase 01 execution started
 
@@ -58,6 +58,7 @@ Progress: ░░░░░░░░░░ [░░░░░░░░░░] 0%
 |------|----------|-------|-------|
 | Phase 01 P01 | 36min | 3 tasks | 9 files |
 | Phase 01 P02 | 8min | 2 tasks | 5 files |
+| Phase 01 P03 | 14min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,8 @@ Recent decisions affecting current work:
 - [Phase 01]: Real GigPress runtime-floor execution fails closed until Plan 01-03 adds the production guard.
 - [Phase 01]: The exact separator-gigpress reproduction is attributed only to the controlled fixture callback at priority 20.
 - [Phase 01]: GigPress separator-gp is independently actionable while the unavailable live callback remains unproven.
+- [Phase 01]: Declared WordPress 7.0 and PHP 8.3 floors in plugin and readme metadata.
+- [Phase 01]: Below PHP 8.3, GigPress remains active but registers only an escaped activate_plugins-scoped compatibility notice.
 
 ### Pending Todos
 
@@ -96,6 +99,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-03T21:00:48.183Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-10-04T06:33:58.824Z
+Stopped at: Completed 01-03-PLAN.md
 Resume file: None
