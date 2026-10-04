@@ -40,6 +40,36 @@ function gigpress_upgrade_preservation_manifest_matches($fixture, $snapshot) {
     return array($checks, !in_array(false, $checks, true));
 }
 
+function gigpress_upgrade_preservation_retry_after_artist_insert_title_change() {
+	global $upgrade_preservation_seed, $upgradeFailurePoint, $wpdb;
+	$fixture = gigpress_upgrade_preservation_fixture('1.3');
+	if (!is_array($fixture)) return array('passed' => false, 'reason' => 'fixture unavailable');
+	unset($fixture['settings']['band']);
+	$originalTitle = get_option('blogname');
+	update_option('blogname', 'Original retry title');
+	$seeded = upgrade_preservation_seed($fixture);
+	$upgradeFailurePoint = 'after_artist_insert';
+	unset($GLOBALS['gigpress_db_bootstrap_result']);
+	$blocked = gigpress_db_bootstrap();
+	$created = $wpdb->get_row($wpdb->prepare('SELECT artist_id, artist_name FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_name = %s', 'Original retry title'), ARRAY_A);
+	update_option('blogname', 'Changed retry title');
+	$upgradeFailurePoint = null;
+	unset($GLOBALS['gigpress_db_bootstrap_result']);
+	$retry = gigpress_db_bootstrap();
+	$artistCount = (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . GIGPRESS_ARTISTS);
+	$changedCount = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_name = %s', 'Changed retry title'));
+	$showArtistIds = array_unique(array_map('intval', (array) $wpdb->get_col('SELECT show_artist_id FROM ' . GIGPRESS_SHOWS)));
+	update_option('blogname', $originalTitle);
+	$passed = $seeded
+		&& $blocked['status'] === 'blocked'
+		&& is_array($created)
+		&& $retry['status'] === 'ready'
+		&& $artistCount === 1
+		&& $changedCount === 0
+		&& $showArtistIds === array((int) $created['artist_id']);
+	return array('passed' => $passed, 'blocked' => $blocked, 'retry' => $retry, 'artist_count' => $artistCount, 'changed_count' => $changedCount, 'show_artist_ids' => $showArtistIds);
+}
+
 function gigpress_upgrade_preservation_run_versions($versions) {
     global $upgrade_preservation_seed, $upgradeFailurePoint;
     $passes = true; $details = array();
@@ -85,7 +115,9 @@ function gigpress_upgrade_preservation_run_versions($versions) {
         $passes = $passes && $ready['status'] === 'ready' && $repeat['status'] === 'ready' && $matches && $first === $second && $retries;
         $details[$version] = array('checks' => $checks, 'repeat' => $first === $second, 'retries' => $retries, 'retry_failures' => $retryFailures, 'seeded' => $seeded, 'actual_show_ids' => array_map('intval', array_column($first['shows'], 'show_id')));
     }
-    return array('status' => $passes ? 'PASS' : 'FAIL', 'fixtures' => $details);
+	$titleChange = in_array('1.3', $versions, true) ? gigpress_upgrade_preservation_retry_after_artist_insert_title_change() : null;
+	$passes = $passes && ($titleChange === null || $titleChange['passed']);
+	return array('status' => $passes ? 'PASS' : 'FAIL', 'fixtures' => $details, 'artist_retry_title_change' => $titleChange);
 }
 
 function gigpress_upgrade_preservation_run_current() {

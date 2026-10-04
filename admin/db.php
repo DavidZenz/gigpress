@@ -231,21 +231,40 @@ function gigpress_db_upgrade_130_verified() {
 function gigpress_db_upgrade_140_verified(&$journal) {
 	global $wpdb, $gpo;
 	if (gigpress_db_upgrade_should_fail('before_upgrade_140')) return false;
-	$artistName = array_key_exists('band', $gpo) && $gpo['band'] !== '' ? strip_tags($gpo['band']) : get_bloginfo('name');
-	$artistIds = array_map('intval', (array) $wpdb->get_col($wpdb->prepare('SELECT artist_id FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_name = %s', $artistName)));
-	if (count($artistIds) > 1) return false;
-	if (!$artistIds) {
+	$artistJournal = $journal['upgrade_140']['artist'] ?? null;
+	if ($artistJournal !== null && (!is_array($artistJournal) || !isset($artistJournal['name'], $artistJournal['id']) || !is_string($artistJournal['name']))) return false;
+	if ($artistJournal === null) {
+		$artistJournal = array(
+			'name' => array_key_exists('band', $gpo) && $gpo['band'] !== '' ? strip_tags($gpo['band']) : get_bloginfo('name'),
+			'id' => 0,
+		);
+		$journal['upgrade_140']['artist'] = $artistJournal;
+		if (!gigpress_db_store_journal($journal)) return false;
+	}
+	$artistName = $artistJournal['name'];
+	$artistId = (int) $artistJournal['id'];
+	if ($artistId > 0) {
+		$storedArtist = $wpdb->get_row($wpdb->prepare('SELECT artist_id, artist_name FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_id = %d', $artistId), ARRAY_A);
+		if (!$storedArtist || (int) $storedArtist['artist_id'] !== $artistId || $storedArtist['artist_name'] !== $artistName) return false;
+	} else {
+		$artistIds = array_map('intval', (array) $wpdb->get_col($wpdb->prepare('SELECT artist_id FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_name = %s', $artistName)));
+		if (count($artistIds) > 1) return false;
+		if ($artistIds) {
+			$artistId = $artistIds[0];
+		} else {
 		if (gigpress_db_upgrade_should_fail('before_artist_insert')) return false;
 		$alpha = preg_replace('/^the\s+/ui', '', strtolower($artistName));
 		if ($wpdb->insert(GIGPRESS_ARTISTS, array('artist_name' => $artistName, 'artist_alpha' => $alpha, 'artist_order' => 0), array('%s', '%s', '%d')) === false) return false;
-		$artistIds = array((int) $wpdb->insert_id);
-		if ((int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_id = %d AND artist_name = %s', $artistIds[0], $artistName)) !== 1) return false;
-		$journal['created_ids']['artists'][$artistName] = $artistIds[0];
+		$artistId = (int) $wpdb->insert_id;
+		if ((int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_id = %d AND artist_name = %s', $artistId, $artistName)) !== 1) return false;
+		$journal['created_ids']['artists'][$artistName] = $artistId;
+		}
+		$journal['upgrade_140']['artist']['id'] = $artistId;
 		if (!gigpress_db_store_journal($journal) || gigpress_db_upgrade_should_fail('after_artist_insert')) return false;
 	}
-	$gpo['default_artist'] = $artistIds[0];
+	$gpo['default_artist'] = $artistId;
 	if (gigpress_db_upgrade_should_fail('before_artist_relationship')) return false;
-	$result = $wpdb->update(GIGPRESS_SHOWS, array('show_artist_id' => $artistIds[0]), array('show_artist_id' => 0), array('%d'), array('%d'));
+	$result = $wpdb->update(GIGPRESS_SHOWS, array('show_artist_id' => $artistId), array('show_artist_id' => 0), array('%d'), array('%d'));
 	if ($result === false || (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . GIGPRESS_SHOWS . ' WHERE show_artist_id = 0') !== 0) return false;
 	if (gigpress_db_upgrade_should_fail('after_artist_relationship')) return false;
 	$shows = (array) $wpdb->get_results('SELECT show_id, show_venue, show_address, show_locale, show_country, show_venue_phone, show_venue_url FROM ' . GIGPRESS_SHOWS . " WHERE show_venue != '' ORDER BY show_id", ARRAY_A);
