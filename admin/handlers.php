@@ -1,5 +1,15 @@
 <?php
 
+function gigpress_require_database_ready() {
+	$result = function_exists('gigpress_db_bootstrap') ? gigpress_db_bootstrap() : array('status' => 'blocked', 'code' => 'bootstrap_unavailable');
+	if (!is_array($result) || ($result['status'] ?? 'blocked') !== 'ready') {
+		$code = is_array($result) && !empty($result['code']) ? $result['code'] : 'unsafe_metadata';
+		echo '<div id="message" class="error fade"><p>' . esc_html(sprintf(__('GigPress data upgrade is paused (%s). Resolve the database condition before changing show data.', 'gigpress'), $code)) . '</p></div>';
+		return false;
+	}
+	return true;
+}
+
 // HANDLER: ADD A SHOW
 // ===================
 
@@ -224,6 +234,7 @@ function gigpress_add_show() {
 	$wpdb->show_errors();
 
 	check_admin_referer('gigpress-action');
+	if (!gigpress_require_database_ready()) return false;
 	
 	$errors = gigpress_error_checking('show');
 	
@@ -284,8 +295,9 @@ function gigpress_update_show() {
 	
 	// Check the nonce
 	check_admin_referer('gigpress-action');
+	if (!gigpress_require_database_ready()) return false;
 			
-	$errors = gigpress_error_checking('show');	
+	$errors = gigpress_error_checking('show');
 	
 	if($errors) {
 		echo('<div id="message" class="error fade">');
@@ -339,6 +351,7 @@ function gigpress_delete_show() {
 	
 	// Check the nonce
 	check_admin_referer('gigpress-action');
+	if (!gigpress_require_database_ready()) return false;
 	
 	if(is_array($_REQUEST['show_id'])) {
 		// We're deleting multiple shows, so we need to sanitize each id individually
@@ -726,7 +739,8 @@ function gigpress_undo($type) {
 	global $wpdb;
 	$wpdb->show_errors();
 	
-	check_admin_referer('gigpress-action');	
+	check_admin_referer('gigpress-action');
+	if (!gigpress_require_database_ready()) return false;
 	
 	if($type == "show") {
 		
