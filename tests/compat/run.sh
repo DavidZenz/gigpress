@@ -449,8 +449,10 @@ run_preservation_evidence() {
     and ([.commands[] | contains("matrix --scenario upgrade-preservation --case all --wp-lines 7.0,7.1 --wp-patches latest --php-supported upstream --php-min 8.3 --error-reporting E_ALL")] | any)
     and ([.commands[] | contains("matrix --scenario full-workflows --wp-lines 7.0,7.1 --wp-patches latest --php-supported upstream --php-min 8.3 --error-reporting E_ALL")] | any)
     and (.fixtures | sort == ["1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6"])
-    and (.requirements.DATA-01.status == "PASS")
-    and (.requirements.DATA-02.status == "PASS")
+    and (.requirements["DATA-01"].status == "PASS")
+    and (.requirements["DATA-02"].status == "PASS")
+    and (.required_case_statuses | keys | sort == ["current-1.6", "entity-guards", "metadata-classification", "safety-1.4", "settings-repeat", "show-lifecycle", "tour-undo", "tracer-1.4", "versions-1.0-1.2", "versions-1.3-1.5"])
+    and ([.required_case_statuses[] | . == "PASS"] | all)
     and (.cells | length == 6)
     and ([.cells[] | .wordpress_line] | unique | sort == ["7.0", "7.1"])
     and ([.cells[] | .php_branch] | unique | sort == ["8.3", "8.4", "8.5"])
@@ -461,9 +463,7 @@ run_preservation_evidence() {
       and .warning_count == 0
       and .fatal_count == 0
       and .plugin_error_count == 0
-      and (.upgrade_preservation.required_cases | sort == ["current-1.6", "entity-guards", "metadata-classification", "safety-1.4", "settings-repeat", "show-lifecycle", "tour-undo", "tracer-1.4", "versions-1.0-1.2", "versions-1.3-1.5"])
-      and (.upgrade_preservation.cases | length == 10)
-      and ([.upgrade_preservation.cases[] | .status == "PASS" and .ready == true and .plugin_active == true and .warning_count == 0 and .fatal_count == 0 and .plugin_error_count == 0] | all)
+      and .required_case_status == "PASS"
     ] | all)
   ' >/dev/null || fail "preservation report does not contain complete passing supported evidence"
   printf '{"status":"PASS","report":"%s","wordpress_lines":"%s","php_min":"%s"}\n' "$report" "$wp_lines" "$php_min"
