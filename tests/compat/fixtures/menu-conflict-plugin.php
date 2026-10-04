@@ -13,4 +13,13 @@ function gigpress_menu_conflict_late_add($menuOrder) {
     return $menuOrder;
 }
 
-add_filter('menu_order', 'gigpress_menu_conflict_late_add', 20);
+function gigpress_menu_conflict_order_only($menuOrder) {
+    $GLOBALS['gigpress_menu_order_conflict'] = true;
+    return $menuOrder;
+}
+
+if ((getenv('COMPAT_CONFLICT_MODE') ?: '') === 'exact-key-late-add') {
+    add_filter('menu_order', 'gigpress_menu_conflict_late_add', 20);
+} elseif ((getenv('COMPAT_CONFLICT_MODE') ?: '') === 'order-only') {
+    add_filter('menu_order', 'gigpress_menu_conflict_order_only', 5);
+}
