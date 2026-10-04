@@ -82,9 +82,9 @@ Plans:
   3. Site owners can find settings in clear groups with contextual help, while existing option keys, saved values, and setting meanings remain usable.
   4. Changed administration controls have associated labels and semantic table headings where applicable, work by keyboard, and provide text-based success and error feedback.
 
-**Plans**: 4 plans in 3 waves
+**Plans**: 1/4 plans executed in 3 waves
 **Wave 1**
-- [ ] 03-01-PLAN.md — Show entry, correction, and safe retry with administration harness support.
+- [x] 03-01-PLAN.md — Show entry, correction, and safe retry with administration harness support.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 03-02-PLAN.md — Six settings sections and protected option saves.
@@ -131,6 +131,6 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Compatibility Baseline and Menu Diagnosis | 5/5 | Complete    | 2026-10-04 |
 | 2. Data and Upgrade Preservation | 4/4 | Complete    | 2026-10-04 |
-| 3. Administration Workflows | 0/4 | Planned    |  |
+| 3. Administration Workflows | 1/4 | In Progress|  |
 | 4. Public Publishing | 0/TBD | Not started | - |
 | 5. CSV Import/Export | 0/TBD | Not started | - |
