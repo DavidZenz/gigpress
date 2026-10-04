@@ -263,7 +263,7 @@ run_self_test() {
   grep -Fq "update_option('siteurl', 'http://gigpress-compat.test')" "$COMPAT_DIR/probe.php" || fail "fresh installs do not seed a stable site URL for later recovery probes"
   grep -Fq 'menu_trace.menu_warnings | any(' "$COMPAT_DIR/run.sh" || fail "exact-key diagnostic does not require the WordPress warning"
   cleanup_paths=$(grep -v 'cleanup_paths=' "$COMPAT_DIR/run.sh" | grep -Fc 'compose_env down --volumes --remove-orphans')
-  [[ "$cleanup_paths" == 3 ]] || fail "all disposable Compose targets must use the configured cleanup environment"
+  [[ "$cleanup_paths" == 4 ]] || fail "all disposable Compose targets must use the configured cleanup environment"
   printf '%s\n' '{"status":"PASS","self_test":"matrix ordering, per-line WordPress patch pinning, upstream PHP support-page parsing, diagnostic exclusion, recovery bootstrap, and Compose cleanup"}'
 }
 
@@ -737,6 +737,119 @@ run_diagnose_menu() {
     printf '%s\n' "$output" | rtk jq -e '.menu_trace.runtime_label == "supported"' >/dev/null || fail "supported PHP diagnostic was mislabeled"
   fi
 }
+
+run_browser_fixture() {
+  local action='' session='' browser_case='entry' output result port container_id image_id started=$SECONDS
+  WP_VERSION=''; PHP_VERSION=''; TABLE_PREFIX='wp_'
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --action) action=${2:-}; shift 2 ;;
+      --wp) WP_VERSION=${2:-}; shift 2 ;;
+      --php) PHP_VERSION=${2:-}; shift 2 ;;
+      --case) browser_case=${2:-}; shift 2 ;;
+      --session) session=${2:-}; shift 2 ;;
+      *) fail "unknown browser-fixture option $1" ;;
+    esac
+  done
+  [[ "$action" =~ ^(smoke|start|status|stop)$ ]] || fail "browser-fixture requires smoke, start, status or stop"
+  [[ "$browser_case" =~ ^(entry|settings|guards|all)$ ]] || fail "unknown browser HTTP case"
+  if [[ "$action" == status || "$action" == stop ]]; then
+    # No eval/source: reconstruct only allowlisted fields after strict private-file checks.
+    [[ -n "$session" && -f "$session" && ! -L "$session" && ! -L "$(dirname "$session")" ]] || fail "not an owned private browser session"
+    [[ "$(stat -f '%u:%Lp' "$session")" == "$(id -u):600" && "$(stat -f '%u:%Lp' "$(dirname "$session")")" == "$(id -u):700" ]] || fail "not an owned private browser session"
+    jq -e --arg root "$ROOT" --argjson uid "$(id -u)" '
+      .schema == "gigpress-browser-session/v1" and .root == $root and .uid == $uid
+      and (.project | test("^gigpress_browser_[0-9]+_[0-9]+_[0-9]+$"))
+      and (.owner | test("^[0-9a-f]{64}$")) and (.password | test("^[0-9a-f]{64}$"))
+      and (.db_password | test("^[0-9a-f]{64}$")) and (.db_root_password | test("^[0-9a-f]{64}$"))
+      and (.wp | test("^[0-9]+[.][0-9]+[.][0-9]+$")) and (.php | test("^8[.][3-9]$"))
+      and (.url | test("^http://127[.]0[.]0[.]1:[0-9]+$"))
+    ' "$session" >/dev/null || fail "not an owned private browser session"
+    PROJECT=$(jq -r .project "$session"); BROWSER_OWNER=$(jq -r .owner "$session")
+    WP_VERSION=$(jq -r .wp "$session"); PHP_VERSION=$(jq -r .php "$session")
+    DB_PASSWORD=$(jq -r .db_password "$session"); DB_ROOT_PASSWORD=$(jq -r .db_root_password "$session")
+    BROWSER_PASSWORD=$(jq -r .password "$session"); BROWSER_URL=$(jq -r .url "$session")
+    BROWSER_DIR=$(dirname "$session")
+    [[ "$BROWSER_DIR" == */gigpress-browser-* && "$session" == "$BROWSER_DIR/session.json" ]] || fail "not an owned private browser session"
+  else
+    [[ "$WP_VERSION" =~ ^[0-9]+[.][0-9]+[.][0-9]+$ && "$PHP_VERSION" =~ ^8[.][3-9]$ ]] || fail "supported exact WordPress/PHP required"
+    umask 077
+    BROWSER_DIR=$(mktemp -d "${TMPDIR:-/tmp}/gigpress-browser-XXXXXX")
+    session="$BROWSER_DIR/session.json"
+    PROJECT="gigpress_browser_${RANDOM}_$$_$(date +%s)"
+    DB_PASSWORD=$(openssl rand -hex 32); DB_ROOT_PASSWORD=$(openssl rand -hex 32)
+    BROWSER_OWNER=$(openssl rand -hex 32); BROWSER_PASSWORD=$(openssl rand -hex 32)
+    BROWSER_URL=''
+  fi
+  COMPOSE=(docker compose --project-name "$PROJECT" --file "$COMPAT_DIR/compose.yaml" --file "$COMPAT_DIR/compose.browser.yaml")
+  compose_env() {
+    env -u COMPOSE_FILE -u COMPOSE_PROJECT_NAME -u WORDPRESS_DB_HOST -u MYSQL_HOST -u DB_HOST -u DATABASE_URL \
+      REPO_ROOT="$ROOT" WORDPRESS_IMAGE="wordpress:php${PHP_VERSION}-apache" COMPAT_TABLE_PREFIX=wp_ \
+      COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" COMPAT_BROWSER_OWNER="$BROWSER_OWNER" "${COMPOSE[@]}" "$@"
+  }
+  browser_cleanup() {
+    local status=$?
+    trap - EXIT INT TERM
+    if [[ "$BROWSER_RETAIN" != true ]]; then
+      if ! compose_env down --volumes --remove-orphans >"$BROWSER_DIR/cleanup.log" 2>&1; then cat "$BROWSER_DIR/cleanup.log" >&2; status=1; fi
+      if [[ -n "$(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT")" || -n "$(docker volume ls -q --filter "label=com.docker.compose.project=$PROJECT")" ]]; then status=1; fi
+      [[ "$status" == 0 ]] && printf '{"cleanup":"PASS","owned_project":"%s","services_removed":true,"volumes_removed":true}\n' "$PROJECT"
+      rm -rf -- "$BROWSER_DIR"
+    fi
+    exit "$status"
+  }
+  BROWSER_RETAIN=false
+  if [[ "$action" == status || "$action" == stop ]]; then
+    local id found=0
+    while IFS= read -r id; do
+      [[ -n "$id" ]] || continue
+      [[ "$(docker inspect --format '{{index .Config.Labels "gigpress.browser.owner"}}' "$id")" == "$BROWSER_OWNER" ]] || fail "not an owned private browser session"
+      found=$((found+1))
+    done < <(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT")
+    [[ "$found" == 2 ]] || fail "owned browser session must have exactly two services"
+    if [[ "$action" == stop ]]; then trap browser_cleanup EXIT; return 0; fi
+    jq '{status:"PASS",session:$session,url,wordpress_version:.wp,php_branch:.php,source_revision,image_id,project}' --arg session "$session" "$session"
+    return 0
+  fi
+  trap browser_cleanup EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  compose_env pull wordpress db >"$BROWSER_DIR/setup.log" 2>&1
+  compose_env up -d db wordpress >>"$BROWSER_DIR/setup.log" 2>&1
+  wait_for_database; wait_for_wordpress; install_archived_wordpress_core
+  port=$(compose_env port wordpress 80)
+  [[ "$port" =~ ^127[.]0[.]0[.]1:[0-9]+$ ]] || fail "browser fixture is not loopback-only"
+  BROWSER_URL="http://$port"
+  browser_php() {
+    compose_env exec -T -e COMPAT_BROWSER_MODE="$1" -e COMPAT_BROWSER_CASE="$browser_case" -e COMPAT_BROWSER_URL="$BROWSER_URL" \
+      -e COMPAT_BROWSER_PASSWORD="$BROWSER_PASSWORD" -e COMPAT_EXPECTED_WP_VERSION="$WP_VERSION" wordpress php /compat/browser-bootstrap.php
+  }
+  output=$(browser_php seed) || { printf '%s\n' "$output" >&2; fail "browser bootstrap failed"; }
+  printf '%s\n' "$output" | jq -e '.status == "PASS" and .assertion_count > 0 and (.checks|length) == .assertion_count and ([.checks[]]|all)' >/dev/null || fail "browser seed assertions failed"
+  image_id=$(docker image inspect --format '{{.Id}}' "wordpress:php${PHP_VERSION}-apache")
+  jq -n --arg root "$ROOT" --argjson uid "$(id -u)" --arg project "$PROJECT" --arg owner "$BROWSER_OWNER" \
+    --arg wp "$WP_VERSION" --arg php "$PHP_VERSION" --arg url "$BROWSER_URL" --arg password "$BROWSER_PASSWORD" \
+    --arg db_password "$DB_PASSWORD" --arg db_root_password "$DB_ROOT_PASSWORD" --arg image_id "$image_id" \
+    --arg revision "$(git -C "$ROOT" rev-parse HEAD)" '{schema:"gigpress-browser-session/v1",root:$root,uid:$uid,project:$project,owner:$owner,
+      wp:$wp,php:$php,url:$url,password:$password,db_password:$db_password,db_root_password:$db_root_password,
+      admin_user:"browser-admin",subscriber_user:"browser-subscriber",source_revision:$revision,image_id:$image_id}' >"$session"
+  if [[ "$action" == start ]]; then
+    BROWSER_RETAIN=true
+    printf '{"status":"PASS","session":"%s","url":"%s","setup_seconds":%s}\n' "$session" "$BROWSER_URL" "$((SECONDS-started))"
+    return 0
+  fi
+  output=$(browser_php smoke) || { printf '%s\n' "$output" >&2; fail "browser HTTP smoke assertions failed"; }
+  result=$(printf '%s\n' "$output" | jq -c --arg image_id "$image_id" --arg revision "$(git -C "$ROOT" rev-parse HEAD)" --arg case "$browser_case" --argjson duration "$((SECONDS-started))" '. + {image_id:$image_id,source_revision:$revision,case:$case,elapsed_seconds:$duration,loopback_only:true}')
+  printf '%s\n' "$result" | tee "$RESULT_DIR/browser-${browser_case}.json"
+  printf '%s\n' "$result" | jq -e --arg wp "$WP_VERSION" '.status == "PASS" and .wordpress_version == $wp and .assertion_count > 0 and (.checks|length) == .assertion_count and ([.checks[]]|all) and (.errors|length) == 0 and (.http_errors|length) == 0' >/dev/null || fail "browser HTTP smoke contract failed"
+  compose_env logs --no-color wordpress >"$BROWSER_DIR/http.log"
+  if grep -Ei '(PHP (Warning|Fatal|Parse|Notice)|Uncaught .*Error)' "$BROWSER_DIR/http.log" >/dev/null; then fail "HTTP runtime log contains errors"; fi
+}
+
+if [[ "$MODE" == browser-fixture ]]; then
+  run_browser_fixture "$@"
+  exit 0
+fi
 
 if [[ "$MODE" == metadata ]]; then
   run_metadata "$@"

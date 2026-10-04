@@ -1,0 +1,11 @@
+services:
+  db:
+    labels:
+      gigpress.browser.owner: ${COMPAT_BROWSER_OWNER:?private owner marker required}
+  wordpress:
+    labels:
+      gigpress.browser.owner: ${COMPAT_BROWSER_OWNER:?private owner marker required}
+    ports:
+      - "127.0.0.1::80"
+    volumes:
+      - ./browser-bootstrap.php:/compat/browser-bootstrap.php:ro
