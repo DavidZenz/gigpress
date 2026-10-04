@@ -408,6 +408,7 @@ function gigpress_add_venue() {
 	$wpdb->show_errors();
 	
 	check_admin_referer('gigpress-action');
+	if (!gigpress_require_database_ready()) return false;
 	
 	$errors = gigpress_error_checking('venue');
 	
@@ -451,6 +452,7 @@ function gigpress_update_venue() {
 	$wpdb->show_errors();
 	
 	check_admin_referer('gigpress-action');
+	if (!gigpress_require_database_ready()) return false;
 			
 	$errors = gigpress_error_checking('venue');
 	
@@ -518,6 +520,7 @@ function gigpress_add_tour() {
 	$wpdb->show_errors();
 	
 	check_admin_referer('gigpress-action');
+	if (!gigpress_require_database_ready()) return false;
 	
 	$errors = gigpress_error_checking('tour');
 	
@@ -558,6 +561,7 @@ function gigpress_update_tour() {
 	$wpdb->show_errors();
 	
 	check_admin_referer('gigpress-action');
+	if (!gigpress_require_database_ready()) return false;
 			
 	$errors = gigpress_error_checking('tour');
 	
@@ -655,6 +659,7 @@ function gigpress_add_artist() {
 	$wpdb->show_errors();
 
 	check_admin_referer('gigpress-action');
+	if (!gigpress_require_database_ready()) return false;
 	
 	$errors = gigpress_error_checking('artist');
 	
@@ -699,6 +704,7 @@ function gigpress_update_artist() {
 	$wpdb->show_errors();
 	
 	check_admin_referer('gigpress-action');
+	if (!gigpress_require_database_ready()) return false;
 			
 	$errors = gigpress_error_checking('artist');
 	
@@ -883,6 +889,7 @@ function gigpress_import() {
 	
 	// We've just uploaded a file to import
 	check_admin_referer('gigpress-action');
+	if (!gigpress_require_database_ready()) return false;
 	$upload = wp_upload_bits( $_FILES['gp_import']['name'], null, file_get_contents($_FILES['gp_import']['tmp_name']) );
 	
 	if (empty($upload['error'])) {
@@ -1088,6 +1095,7 @@ function gigpress_empty_trash() {
 	global $wpdb;
 	$wpdb->show_errors();
 	check_admin_referer('gigpress-action');
+	if (!gigpress_require_database_ready()) return false;
 
 	$trashshows = $wpdb->query("DELETE FROM ". GIGPRESS_SHOWS ." WHERE show_status = 'deleted'");
 	$trashtours = $wpdb->query("DELETE FROM ". GIGPRESS_TOURS ." WHERE tour_status = 'deleted'");
@@ -1108,6 +1116,8 @@ function gigpress_empty_trash() {
 function gigpress_map_tours_to_artists() {
 
 	global $wpdb;
+	check_admin_referer('gigpress-action');
+	if (!gigpress_require_database_ready()) return false;
 
 	$tours = $wpdb->get_results("SELECT tour_name, tour_id FROM " . GIGPRESS_TOURS . " WHERE tour_status = 'active'");
 	if($tours) {

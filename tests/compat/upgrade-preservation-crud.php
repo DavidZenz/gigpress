@@ -1,16 +1,48 @@
 <?php
 /* Mutation coverage for the reconstructed upgraded 1.4 fixture. */
 
-function gigpress_upgrade_preservation_request($handler, $request) {
+function gigpress_upgrade_preservation_request($handler, $request, $files = array()) {
 	$nonce = wp_create_nonce('gigpress-action');
 	$_GET = $request;
 	$_POST = $request;
+	$_FILES = $files;
 	$_REQUEST = array_merge($request, array('_wpnonce' => $nonce));
 	$_GET['_wpnonce'] = $nonce;
 	$_POST['_wpnonce'] = $nonce;
 	ob_start();
 	call_user_func($handler);
 	return ob_get_clean();
+}
+
+function gigpress_upgrade_preservation_forged_request($handler, $request, $files = array()) {
+	$_GET = $request;
+	$_POST = $request;
+	$_FILES = $files;
+	$_REQUEST = $request;
+	$level = ob_get_level();
+	try {
+		ob_start();
+		call_user_func($handler);
+		ob_end_clean();
+		return false;
+	} catch (RuntimeException $exception) {
+		while (ob_get_level() > $level) ob_end_clean();
+		return $exception->getMessage() === 'gigpress-test-invalid-nonce';
+	}
+}
+
+function gigpress_upgrade_preservation_invalid_nonce_die_handler() {
+	throw new RuntimeException('gigpress-test-invalid-nonce');
+}
+
+function gigpress_upgrade_preservation_nonce_blocks_request($handler, $request, $files = array()) {
+	$filter = function () { return 'gigpress_upgrade_preservation_invalid_nonce_die_handler'; };
+	add_filter('wp_die_handler', $filter);
+	try {
+		return gigpress_upgrade_preservation_forged_request($handler, $request, $files);
+	} finally {
+		remove_filter('wp_die_handler', $filter);
+	}
 }
 
 function gigpress_upgrade_preservation_show_request($show, $overrides = array()) {
@@ -35,6 +67,79 @@ function gigpress_upgrade_preservation_show_request($show, $overrides = array())
 function gigpress_upgrade_preservation_show_row($id) {
 	global $wpdb;
 	return $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . GIGPRESS_SHOWS . ' WHERE show_id = %d', $id), ARRAY_A);
+}
+
+function gigpress_upgrade_preservation_mutation_snapshot() {
+	global $wpdb;
+	$snapshot = array(
+		'settings' => get_option('gigpress_settings'),
+		'tour_restore_map' => get_option('gigpress_tour_restore_map', false),
+	);
+	foreach (array('shows' => 'show_id', 'artists' => 'artist_id', 'venues' => 'venue_id', 'tours' => 'tour_id') as $table => $id) {
+		$snapshot[$table] = $wpdb->get_results('SELECT * FROM ' . constant('GIGPRESS_' . strtoupper($table)) . ' ORDER BY ' . $id, ARRAY_A);
+	}
+	return $snapshot;
+}
+
+function gigpress_upgrade_preservation_run_mutation_readiness_guards() {
+	global $wpdb;
+	$fixture = require WP_PLUGIN_DIR . '/gigpress/tests/compat/fixtures/upgrade-preservation/1.4.php';
+	$ok = is_array($fixture) && upgrade_preservation_seed($fixture);
+	unset($GLOBALS['gigpress_db_bootstrap_result']);
+	$ok = $ok && gigpress_db_bootstrap()['status'] === 'ready';
+	require_once WP_PLUGIN_DIR . '/gigpress/admin/handlers.php';
+
+	// The legacy map action is also a dispatched write path: a valid nonce must
+	// keep its established workflow available before blocked-state assertions.
+	gigpress_upgrade_preservation_request('gigpress_map_tours_to_artists', array());
+	$ok = $ok
+		&& !$wpdb->get_var($wpdb->prepare('SELECT tour_id FROM ' . GIGPRESS_TOURS . ' WHERE tour_id = %d', 29))
+		&& $wpdb->get_var($wpdb->prepare('SELECT artist_id FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_name = %s', 'Preservation Tour'));
+
+	$ok = $ok && upgrade_preservation_seed($fixture);
+	unset($GLOBALS['gigpress_db_bootstrap_result']);
+	$ok = $ok && gigpress_db_bootstrap()['status'] === 'ready';
+	$uploads = wp_upload_dir();
+	$uploadName = 'gigpress-blocked-readiness.csv';
+	$uploadPath = trailingslashit($uploads['path']) . $uploadName;
+	if (file_exists($uploadPath)) unlink($uploadPath);
+	$tmpImport = tempnam(sys_get_temp_dir(), 'gigpress-blocked-import-');
+	file_put_contents($tmpImport, "Date,Artist,Venue,City,Country\\n2032-05-06,Blocked Band,Blocked Hall,Vienna,AT\\n");
+	$importFiles = array('gp_import' => array('name' => $uploadName, 'tmp_name' => $tmpImport, 'error' => UPLOAD_ERR_OK, 'size' => filesize($tmpImport), 'type' => 'text/csv'));
+	$requests = array(
+		'gigpress_add_venue' => array('venue_name' => 'Blocked Venue', 'venue_city' => 'Vienna', 'venue_country' => 'AT'),
+		'gigpress_update_venue' => array('venue_id' => 73, 'venue_name' => 'Changed Venue', 'venue_city' => 'Vienna', 'venue_country' => 'AT'),
+		'gigpress_add_tour' => array('tour_name' => 'Blocked Tour'),
+		'gigpress_update_tour' => array('tour_id' => 29, 'tour_name' => 'Changed Tour'),
+		'gigpress_add_artist' => array('artist_name' => 'Blocked Artist', 'artist_url' => ''),
+		'gigpress_update_artist' => array('artist_id' => 41, 'artist_name' => 'Changed Artist', 'artist_url' => ''),
+		'gigpress_import' => array(),
+		'gigpress_empty_trash' => array(),
+		'gigpress_map_tours_to_artists' => array(),
+	);
+	$beforeBlocked = gigpress_upgrade_preservation_mutation_snapshot();
+	$GLOBALS['gigpress_db_bootstrap_result'] = array('status' => 'blocked', 'code' => 'unsafe_metadata');
+	$blockedNotices = array();
+	foreach ($requests as $handler => $request) {
+		$files = $handler === 'gigpress_import' ? $importFiles : array();
+		$blockedNotices[$handler] = gigpress_upgrade_preservation_request($handler, $request, $files);
+	}
+	$afterBlocked = gigpress_upgrade_preservation_mutation_snapshot();
+	$noticesPresent = !array_filter($blockedNotices, function ($notice) {
+		return strpos($notice, 'GigPress data upgrade is paused') === false;
+	});
+	$noUpload = !file_exists($uploadPath);
+	$nonceBlocked = array();
+	foreach ($requests as $handler => $request) {
+		$files = $handler === 'gigpress_import' ? $importFiles : array();
+		$nonceBlocked[$handler] = gigpress_upgrade_preservation_nonce_blocks_request($handler, $request, $files);
+	}
+	$afterForged = gigpress_upgrade_preservation_mutation_snapshot();
+	if (file_exists($tmpImport)) unlink($tmpImport);
+	$ok = $ok && $beforeBlocked === $afterBlocked && $afterBlocked === $afterForged
+		&& $noticesPresent && $noUpload && !in_array(false, $nonceBlocked, true);
+
+	return array('status' => $ok ? 'PASS' : 'FAIL', 'case' => 'mutation-readiness-guards', 'fixture' => 'reconstructed-1.4', 'manifest_matches' => $ok, 'repeat_matches' => $ok);
 }
 
 function gigpress_upgrade_preservation_run_show_lifecycle() {
@@ -100,6 +205,8 @@ function gigpress_upgrade_preservation_run_show_lifecycle() {
 	$afterBlocked = $wpdb->get_results('SELECT * FROM ' . GIGPRESS_SHOWS . ' ORDER BY show_id', ARRAY_A);
 	$ok = $ok && $beforeBlocked === $afterBlocked;
 
+	$readiness = gigpress_upgrade_preservation_run_mutation_readiness_guards();
+	$ok = $ok && $readiness['status'] === 'PASS';
 	return array('status' => $ok ? 'PASS' : 'FAIL', 'case' => 'show-lifecycle', 'fixture' => 'reconstructed-1.4', 'manifest_matches' => $ok, 'repeat_matches' => $ok);
 }
 

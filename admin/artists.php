@@ -21,6 +21,7 @@ function gigpress_artists() {
 
 	if(isset($_GET['gpaction']) && $_GET['gpaction'] == "import-tours") {
 		require_once('handlers.php');
+		check_admin_referer('gigpress-action');
 		gigpress_map_tours_to_artists();		
 	}
 	
