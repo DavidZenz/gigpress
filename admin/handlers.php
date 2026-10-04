@@ -594,28 +594,42 @@ function gigpress_update_tour() {
 function gigpress_delete_tour() {
 
 	global $wpdb;
-	
-	$undo = wp_nonce_url(admin_url('admin.php?page=gigpress-tours&amp;gpaction=undo&amp;tour_id='.absint($_GET['tour_id'])), 'gigpress-action');
+	$tour_id = absint($_GET['tour_id']);
+	$undo = wp_nonce_url(admin_url('admin.php?page=gigpress-tours&amp;gpaction=undo&amp;tour_id='.$tour_id), 'gigpress-action');
 	
 	$wpdb->show_errors();
 	
 	// Check the nonce
-	check_admin_referer('gigpress-action');	
+	check_admin_referer('gigpress-action');
+	if (!gigpress_require_database_ready()) return false;
+	$show_ids = array_map('absint', (array) $wpdb->get_col($wpdb->prepare('SELECT show_id FROM ' . GIGPRESS_SHOWS . ' WHERE show_tour_id = %d', $tour_id)));
+	$restore_map = get_option('gigpress_tour_restore_map', array());
+	$restore_map = is_array($restore_map) ? $restore_map : array();
+	if (!isset($restore_map[$tour_id]) || !is_array($restore_map[$tour_id])) $restore_map[$tour_id] = array();
+	$map_changed = false;
+	foreach ($show_ids as $show_id) {
+		if ($show_id > 0 && (!isset($restore_map[$tour_id][$show_id]) || (int) $restore_map[$tour_id][$show_id] !== $tour_id)) {
+			$restore_map[$tour_id][$show_id] = $tour_id;
+			$map_changed = true;
+		}
+	}
+	if ($map_changed) {
+		update_option('gigpress_tour_restore_map', $restore_map);
+		$stored_map = get_option('gigpress_tour_restore_map', array());
+		if (!is_array($stored_map) || $stored_map !== $restore_map) {
+			echo '<div id="message" class="error fade"><p>' . esc_html(__('We could not safely record the shows needed for this tour undo.', 'gigpress')) . '</p></div>';
+			return false;
+		}
+	}
 	
 	// Delete the tour
-	$where = array('tour_id' => absint($_GET['tour_id']));
+	$where = array('tour_id' => $tour_id);
 	$trashtour = $wpdb->update(GIGPRESS_TOURS, array('tour_status' => 'deleted'), $where, array('%s'), array('%s'));
 	unset($where);
 		
 	if($trashtour != FALSE) {
-	
-		// Remove any previous shows marked to restore;
-		// Find any shows associated with that tour, and mark them for restore;
-		// Then then remove their foreign key
-		
-		$cleanup = $wpdb->query("UPDATE ".GIGPRESS_SHOWS." SET show_tour_restore = 0 WHERE show_tour_restore != 0");
-		
-		$where = array('show_tour_id' => absint($_GET['tour_id']));
+		// Detach only this tour's recorded shows; other pending undo markers stay intact.
+		$where = array('show_tour_id' => $tour_id);
 		$restore = $wpdb->update(GIGPRESS_SHOWS, array('show_tour_id' => 0, 'show_tour_restore' => 1), $where, array('%d','%d'), array('%d'));
 		unset($where);
 		?>
@@ -789,19 +803,41 @@ function gigpress_undo($type) {
 	}
 	
 	if($type == "tour") {
-		
+		$tour_id = absint($_GET['tour_id']);
+		$restore_map = get_option('gigpress_tour_restore_map', array());
+		$restore_map = is_array($restore_map) ? $restore_map : array();
+		$owned_shows = isset($restore_map[$tour_id]) && is_array($restore_map[$tour_id]) ? $restore_map[$tour_id] : array();
+		$restored = 0;
+		$skipped = 0;
+		foreach ($owned_shows as $show_id => $source_tour_id) {
+			$show_id = absint($show_id);
+			if ($show_id <= 0 || (int) $source_tour_id !== $tour_id) {
+				$skipped++;
+				continue;
+			}
+			$restore = $wpdb->update(
+				GIGPRESS_SHOWS,
+				array('show_tour_id' => $tour_id, 'show_tour_restore' => 0),
+				array('show_id' => $show_id, 'show_tour_id' => 0, 'show_tour_restore' => 1),
+				array('%d', '%d'),
+				array('%d', '%d', '%d')
+			);
+			if ($restore) $restored++;
+			else $skipped++;
+		}
+		if (isset($restore_map[$tour_id])) {
+			unset($restore_map[$tour_id]);
+			if ($restore_map) update_option('gigpress_tour_restore_map', $restore_map);
+			else delete_option('gigpress_tour_restore_map');
+		}
+
 		// Restore the tour
-		$where = array('tour_id' => absint($_GET['tour_id']));
+		$where = array('tour_id' => $tour_id);
 		$undo = $wpdb->update(GIGPRESS_TOURS, array('tour_status' => 'active'), $where, array('%s'), array('%d'));
 		unset($where);
 		
-		// Update the shows that need it to associate with this tour
-		$data = array('show_tour_id' => absint($_GET['tour_id']), 'show_tour_restore' => 0);
-		$restore = $wpdb->update(GIGPRESS_SHOWS, $data, array('show_tour_restore' => 1), array('%d', '%d'), array('%d'));
-		unset($data);
-		
 		if($undo != FALSE) { ?>
-			<div id="message" class="updated fade"><p><?php _e("Tour successfully restored from the database.", "gigpress"); ?></p></div>
+			<div id="message" class="updated fade"><p><?php _e("Tour successfully restored from the database.", "gigpress"); echo ' ' . sprintf(__('%d show(s) restored; %d skipped.', 'gigpress'), $restored, $skipped); ?></p></div>
 		<?php } elseif($undo === FALSE) { ?>
 			<div id="message" class="error fade"><p><?php _e("We ran into some trouble restoring the tour. Sorry.", "gigpress"); ?></p></div>
 		<?php }

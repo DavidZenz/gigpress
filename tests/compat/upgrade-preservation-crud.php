@@ -194,6 +194,26 @@ function gigpress_upgrade_preservation_run_tour_undo() {
 	$ok = $ok && (int) gigpress_upgrade_preservation_show_row($secondShowId)['show_tour_id'] === $secondTour
 		&& !get_option('gigpress_tour_restore_map', false);
 
+	gigpress_upgrade_preservation_request('gigpress_delete_tour', array('tour_id' => 29));
+	$cycleMap = get_option('gigpress_tour_restore_map', array());
+	gigpress_upgrade_preservation_request(function () { gigpress_undo('tour'); }, array('tour_id' => 29));
+	$ok = $ok && isset($cycleMap[29][113]) && (int) gigpress_upgrade_preservation_show_row(113)['show_tour_id'] === 29
+		&& !get_option('gigpress_tour_restore_map', false);
+
+	$wpdb->insert(GIGPRESS_TOURS, array('tour_name' => 'Missing show tour', 'tour_status' => 'active'));
+	$missingTour = (int) $wpdb->insert_id;
+	$missingShow = $source;
+	unset($missingShow['show_id']);
+	$missingShow['show_tour_id'] = $missingTour;
+	$missingShow['show_notes'] = 'Missing pending show';
+	$wpdb->insert(GIGPRESS_SHOWS, $missingShow);
+	$missingShowId = (int) $wpdb->insert_id;
+	gigpress_upgrade_preservation_request('gigpress_delete_tour', array('tour_id' => $missingTour));
+	$missingMap = get_option('gigpress_tour_restore_map', array());
+	$wpdb->delete(GIGPRESS_SHOWS, array('show_id' => $missingShowId));
+	gigpress_upgrade_preservation_request(function () { gigpress_undo('tour'); }, array('tour_id' => $missingTour));
+	$ok = $ok && isset($missingMap[$missingTour][$missingShowId]) && !get_option('gigpress_tour_restore_map', false);
+
 	$wpdb->update(GIGPRESS_SHOWS, array('show_tour_id' => 0, 'show_tour_restore' => 1), array('show_id' => 109));
 	gigpress_upgrade_preservation_request(function () { gigpress_undo('tour'); }, array('tour_id' => 29));
 	$ok = $ok && (int) gigpress_upgrade_preservation_show_row(109)['show_tour_id'] === 0;
