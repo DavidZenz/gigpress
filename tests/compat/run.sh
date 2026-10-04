@@ -89,6 +89,18 @@ if [[ "$MODE" == browser-contract-test ]]; then
   exit 0
 fi
 
+if [[ "$MODE" == browser-expanded-test ]]; then
+  smoke_output=$(bash "$COMPAT_DIR/run.sh" browser-fixture --action smoke --wp 7.1.2 --php 8.3 --case all 2>&1) && smoke_exit=0 || smoke_exit=$?
+  printf '%s\n' "$smoke_output"
+  if [[ "$smoke_exit" == 0 ]] && printf '%s\n' "$smoke_output" | jq -se 'map(select(.case? == "all")) | length == 1 and (.[0].cases|map(.case)|sort) == ["entry","guards","settings"] and ([.[0].cases[] | .assertion_count > 0 and .status == "PASS"]|all)' >/dev/null; then
+    printf 'ok 1 - browser-http.all_nonempty_authority_cases\n# tests 1\n# pass 1\n# fail 0\n'
+  else
+    printf 'not ok 1 - browser-http.all_nonempty_authority_cases\n# expected: entry, settings and guards with positive real HTTP assertions\n# tests 1\n# pass 0\n# fail 1\n'
+    exit 1
+  fi
+  exit 0
+fi
+
 run_lint() {
   local branches='' files='' all_tracked=false
   while [[ $# -gt 0 ]]; do
