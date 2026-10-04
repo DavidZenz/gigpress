@@ -306,7 +306,8 @@ if ($purpose === 'diagnose-menu' && function_exists('gigpress_menu_trace_result'
     ));
 }
 $csvRoundTrip = null;
-if ((getenv('COMPAT_PURPOSE') ?: 'activation-menu') === 'csv-roundtrip') {
+$fullWorkflows = null;
+if (in_array((getenv('COMPAT_PURPOSE') ?: 'activation-menu'), array('csv-roundtrip', 'full-workflows'), true)) {
     $fixture = '/compat/fixtures/shows.csv';
     if (!is_readable($fixture)) {
         $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'CSV fixture is unavailable', 'file' => $fixture, 'line' => 0);
@@ -317,7 +318,40 @@ if ((getenv('COMPAT_PURPOSE') ?: 'activation-menu') === 'csv-roundtrip') {
         $_FILES = array('gp_import' => array('name' => 'shows.csv', 'tmp_name' => $fixture, 'error' => UPLOAD_ERR_OK, 'size' => filesize($fixture)));
         ob_start();
         gigpress_import();
-        ob_end_clean();
+        $firstImport = ob_get_clean();
+        $duplicateImport = '';
+        if ($purpose === 'full-workflows') {
+            $_POST = array('_wpnonce' => wp_create_nonce('gigpress-action'));
+            $_REQUEST = $_POST;
+            $_FILES = array('gp_import' => array('name' => 'shows.csv', 'tmp_name' => $fixture, 'error' => UPLOAD_ERR_OK, 'size' => filesize($fixture)));
+            ob_start();
+            gigpress_import();
+            $duplicateImport = ob_get_clean();
+        }
+
+        $show = $wpdb->get_row("SELECT * FROM " . GIGPRESS_SHOWS . " WHERE show_status != 'deleted' ORDER BY show_id ASC LIMIT 1");
+        $artist = $show ? $wpdb->get_row($wpdb->prepare("SELECT * FROM " . GIGPRESS_ARTISTS . " WHERE artist_id = %d", $show->show_artist_id)) : null;
+        $venue = $show ? $wpdb->get_row($wpdb->prepare("SELECT * FROM " . GIGPRESS_VENUES . " WHERE venue_id = %d", $show->show_venue_id)) : null;
+        $tour = $show ? $wpdb->get_row($wpdb->prepare("SELECT * FROM " . GIGPRESS_TOURS . " WHERE tour_id = %d", $show->show_tour_id)) : null;
+        $adminCreateEditRead = false;
+        if ($show && $artist && $venue && $tour) {
+            $future = gmdate('Y-m-d', strtotime('+30 days'));
+            list($year, $month, $day) = array_map('intval', explode('-', $future));
+            $_POST = array(
+                '_wpnonce' => wp_create_nonce('gigpress-action'), 'show_id' => $show->show_id,
+                'gp_yy' => $year, 'gp_mm' => $month, 'gp_dd' => $day, 'gp_hh' => 'na', 'gp_min' => 'na',
+                'show_price' => $show->show_price, 'show_tix_url' => $show->show_tix_url, 'show_tix_phone' => $show->show_tix_phone,
+                'show_external_url' => $show->show_external_url, 'show_ages' => $show->show_ages, 'show_notes' => $show->show_notes,
+                'show_status' => 'active', 'show_artist_id' => $artist->artist_id, 'show_venue_id' => $venue->venue_id,
+                'show_tour_id' => $tour->tour_id, 'show_related' => 0,
+            );
+            $_REQUEST = $_POST;
+            ob_start();
+            gigpress_update_show();
+            $updateOutput = ob_get_clean();
+            $updated = $wpdb->get_row($wpdb->prepare("SELECT * FROM " . GIGPRESS_SHOWS . " WHERE show_id = %d", $show->show_id));
+            $adminCreateEditRead = $updated && $updated->show_date === $future && $updated->show_notes === $show->show_notes && strpos($firstImport, 'successfully imported') !== false && strpos($updateOutput, 'successfully updated') !== false;
+        }
 
         $_POST = array('_wpnonce' => wp_create_nonce('gigpress-action'), 'scope' => '-1', 'artist_id' => '-1', 'tour_id' => '-1');
         $_REQUEST = $_POST;
@@ -338,6 +372,28 @@ if ((getenv('COMPAT_PURPOSE') ?: 'activation-menu') === 'csv-roundtrip') {
         if ($csvRoundTrip['artist'] !== 'The Compatibility Band' || $csvRoundTrip['venue'] !== 'The Test Hall' || $csvRoundTrip['notes'] !== 'Quoted, durable notes' || !$csvRoundTrip['all_day_sentinel_preserved']) {
             $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'CSV round trip changed fixture values or the all-day sentinel', 'file' => $fixture, 'line' => 0);
         }
+        if ($purpose === 'full-workflows') {
+            $_GET = array();
+            $shortcode = do_shortcode('[gigpress_shows scope="upcoming"]');
+            ob_start();
+            gigpress_feed();
+            $rss = ob_get_clean();
+            ob_start();
+            gigpress_ical();
+            $ical = ob_get_clean();
+            $fullWorkflows = array(
+                'status' => ($adminCreateEditRead && strpos($shortcode, 'The Compatibility Band') !== false && strpos($rss, '<rss ') !== false && strpos($rss, 'The Compatibility Band') !== false && strpos($ical, 'BEGIN:VCALENDAR') !== false && strpos($ical, 'BEGIN:VEVENT') !== false && strpos($duplicateImport, 'deemed duplicates') !== false) ? 'PASS' : 'FAIL',
+                'admin_create_edit_read' => $adminCreateEditRead,
+                'public_shortcode' => strpos($shortcode, 'The Compatibility Band') !== false,
+                'rss' => strpos($rss, '<rss ') !== false && strpos($rss, 'The Compatibility Band') !== false,
+                'ical' => strpos($ical, 'BEGIN:VCALENDAR') !== false && strpos($ical, 'BEGIN:VEVENT') !== false,
+                'csv_import_export' => $csvRoundTrip['artist'] === 'The Compatibility Band' && $csvRoundTrip['venue'] === 'The Test Hall',
+                'duplicate_preserved' => strpos($duplicateImport, 'deemed duplicates') !== false,
+            );
+            if ($fullWorkflows['status'] !== 'PASS') {
+                $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Full compatibility workflow contract failed', 'file' => __FILE__, 'line' => __LINE__);
+            }
+        }
     }
 }
 $result = array(
@@ -352,6 +408,7 @@ $result = array(
     'fatal' => $fatal,
     'purpose' => $purpose,
     'csv_roundtrip' => $csvRoundTrip,
+    'full_workflows' => $fullWorkflows,
     'fixture_runtime' => $fixtureRuntime,
     'real_plugin_runtime' => $realPluginRuntime,
     'real_plugin_inventory' => $real_plugin_inventory,

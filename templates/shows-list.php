@@ -85,7 +85,7 @@
 				<span class="gigpress-info-item"><?php echo $showdata['related_link']; ?></span> 
 			<?php endif; ?>
 			
-			<?php if($showdata['ticket_link']) : ?>
+				<?php if(!empty($showdata['ticket_link'])) : ?>
 				<span class="gigpress-info-item"><?php echo $showdata['ticket_link']; ?></span>
 			<?php endif; ?>
 

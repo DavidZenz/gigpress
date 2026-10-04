@@ -74,7 +74,7 @@ function gigpress_feed() {
 				<li><strong><?php _e("Box office", "gigpress"); ?>:</strong> 
 				<?php echo $showdata['ticket_phone']; ?></li>
 			<?php } ?>
-			<?php if($showdata['ticket_link']) { ?>
+			<?php if(!empty($showdata['ticket_link'])) { ?>
 				<li><?php echo $showdata['ticket_link']; ?></li>
 			<?php } ?>
 			<?php if($showdata['external_link']) : ?>	

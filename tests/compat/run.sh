@@ -23,21 +23,33 @@ metadata_value() {
 }
 
 run_metadata() {
-  local expected_wp='' expected_php='' tested_up_to_file=''
+  local expected_wp='' expected_php='' tested_up_to_file='' plugin_file='' readme_file='' matrix_evidence='' require_tested_line_pass=false
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --expect-wp-min) expected_wp=${2:-}; shift 2 ;;
       --expect-php-min) expected_php=${2:-}; shift 2 ;;
       --allow-tested-up-to-from) tested_up_to_file=${2:-}; shift 2 ;;
+      --plugin) plugin_file=${2:-}; shift 2 ;;
+      --readme) readme_file=${2:-}; shift 2 ;;
+      --matrix-evidence) matrix_evidence=${2:-}; shift 2 ;;
+      --require-tested-line-pass) require_tested_line_pass=true; shift ;;
       *) fail "unknown metadata option $1" ;;
     esac
   done
   require_value --expect-wp-min "$expected_wp"
   require_value --expect-php-min "$expected_php"
-  require_value --allow-tested-up-to-from "$tested_up_to_file"
-  [[ "$tested_up_to_file" == 'readme.txt' && -f "$ROOT/$tested_up_to_file" ]] || fail "tested-up-to metadata must come from repository readme.txt"
+  if [[ -n "$readme_file" || -n "$plugin_file" || -n "$matrix_evidence" || "$require_tested_line_pass" == true ]]; then
+    [[ "$plugin_file" == 'gigpress.php' && -f "$ROOT/$plugin_file" ]] || fail "metadata plugin must be the repository gigpress.php"
+    [[ "$readme_file" == 'readme.txt' && -f "$ROOT/$readme_file" ]] || fail "metadata readme must be repository readme.txt"
+    [[ -n "$matrix_evidence" && -f "$ROOT/$matrix_evidence" ]] || fail "matrix evidence is required"
+    tested_up_to_file=$readme_file
+  else
+    require_value --allow-tested-up-to-from "$tested_up_to_file"
+    [[ "$tested_up_to_file" == 'readme.txt' && -f "$ROOT/$tested_up_to_file" ]] || fail "tested-up-to metadata must come from repository readme.txt"
+    plugin_file='gigpress.php'
+  fi
 
-  local header="$ROOT/gigpress.php" readme="$ROOT/$tested_up_to_file"
+  local header="$ROOT/$plugin_file" readme="$ROOT/$tested_up_to_file"
   local header_wp header_php readme_wp readme_php tested_up_to
   header_wp=$(metadata_value "$header" 'Requires at least')
   header_php=$(metadata_value "$header" 'Requires PHP')
@@ -48,6 +60,11 @@ run_metadata() {
   [[ "$header_php" == "$expected_php" && "$readme_php" == "$expected_php" ]] || fail "PHP minimum metadata does not match $expected_php"
   [[ "$tested_up_to" =~ ^[0-9]+[.][0-9]+$ ]] || fail "readme Tested up to must name a WordPress release line"
   [[ "$header_php" != 8.2 && "$readme_php" != 8.2 ]] || fail "PHP 8.2 is diagnostic-only and cannot be declared supported"
+  if [[ "$require_tested_line_pass" == true ]]; then
+    rtk grep -Fq "| ${tested_up_to}" "$ROOT/$matrix_evidence" || fail "matrix evidence has no row for readme Tested up to ${tested_up_to}"
+    rtk grep -Fq 'PASS' "$ROOT/$matrix_evidence" || fail "matrix evidence has no passing workflow rows"
+    rtk grep -Fq "Source revision: \`$(git -C "$ROOT" rev-parse HEAD)\`" "$ROOT/$matrix_evidence" || fail "matrix evidence does not name this source revision"
+  fi
   printf '{"status":"PASS","wordpress_min":"%s","php_min":"%s","tested_up_to":"%s"}\n' "$header_wp" "$header_php" "$tested_up_to"
 }
 
@@ -305,12 +322,15 @@ PHP
 }
 
 run_matrix() {
-  local wp_lines='' php_branches='' php_supported='' scenario='activation-menu' conflict_fixture='' conflict_mode='' conflict_position=''
+  local wp_lines='' php_branches='' php_supported='' scenario='activation-menu' conflict_fixture='' conflict_mode='' conflict_position='' wp_patches='' php_min='' error_reporting=''
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --wp-lines) wp_lines=${2:-}; shift 2 ;;
       --php-branches) php_branches=${2:-}; shift 2 ;;
       --php-supported) php_supported=${2:-}; shift 2 ;;
+      --wp-patches) wp_patches=${2:-}; shift 2 ;;
+      --php-min) php_min=${2:-}; shift 2 ;;
+      --error-reporting) error_reporting=${2:-}; shift 2 ;;
       --scenario) scenario=${2:-}; shift 2 ;;
       --conflict-fixture) conflict_fixture=${2:-}; shift 2 ;;
       --conflict-mode) conflict_mode=${2:-}; shift 2 ;;
@@ -322,12 +342,15 @@ run_matrix() {
     [[ -z "$php_branches" && "$php_supported" == upstream ]] || fail "--php-supported upstream cannot be combined with --php-branches"
     php_branches='8.3,8.4,8.5'
   fi
+  [[ -z "$wp_patches" || "$wp_patches" == latest ]] || fail "matrix supports only --wp-patches latest"
+  [[ -z "$php_min" || "$php_min" == 8.3 ]] || fail "matrix PHP minimum must be the supported 8.3 floor"
+  [[ -z "$error_reporting" || "$error_reporting" == E_ALL ]] || fail "matrix error reporting must be E_ALL"
   if [[ -n "$conflict_fixture" || -n "$conflict_mode" ]]; then
     [[ "$conflict_fixture" == 'tests/compat/fixtures/menu-conflict-plugin.php' && "$conflict_mode" == order-only ]] || fail "matrix conflict coverage requires the order-only fixture"
     [[ -n "$conflict_position" ]] || conflict_position=before
     [[ "$conflict_position" == before || "$conflict_position" == after ]] || fail "matrix conflict coverage requires a before or after position"
   fi
-  [[ "$scenario" == activation-menu || "$scenario" == admin-menu || "$scenario" == csv-roundtrip ]] || fail "unsupported matrix scenario: $scenario"
+  [[ "$scenario" == activation-menu || "$scenario" == admin-menu || "$scenario" == csv-roundtrip || "$scenario" == full-workflows ]] || fail "unsupported matrix scenario: $scenario"
   local pair line branch wp_version
   while IFS=, read -r line branch; do
     wp_version=$(runtime_wp_version "$line")
@@ -341,7 +364,7 @@ run_matrix() {
 
 runtime_wp_version() {
   case "$1" in
-    7.0) printf '%s' '7.0.3' ;;
+    7.0) printf '%s' '7.0.6' ;;
     7.1) printf '%s' '7.1.2' ;;
     *) fail "unsupported WordPress line $1" ;;
   esac
@@ -560,7 +583,7 @@ require_value --wp "$WP_VERSION"; require_value --php "$PHP_VERSION"
 [[ "$PHP_VERSION" =~ ^[0-9]+[.][0-9]+$ ]] || fail "PHP must be a major.minor version"
 [[ "$PHP_VERSION" != 8.2 ]] || fail "PHP 8.2 is diagnostic-only and cannot be a supported cell"
 case "$SCENARIO" in
-  activation-menu|admin-menu|csv-roundtrip) ;;
+  activation-menu|admin-menu|csv-roundtrip|full-workflows) ;;
   *) fail "unsupported cell scenario: $SCENARIO" ;;
 esac
 if [[ -n "$CONFLICT_FIXTURE" || -n "$CONFLICT_MODE" ]]; then
@@ -601,11 +624,16 @@ if [[ "$CONFLICT_MODE" == order-only ]]; then
   compose_env exec -T wordpress sh -c 'cp /var/www/html/wp-content/plugins/gigpress/tests/compat/fixtures/menu-conflict-plugin.php /var/www/html/wp-content/plugins/menu-conflict-plugin.php'
 fi
 output=$(compose_env exec -T -e COMPAT_PURPOSE="$SCENARIO" -e COMPAT_CONFLICT_MODE="$CONFLICT_MODE" -e COMPAT_CONFLICT_POSITION="$CONFLICT_POSITION" wordpress php /compat/probe.php) || { printf '%s\n' "$output" >&2; fail "probe failed"; }
-printf '%s\n' "$output" | tee "$RESULT_DIR/${WP_VERSION}-php${PHP_VERSION}-${SCENARIO}.json"
+image="wordpress:${WP_VERSION}-php${PHP_VERSION}-apache"
+image_id=$(rtk docker image inspect --format '{{.Id}}' "$image")
+result=$(printf '%s\n' "$output" | rtk proxy jq -c --arg image "$image" --arg image_id "$image_id" --arg source_revision "$(rtk proxy git rev-parse HEAD)" '. + {image: $image, image_id: $image_id, source_revision: $source_revision}')
+printf '%s\n' "$result" | tee "$RESULT_DIR/${WP_VERSION}-php${PHP_VERSION}-${SCENARIO}.json"
 if [[ "$SCENARIO" == admin-menu && "$CONFLICT_MODE" == order-only ]]; then
   printf '%s\n' "$output" | rtk jq -e '.status == "PASS" and .plugin_active == true and .menu_order_conflict == true and (.menu_warnings | length == 0) and (.plugin_errors | length == 0) and ((.menu_slugs | length) == (.menu_slugs | unique | length)) and ((.menu_slugs | index("edit-comments.php")) as $comments | (.menu_slugs | index("gigpress.php")) as $gigpress | ($comments != null and $gigpress != null and $gigpress > $comments) and ((.menu_slugs | index("separator-gp")) == null))' >/dev/null || fail "conflict cell did not preserve standard WordPress menu order"
 elif [[ "$SCENARIO" == admin-menu ]]; then
   printf '%s\n' "$output" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.menu_warnings | length == 0) and (.plugin_errors | length == 0) and ((.menu_slugs | length) == (.menu_slugs | unique | length)) and ((.menu_slugs | index("edit-comments.php")) as $comments | (.menu_slugs | index("separator-gp")) as $separator | (.menu_slugs | index("gigpress.php")) as $gigpress | ($comments != null and $separator == ($comments + 1) and $gigpress == ($separator + 1)))' >/dev/null || fail "admin-menu cell did not preserve warning-free preferred GigPress placement"
+elif [[ "$SCENARIO" == full-workflows ]]; then
+  printf '%s\n' "$result" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.plugin_errors | length == 0) and .full_workflows.status == "PASS" and .full_workflows.admin_create_edit_read and .full_workflows.public_shortcode and .full_workflows.rss and .full_workflows.ical and .full_workflows.csv_import_export and .full_workflows.duplicate_preserved' >/dev/null || fail "full workflow cell did not satisfy the compatibility contract"
 else
   printf '%s\n' "$output" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.menu_slugs | index("gigpress.php")) and (.plugin_errors | length == 0)' >/dev/null || fail "probe did not report a warning-free active GigPress menu"
 fi
