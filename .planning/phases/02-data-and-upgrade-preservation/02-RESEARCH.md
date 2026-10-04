@@ -281,20 +281,18 @@ This is a planning skeleton, not an existing function. Its guard variables are [
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
 | A1 | No deployment-specific OS registration participates in GigPress upgrades. | Runtime State Inventory | A host-specific runner could require separate preservation handling. |
-| A2 | A per-step checkpoint can be added without an incompatible schema change. | Architecture Patterns | Planner must choose its exact durable representation after inspecting the implementation approach. |
+| A2 | Plan 02-01 selects a separate WordPress option named `gigpress_upgrade_state` for the durable per-step journal, avoiding a table/schema change and avoiding mutation of the saved settings contract. | Architecture Patterns | Execution must prove option persistence, exact-ID reconciliation, and cleanup ordering through injected-failure fixtures. |
 | A3 | The test runner can add an `upgrade-preservation` scenario while retaining its existing command interface. | Validation Architecture | Implementation may need a differently named scenario or targeted probe command. |
 
-## Open Questions
+## Research Resolutions
 
-1. **What table engines and real historical layouts exist on production sites?**
-   - What we know: the repository carries current schema SQL and recognizes versions `1.0`–`1.5`; no live backup was supplied. [VERIFIED: `admin/db.php:17-71`, `admin/db.php:161-189`; `02-CONTEXT.md:24-26`]
-   - What's unclear: exact production engine/collation and any site-specific custom data.
-   - Recommendation: fixture each recognized layout from repository history, label it reconstructed, and fail safely with a notice for unrecognized metadata/layouts.
+1. **Production historical-layout evidence boundary — resolved for planning.**
+   - Repository evidence defines the recognized `1.0`–`1.5` branches and current schema, but no live backup was supplied, so production engine/collation details and site-specific physical layouts were not empirically verified. [VERIFIED: `admin/db.php:17-71`, `admin/db.php:161-189`; `02-CONTEXT.md:24-26`]
+   - Plans 02-01 and 02-02 therefore use populated fixtures reconstructed from repository evidence and label them as reconstructed. Existing tables with missing, invalid, unrecognized, ambiguous, or newer metadata/layout state take the D-07/D-08 safe-stop path: preserve rows/options/posts, leave the final version unchanged, and expose a scoped administrator notice rather than guessing or claiming live-site coverage.
 
-2. **Which durable checkpoint format best makes a crash between legacy inserts and relation updates retry-safe?**
-   - What we know: final `db_version` alone is insufficient and `dbDelta()` should not be assumed transactional. [VERIFIED: `admin/db.php:156-193`] [CITED: https://developer.wordpress.org/reference/functions/dbDelta/]
-   - What's unclear: whether a dedicated option, a compatible extension of the existing settings array, or a minimal migration journal has the smallest compatibility risk.
-   - Recommendation: select after implementing a fixture with injected failures between every mutation; require a checkpoint that proves exact created IDs before retry.
+2. **Durable checkpoint representation — resolved by Plan 02-01.**
+   - The selected representation is a separate WordPress option named `gigpress_upgrade_state`, not an extension of `gigpress_settings` and not a new custom table. It records source/target versions, completed step names, pre-mutation entity IDs, and exact created-ID mappings needed to reconcile an interruption.
+   - `gigpress_settings['db_version']` remains the final completion marker. The coordinator writes and reads it back only after every required postcondition passes, then removes `gigpress_upgrade_state`. Injected failures around each mutation must prove that the option survives interruption, retry reuses only exact unambiguous IDs, and no failed path advances the final marker. This resolves the representation choice without assuming `dbDelta()` or historical storage engines provide atomic rollback. [VERIFIED design source: `02-01-PLAN.md`; Cited API constraint: https://developer.wordpress.org/reference/functions/dbDelta/]
 
 ## Environment Availability
 
@@ -381,7 +379,7 @@ This is a planning skeleton, not an existing function. Its guard variables are [
 
 **Confidence breakdown:**
 - Standard stack: HIGH — existing core APIs and harness are directly inspected; no new packages are proposed.
-- Architecture: MEDIUM — existing failure modes are verified, while the durable checkpoint representation needs implementation-level selection.
+- Architecture: MEDIUM — existing failure modes are verified and Plan 02-01 selects the separate `gigpress_upgrade_state` option; execution still must validate interruption persistence and exact-ID reconciliation against reconstructed fixtures.
 - Pitfalls: HIGH — each material risk is present in the inspected migration or mutation source.
 
 **Research date:** 2026-10-04

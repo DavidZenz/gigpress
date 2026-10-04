@@ -55,7 +55,19 @@ Plans:
   1. After updating GigPress, existing show, artist, venue, and tour records, their IDs and relationships, and saved settings remain present and usable without data loss.
   2. Site owners can create, edit, copy, trash, and restore shows and continue managing their artist, venue, and tour relationships using the existing data model.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+**Wave 1**
+- [ ] 02-01-PLAN.md — Establish a safe representative 1.4-to-1.6 upgrade with retry and failure gating
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 02-02-PLAN.md — Preserve the remaining 1.0–1.5 upgrade paths and the 1.6 steady state
+- [ ] 02-03-PLAN.md — Preserve show lifecycle behavior and protect artist, venue, and tour relationships
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 02-04-PLAN.md — Aggregate preservation checks across supported WordPress and PHP versions
+
 **Research flags**: Inventory historical schema versions and upgrade branches; verify representative existing databases, settings, statuses, IDs, relationships, and linked records. Keep schema changes out of scope unless evidence requires a separately versioned migration.
 
 ### Phase 3: Administration Workflows
