@@ -254,7 +254,10 @@ function gigpress_show_outcome_notice($outcome) {
 	echo '<div id="gigpress-errors" class="notice notice-error" role="alert" tabindex="-1"><p>' . esc_html__('The show has not been saved. Correct the fields below or retry after the problem is resolved.', 'gigpress') . '</p>';
 	if ($outcome['field_errors']) {
 		echo '<ul>';
-		foreach ($outcome['field_errors'] as $field => $error) echo '<li><a href="#' . esc_attr($field) . '">' . esc_html($error) . '</a></li>';
+		$targets = array('gpaction' => 'show_form', 'show_id' => 'show_form', 'gp_yy' => 'show_date', 'gp_mm' => 'show_date', 'gp_dd' => 'show_date',
+			'exp_yy' => 'show_end_date', 'exp_mm' => 'show_end_date', 'exp_dd' => 'show_end_date', 'created_artist_id' => 'show_artist_id',
+			'created_venue_id' => 'show_venue_id', 'created_tour_id' => 'show_tour_id', 'created_post_id' => 'show_related');
+		foreach ($outcome['field_errors'] as $field => $error) echo '<li><a href="#' . esc_attr($targets[$field] ?? $field) . '">' . esc_html($error) . '</a></li>';
 		echo '</ul>';
 	}
 	foreach ($outcome['system_errors'] as $error) echo '<p>' . esc_html($error) . '</p>';

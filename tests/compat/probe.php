@@ -40,6 +40,7 @@ $administrationRequiredCases = array('entry-create', 'entry-recovery', 'entry-co
 
 function gigpress_administration_case($case) {
     global $pluginErrors, $menuWarnings;
+    $started = microtime(true);
     $family = strpos($case, 'entry-') === 0 ? 'entry' : (strpos($case, 'settings-') === 0 ? 'settings' : 'list');
     $module = WP_PLUGIN_DIR . '/gigpress/tests/compat/administration-' . $family . '.php';
     $callback = 'gigpress_administration_' . $family . '_case';
@@ -54,7 +55,7 @@ function gigpress_administration_case($case) {
         && !$pluginErrors && !$menuWarnings;
     return array_merge($record, array('case' => $case, 'status' => $ok ? 'PASS' : 'FAIL', 'checks' => $checks,
         'assertion_count' => count($checks), 'warning_count' => count($menuWarnings), 'fatal_count' => 0,
-        'plugin_error_count' => count($pluginErrors)));
+        'plugin_error_count' => count($pluginErrors), 'elapsed_seconds' => round(microtime(true) - $started, 4)));
 }
 
 function gigpress_administration_all($required) {
@@ -65,7 +66,10 @@ function gigpress_administration_all($required) {
         exec('COMPAT_UPGRADE_CASE=' . escapeshellarg($case) . ' ' . escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__FILE__) . ' 2>&1', $output, $exit);
         $result = json_decode(end($output), true);
         $record = $result['administration_workflows'] ?? array('case' => $case, 'status' => 'FAIL', 'checks' => array(), 'assertion_count' => 0);
-        if ($exit !== 0 || ($result['status'] ?? '') !== 'PASS') $record['status'] = 'FAIL';
+        if ($exit !== 0 || ($result['status'] ?? '') !== 'PASS') {
+            $record['status'] = 'FAIL';
+            $record['failure_detail'] = is_array($result) ? ($result['fatal']['message'] ?? 'Child result did not satisfy the administration contract.') : implode("\n", $output);
+        }
         $cases[] = $record;
     }
     $passed = count($required) === count(array_unique($required)) && count($cases) === count($required)
@@ -482,7 +486,9 @@ $fixturePurpose = in_array($purpose, array('fixture-activate', 'fixture-low', 'f
 $plugin = $fixturePurpose ? 'php-floor-plugin.php' : 'gigpress/gigpress.php';
 $skipGigPressActivation = $purpose === 'real-low-live'
     || ($purpose === 'diagnose-menu' && (getenv('COMPAT_SKIP_GIGPRESS_ACTIVATION') ?: '') === '1');
-if ($purpose === 'upgrade-preservation' && !$skipGigPressActivation) {
+/* WP_INSTALLING skips active-plugin loading in child probes; activation must
+ * include the real plugin afresh before administration cases use its constants. */
+if (in_array($purpose, array('upgrade-preservation', 'administration-workflows'), true) && !$skipGigPressActivation) {
     deactivate_plugins($plugin, false, false);
 }
 if (($purpose === 'fixture-activate' || !$fixturePurpose) && !$skipGigPressActivation) {

@@ -1,6 +1,39 @@
 .gigpress {
 }
 
+.gigpress-entry .gigpress-entry-section h2 {
+	margin: 1em 0 0;
+	font-size: 1.2em;
+}
+
+.gigpress-entry .description {
+	max-width: 48em;
+}
+
+.gigpress-entry .gigpress-field-error {
+	color: #b32d2e;
+	font-weight: 600;
+}
+
+.gigpress-entry [aria-invalid="true"] {
+	border-color: #b32d2e;
+}
+
+.gigpress-entry fieldset label {
+	display: inline-block;
+	margin-right: 1em;
+}
+
+.gigpress-entry input:focus-visible,
+.gigpress-entry select:focus-visible,
+.gigpress-entry textarea:focus-visible,
+.gigpress-entry fieldset:focus,
+#gigpress-errors:focus,
+#message.notice-success:focus {
+	outline: 2px solid #2271b1;
+	outline-offset: 2px;
+}
+
 #icon-gigpress {
 	background: transparent url(../images/gigpress-icon-32.png) no-repeat 3px 5px;
 }
@@ -187,4 +220,3 @@ legend {
 	font-weight: bold;
 	font-size: 1.2em;
 }
-

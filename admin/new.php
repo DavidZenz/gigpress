@@ -36,7 +36,12 @@ function gigpress_entry_date($key, $value, $state, $errors) {
 		} else echo '<input type="date"';
 		echo ' id="' . esc_attr($key . '_picker') . '" name="' . esc_attr($key . '_picker') . '" value="' . esc_attr($picker) . '"';
 		gigpress_entry_error_attributes($key . '_picker', $errors, $key . '-help');
-		echo ' /></p><p><label for="' . esc_attr('replace_' . $key) . '"><input type="checkbox" id="' . esc_attr('replace_' . $key) . '" name="' . esc_attr('replace_' . $key) . '" value="1"' . checked($state['replace_' . $key] ?? '', '1', false) . ' /> ' . esc_html__('Use the replacement date when saving', 'gigpress') . '</label></p>';
+		echo ' /></p>';
+		gigpress_entry_field_error($key . '_picker', $errors);
+		echo '<p><label for="' . esc_attr('replace_' . $key) . '"><input type="checkbox" id="' . esc_attr('replace_' . $key) . '" name="' . esc_attr('replace_' . $key) . '" value="1"' . checked($state['replace_' . $key] ?? '', '1', false);
+		gigpress_entry_error_attributes('replace_' . $key, $errors, $key . '-help');
+		echo ' /> ' . esc_html__('Use the replacement date when saving', 'gigpress') . '</label></p>';
+		gigpress_entry_field_error('replace_' . $key, $errors);
 	}
 	gigpress_entry_field_error($key, $errors);
 }
@@ -48,6 +53,16 @@ function gigpress_add() {
 	/* A malformed action still enters the validation path without coercing its value. */
 	if (isset($_POST['gpaction'])) $outcome = is_scalar($_POST['gpaction']) && $_POST['gpaction'] === 'update' ? gigpress_update_show() : gigpress_add_show();
 	$gpo = get_option('gigpress_settings');
+	/* Preserve the existing welcome dismissal with the same guarded write boundary. */
+	if (isset($_GET['gpaction']) && is_scalar($_GET['gpaction']) && $_GET['gpaction'] === 'killwelcome'
+		&& current_user_can($gpo['user_level']) && isset($_GET['_gpwelcome_nonce']) && is_scalar($_GET['_gpwelcome_nonce'])
+		&& wp_verify_nonce(wp_unslash($_GET['_gpwelcome_nonce']), 'gigpress-dismiss-welcome')) {
+		$readiness = gigpress_db_bootstrap();
+		if (($readiness['status'] ?? '') === 'ready') {
+			$gpo['welcome'] = 'no';
+			update_option('gigpress_settings', $gpo);
+		}
+	}
 	$defaults = array('show_date' => $gpo['default_date'], 'show_end_date' => $gpo['default_date'], 'gp_hh' => 'na', 'gp_min' => 'na', 'show_multi' => '0',
 		'show_artist_id' => (string) ($gpo['default_artist'] ?? 'new'), 'show_venue_id' => (string) ($gpo['default_venue'] ?? ''),
 		'show_tour_id' => (string) ($gpo['default_tour'] ?? '0'), 'show_related' => !empty($gpo['autocreate_post']) ? 'new' : '0',
@@ -102,23 +117,26 @@ function gigpress_add() {
 	?>
 	<div class="wrap gigpress gigpress-entry">
 	<h1 id="gigpress-entry-heading"><?php echo esc_html($mode === 'update' ? __('Edit this show', 'gigpress') : __('Add a show', 'gigpress')); ?></h1>
-	<?php if (($gpo['welcome'] ?? '') === 'yes') { ?><div class="notice notice-info"><p><?php echo esc_html__('Welcome to GigPress! Display shows by adding [gigpress_shows] to a page or post.', 'gigpress'); ?> <a href="https://gigpress.com/docs/"><?php esc_html_e('Documentation', 'gigpress'); ?></a></p></div><?php } ?>
-	<form id="show_form" method="post" novalidate action="<?php echo esc_url(admin_url('admin.php?page=gigpress/gigpress.php')); ?>">
+	<?php if (($gpo['welcome'] ?? '') === 'yes') { ?><div class="notice notice-info"><p><?php echo esc_html__('Welcome to GigPress! Display shows by adding [gigpress_shows] to a page or post.', 'gigpress'); ?> <a href="https://gigpress.com/docs/"><?php esc_html_e('Documentation', 'gigpress'); ?></a> <a href="<?php echo esc_url(wp_nonce_url(admin_url('admin.php?page=gigpress/gigpress.php&gpaction=killwelcome'), 'gigpress-dismiss-welcome', '_gpwelcome_nonce')); ?>"><?php esc_html_e("Don't show this again", 'gigpress'); ?></a></p></div><?php } ?>
+	<form id="show_form" tabindex="-1" method="post" novalidate action="<?php echo esc_url(admin_url('admin.php?page=gigpress/gigpress.php')); ?>">
 	<?php wp_nonce_field('gigpress-action'); ?>
 	<input type="hidden" id="gpaction" name="gpaction" value="<?php echo esc_attr($mode); ?>" />
 	<?php if ($mode === 'update') { ?><input type="hidden" id="show_id" name="show_id" value="<?php echo esc_attr($id); ?>" /><?php } ?>
 	<?php foreach (($outcome['created_ids'] ?? array()) as $kind => $createdId) { ?><input type="hidden" name="<?php echo esc_attr('created_' . $kind . '_id'); ?>" value="<?php echo esc_attr($createdId); ?>" /><?php } ?>
 	<?php gigpress_entry_field_error('gpaction', $errors); gigpress_entry_field_error('show_id', $errors); ?>
 	<table class="form-table gp-table"><tbody>
+	<tr class="gigpress-entry-section"><th colspan="2"><h2><?php esc_html_e('Dates and time', 'gigpress'); ?></h2></th></tr>
 	<tr><th scope="row"><label for="show_date"><?php esc_html_e('Date', 'gigpress'); ?> <span class="gp-required">*</span></label></th><td><?php gigpress_entry_date('show_date', $state['show_date'], $state, $errors); ?></td></tr>
 	<tr><th scope="row"><label for="gp_hh"><?php esc_html_e('Time (optional)', 'gigpress'); ?></label></th><td>
-	<select name="gp_hh" id="gp_hh"<?php gigpress_entry_error_attributes('gp_hh', $errors); ?>>
-	<?php $hours = array('na' => __('Not specified', 'gigpress')); for ($hour = 0; $hour < 24; $hour++) $hours[sprintf('%02d', $hour)] = !empty($gpo['alternate_clock']) ? sprintf('%02d', $hour) : (string) ($hour % 12 ?: 12); gigpress_entry_options($hours, $state['gp_hh']); ?>
+	<select name="gp_hh" id="gp_hh"<?php gigpress_entry_error_attributes('gp_hh', $errors, 'gigpress-time-help'); ?>>
+	<?php $hours = array('na' => __('Not specified', 'gigpress')); for ($hour = 0; $hour < 24; $hour++) $hours[sprintf('%02d', $hour)] = !empty($gpo['alternate_clock']) ? sprintf('%02d', $hour) : sprintf('%d %s', $hour % 12 ?: 12, $hour < 12 ? __('AM', 'gigpress') : __('PM', 'gigpress')); gigpress_entry_options($hours, $state['gp_hh']); ?>
 	</select><label for="gp_min"><?php esc_html_e('Minute', 'gigpress'); ?></label>
-	<select name="gp_min" id="gp_min"<?php gigpress_entry_error_attributes('gp_min', $errors); ?>><?php $minutes = array('na' => __('Not specified', 'gigpress')); for ($minute = 0; $minute < 60; $minute += 5) $minutes[sprintf('%02d', $minute)] = sprintf('%02d', $minute); gigpress_entry_options($minutes, $state['gp_min']); ?></select>
+	<select name="gp_min" id="gp_min"<?php gigpress_entry_error_attributes('gp_min', $errors, 'gigpress-time-help'); ?>><?php $minutes = array('na' => __('Not specified', 'gigpress')); for ($minute = 0; $minute < 60; $minute++) $minutes[sprintf('%02d', $minute)] = sprintf('%02d', $minute); gigpress_entry_options($minutes, $state['gp_min']); ?></select>
+	<p id="gigpress-time-help" class="description"><?php esc_html_e('Choose Not specified for an event without a time. Choose an hour and minute for a timed event; an unspecified minute means :00.', 'gigpress'); ?></p>
 	<?php gigpress_entry_field_error('gp_hh', $errors); gigpress_entry_field_error('gp_min', $errors); ?>
-	<p><label for="show_multi"><input type="checkbox" id="show_multi" name="show_multi" value="1"<?php checked($state['show_multi'], '1'); ?> /> <?php esc_html_e('This is a multi-day event', 'gigpress'); ?></label><?php gigpress_entry_field_error('show_multi', $errors); ?></p></td></tr>
-	<tr id="expire"<?php if ((string) $state['show_multi'] !== '1') echo ' class="gigpress-inactive"'; ?>><th scope="row"><label for="show_end_date"><?php esc_html_e('End date', 'gigpress'); ?></label></th><td><?php gigpress_entry_date('show_end_date', $state['show_end_date'], $state, $errors); ?></td></tr>
+	<p><label for="show_multi"><input type="checkbox" id="show_multi" name="show_multi" value="1"<?php checked($state['show_multi'], '1'); gigpress_entry_error_attributes('show_multi', $errors, 'gigpress-end-date-help'); ?> /> <?php esc_html_e('This is a multi-day event', 'gigpress'); ?></label><?php gigpress_entry_field_error('show_multi', $errors); ?></p></td></tr>
+	<tr id="expire"<?php if ((string) $state['show_multi'] !== '1') echo ' class="gigpress-inactive"'; ?>><th scope="row"><label for="show_end_date"><?php esc_html_e('End date — last day of the event', 'gigpress'); ?></label></th><td><?php gigpress_entry_date('show_end_date', $state['show_end_date'], $state, $errors); ?><p id="gigpress-end-date-help" class="description"><?php esc_html_e('The event remains upcoming through its last date under GigPress’s existing daily cutoff. This end date is used only for a multi-day event.', 'gigpress'); ?></p></td></tr>
+	<tr class="gigpress-entry-section"><th colspan="2"><h2><?php esc_html_e('Artists, venues and related content', 'gigpress'); ?></h2></th></tr>
 	<?php
 	$groups = array(
 		'show_artist_id' => array(__('Artist', 'gigpress'), $artists, array('artist_name' => __('Artist name', 'gigpress'), 'artist_url' => __('Artist URL', 'gigpress'))),
@@ -141,8 +159,12 @@ function gigpress_add() {
 			gigpress_entry_field_error($key, $errors);
 			if ($key === 'show_related_title') {
 				echo '<p class="description">' . esc_html__('Available placeholders: %date%, %long_date%, %artist%, %city%, %venue%.', 'gigpress') . '</p>';
-				echo '<fieldset id="show_related_date"><legend>' . esc_html__('Publish related post', 'gigpress') . '</legend>';
-				foreach (array('now' => __('Publish now', 'gigpress'), 'show' => __('Publish on show date', 'gigpress')) as $choice => $text) echo '<label for="show_related_date_' . esc_attr($choice) . '"><input type="radio" id="show_related_date_' . esc_attr($choice) . '" name="show_related_date" value="' . esc_attr($choice) . '"' . checked($state['show_related_date'], $choice, false) . ' /> ' . esc_html($text) . '</label> ';
+				echo '<fieldset id="show_related_date" tabindex="-1"'; gigpress_entry_error_attributes('show_related_date', $errors); echo '><legend>' . esc_html__('Publish related post', 'gigpress') . '</legend>';
+				foreach (array('now' => __('Publish now', 'gigpress'), 'show' => __('Publish on show date', 'gigpress')) as $choice => $text) {
+					echo '<label for="show_related_date_' . esc_attr($choice) . '"><input type="radio" id="show_related_date_' . esc_attr($choice) . '" name="show_related_date" value="' . esc_attr($choice) . '"' . checked($state['show_related_date'], $choice, false);
+					gigpress_entry_error_attributes('show_related_date', $errors);
+					echo ' /> ' . esc_html($text) . '</label> ';
+				}
 				gigpress_entry_field_error('show_related_date', $errors);
 				echo '</fieldset>';
 			}
@@ -151,6 +173,7 @@ function gigpress_add() {
 		echo '</tbody><tbody>';
 	}
 	$ages = array('Not sure' => __('Not sure', 'gigpress'));
+	echo '<tr class="gigpress-entry-section"><th colspan="2"><h2>' . esc_html__('Tickets and other details', 'gigpress') . '</h2></th></tr>';
 	foreach (explode('|', $gpo['age_restrictions']) as $age) $ages[trim($age)] = trim($age);
 	foreach (array('show_status' => array(__('Status', 'gigpress'), array('active' => __('Active', 'gigpress'), 'soldout' => __('Sold Out', 'gigpress'), 'cancelled' => __('Cancelled', 'gigpress'))), 'show_ages' => array(__('Admittance', 'gigpress'), $ages)) as $field => $config) {
 		echo '<tr><th scope="row"><label for="' . esc_attr($field) . '">' . esc_html($config[0]) . '</label></th><td><select name="' . esc_attr($field) . '" id="' . esc_attr($field) . '"'; gigpress_entry_error_attributes($field, $errors); echo '>'; gigpress_entry_options($config[1], $state[$field]); echo '</select>'; gigpress_entry_field_error($field, $errors); echo '</td></tr>';

@@ -119,6 +119,21 @@ function gigpress_administration_entry_control_checks($request) {
     $script = file_get_contents(WP_PLUGIN_DIR . '/gigpress/scripts/gigpress-admin.js');
     $checks['no_forced_blur_in_enhancement'] = strpos($script, '.blur(') === false;
     $checks['minute_enablement_enhancement'] = strpos($script, "prop('disabled'") !== false;
+    $settings = get_option('gigpress_settings');
+    $settings['welcome'] = 'yes';
+    update_option('gigpress_settings', $settings);
+    $welcome = gigpress_administration_entry_request(array(), true)['html'];
+    $checks['welcome_dismissal_link_preserved'] = strpos($welcome, 'gpaction=killwelcome') !== false && strpos($welcome, '_gpwelcome_nonce=') !== false;
+    gigpress_administration_entry_request(array(), true, array('gpaction' => 'killwelcome', '_gpwelcome_nonce' => 'invalid'));
+    $checks['welcome_invalid_nonce_no_write'] = get_option('gigpress_settings') === $settings;
+    $admin = get_current_user_id();
+    wp_set_current_user(0);
+    gigpress_administration_entry_request(array(), true, array('gpaction' => 'killwelcome', '_gpwelcome_nonce' => wp_create_nonce('gigpress-dismiss-welcome')));
+    $checks['welcome_capability_no_write'] = get_option('gigpress_settings') === $settings;
+    wp_set_current_user($admin);
+    gigpress_administration_entry_request(array(), true, array('gpaction' => 'killwelcome', '_gpwelcome_nonce' => wp_create_nonce('gigpress-dismiss-welcome')));
+    $checks['welcome_dismissal_saves_only_welcome'] = get_option('gigpress_settings') === array_merge($settings, array('welcome' => 'no'));
+    update_option('gigpress_settings', $settings);
     return $checks;
 }
 

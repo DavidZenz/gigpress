@@ -2,41 +2,41 @@ $gp=jQuery.noConflict();
 
 $gp(document).ready(function()
 	{
-		// If we're using the 12-hour clock, then do this magic
-		if ( $gp('select#gp_hh.twelve').length > 0 ) {
-			var time = $gp('select#gp_hh option:selected').parent().attr('label');
-			$gp('span#ampm').text(time);
-			
-			$gp('select#gp_hh.twelve').change(function()
-				{
-					var time = $gp('select#gp_hh option:selected').parent().attr('label');
-					$gp('span#ampm').text(time);
-				}
-			);
-		}
-		
+		// The server renders every correction field for requests without JavaScript.
 		$gp('tr.gigpress-inactive, tbody.gigpress-inactive').hide();
-		
-		$gp('input#show_multi').click(function()
-			{
-				// $gp('tr#expire').toggle();
-				// Workaround for IE 8 nonsense
-				$gp('tr#expire').toggle($gp('tr#expire').css('display') == 'none');
-				this.blur();
-			}
-		);
-		
-		$gp('select.can-add-new').change(function()
-			{
-				var scope = $gp(this);
-				var target = $gp(this).attr('id') + '_new';
-				if ( $gp('option:selected', scope).val() == 'new') {
-					$gp('tbody#' + target).fadeIn();
-				} else {
-					$gp('tbody#' + target).fadeOut();
+		var revealEndDate = function() {
+			$gp('#expire').toggle($gp('#show_multi').prop('checked') || $gp('#expire [aria-invalid="true"]').length > 0);
+		};
+		$gp('#show_multi').on('change', revealEndDate);
+		revealEndDate();
+		var enableMinutes = function() {
+			var minutes = $gp('.gigpress-entry #gp_min');
+			minutes.prop('disabled', $gp('.gigpress-entry #gp_hh').val() === 'na' && minutes.attr('aria-invalid') !== 'true');
+		};
+		$gp('.gigpress-entry #gp_hh').on('change', enableMinutes);
+		enableMinutes();
+		$gp('select.can-add-new').each(function() {
+			var control = $gp(this);
+			var section = $gp(document.getElementById(this.id + '_new'));
+			var reveal = function() {
+				section.toggle(control.val() === 'new' || section.find('[aria-invalid="true"]').length > 0);
+			};
+			control.on('change', reveal);
+			reveal();
+		});
+		if ($gp('.gigpress-entry').length) {
+			$gp('#gigpress-errors a[href^="#"]').on('click', function(event) {
+				var target = document.getElementById(this.hash.slice(1));
+				if (target) {
+					event.preventDefault();
+					$gp(target).closest('#expire, tbody.gigpress-addition').show();
+					target.focus();
 				}
-			}
-		);
+			});
+			// These notices exist only after a save attempt, never on an ordinary load.
+			var feedback = document.getElementById('gigpress-errors') || document.querySelector('#message.notice-success');
+			if (feedback) feedback.focus();
+		}
 		
 		// Return a helper with preserved width of cells
 		var fixHelper = function(e, ui) {
