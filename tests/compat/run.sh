@@ -709,9 +709,13 @@ elif [[ "$SCENARIO" == admin-menu ]]; then
 elif [[ "$SCENARIO" == full-workflows ]]; then
   printf '%s\n' "$result" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.plugin_errors | length == 0) and .full_workflows.status == "PASS" and .full_workflows.admin_create_edit_read and .full_workflows.public_shortcode and .full_workflows.rss and .full_workflows.ical and .full_workflows.csv_import_export and .full_workflows.duplicate_preserved' >/dev/null || fail "full workflow cell did not satisfy the compatibility contract"
 elif [[ "$SCENARIO" == upgrade-preservation ]]; then
-  upgrade_contract='.status == "PASS" and .plugin_active == true and (.plugin_errors | length == 0) and .upgrade_preservation.status == "PASS" and .upgrade_preservation.case == $case and .upgrade_preservation.manifest_matches and .upgrade_preservation.repeat_matches and .upgrade_preservation.fixture == "reconstructed-1.4"'
-  [[ "$UPGRADE_CASE" != safety-1.4 ]] || upgrade_contract="$upgrade_contract and .upgrade_preservation.safety_passed"
-  [[ "$UPGRADE_CASE" != metadata-classification ]] || upgrade_contract="$upgrade_contract and .upgrade_preservation.metadata_passed"
+  if [[ "$UPGRADE_CASE" == versions-1.0-1.2 ]]; then
+    upgrade_contract='.status == "PASS" and .plugin_active == true and (.plugin_errors | length == 0) and .upgrade_preservation.status == "PASS" and ([.upgrade_preservation.fixtures[] | (.repeat and (.checks | all))] | all)'
+  else
+    upgrade_contract='.status == "PASS" and .plugin_active == true and (.plugin_errors | length == 0) and .upgrade_preservation.status == "PASS" and .upgrade_preservation.case == $case and .upgrade_preservation.manifest_matches and .upgrade_preservation.repeat_matches and .upgrade_preservation.fixture == "reconstructed-1.4"'
+    [[ "$UPGRADE_CASE" != safety-1.4 ]] || upgrade_contract="$upgrade_contract and .upgrade_preservation.safety_passed"
+    [[ "$UPGRADE_CASE" != metadata-classification ]] || upgrade_contract="$upgrade_contract and .upgrade_preservation.metadata_passed"
+  fi
   printf '%s\n' "$result" | rtk jq -e --arg case "$UPGRADE_CASE" "$upgrade_contract" >/dev/null || fail "upgrade preservation cell did not satisfy the contract"
 else
   printf '%s\n' "$output" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.menu_slugs | index("gigpress.php")) and (.plugin_errors | length == 0)' >/dev/null || fail "probe did not report a warning-free active GigPress menu"

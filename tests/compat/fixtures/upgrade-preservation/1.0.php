@@ -5,6 +5,7 @@
 return array(
     'label' => 'reconstructed-1.0',
     'prefix' => 'compat_legacy_',
+    'linked_show_id' => 101,
     'settings' => array(
         'db_version' => '1.0',
         'band' => 'The Relics',

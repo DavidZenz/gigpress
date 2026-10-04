@@ -2,7 +2,7 @@
 
 /* Synthetic reconstruction of the 1.1 layout, after show expiration landed. */
 return array(
-    'label' => 'reconstructed-1.1',
+    'label' => 'reconstructed-1.1', 'linked_show_id' => 111,
     'prefix' => 'compat_legacy_',
     'settings' => array('db_version' => '1.1', 'band' => 'The Relics', 'date_format' => 'Y/m/d', 'alternate_clock' => 0, 'unknown_legacy_key' => 'keep-1.1'),
     'artists' => array(), 'venues' => array(),

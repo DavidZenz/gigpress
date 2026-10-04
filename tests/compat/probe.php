@@ -186,7 +186,7 @@ function upgrade_preservation_seed($fixture) {
     $postId = wp_insert_post(array('post_title' => 'Reconstructed linked post', 'post_content' => 'Existing WordPress content remains unchanged.', 'post_status' => 'publish', 'post_type' => 'post'));
     foreach (array('artists', 'venues', 'tours', 'shows') as $kind) {
         foreach ($fixture[$kind] as $row) {
-            if ($kind === 'shows' && $row['show_related'] === 0 && $row['show_id'] === 109) $row['show_related'] = (int) $postId;
+            if ($kind === 'shows' && $row['show_related'] === 0 && ($fixture['linked_show_id'] ?? 109) === $row['show_id']) $row['show_related'] = (int) $postId;
             if ($wpdb->insert($wpdb->prefix . 'gigpress_' . $kind, $row) === false) return false;
         }
     }
@@ -210,7 +210,7 @@ if ($purpose === 'upgrade-preservation') {
     }
 }
 $upgradeFailurePoint = $purpose === 'upgrade-preservation' && $upgradeCase === 'safety-1.4' ? 'before_schema' : null;
-if ($upgradeFailurePoint !== null) {
+if ($purpose === 'upgrade-preservation') {
     add_filter('gigpress_upgrade_failure_point', function ($fail, $point) use (&$upgradeFailurePoint) { return $point === $upgradeFailurePoint; }, 10, 2);
 }
 $fixturePurpose = in_array($purpose, array('fixture-activate', 'fixture-low', 'fixture-recover'), true);

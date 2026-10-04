@@ -2,7 +2,7 @@
 
 /* Synthetic reconstruction of the 1.2 layout, before the 1.3 setting change. */
 return array(
-    'label' => 'reconstructed-1.2', 'prefix' => 'compat_legacy_',
+    'label' => 'reconstructed-1.2', 'prefix' => 'compat_legacy_', 'linked_show_id' => 121,
     'settings' => array('db_version' => '1.2', 'band' => 'The Relics', 'date_format' => 'j.n.Y', 'display_subscriptions' => 0, 'unknown_legacy_key' => 'keep-1.2'),
     'artists' => array(), 'venues' => array(),
     'tours' => array(array('tour_id' => 37, 'tour_name' => 'One Two Tour', 'tour_status' => 'active')),

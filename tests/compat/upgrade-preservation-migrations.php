@@ -11,6 +11,13 @@ function gigpress_upgrade_preservation_snapshot() {
     foreach (array('shows' => 'show_id', 'artists' => 'artist_id', 'venues' => 'venue_id', 'tours' => 'tour_id') as $kind => $id) {
         $data[$kind] = $wpdb->get_results('SELECT * FROM ' . $wpdb->prefix . 'gigpress_' . $kind . ' ORDER BY ' . $id, ARRAY_A);
     }
+	$data['linked_posts'] = array();
+	foreach ($data['shows'] as $show) {
+		if ((int) $show['show_related'] > 0) {
+			$post = get_post((int) $show['show_related'], ARRAY_A);
+			$data['linked_posts'][(int) $show['show_id']] = $post ? array('ID' => (int) $post['ID'], 'post_title' => $post['post_title'], 'post_content' => $post['post_content']) : null;
+		}
+	}
     return $data;
 }
 
@@ -38,7 +45,8 @@ function gigpress_upgrade_preservation_run_versions($versions) {
     $passes = true; $details = array();
     foreach ($versions as $version) {
         $fixture = gigpress_upgrade_preservation_fixture($version);
-        $passes = $passes && is_array($fixture) && upgrade_preservation_seed($fixture);
+        $seeded = is_array($fixture) && upgrade_preservation_seed($fixture);
+        $passes = $passes && $seeded;
         unset($GLOBALS['gigpress_db_bootstrap_result']);
         $ready = gigpress_db_bootstrap();
         $first = gigpress_upgrade_preservation_snapshot();
@@ -46,8 +54,29 @@ function gigpress_upgrade_preservation_run_versions($versions) {
         unset($GLOBALS['gigpress_db_bootstrap_result']);
         $repeat = gigpress_db_bootstrap();
         $second = gigpress_upgrade_preservation_snapshot();
-        $passes = $passes && $ready['status'] === 'ready' && $repeat['status'] === 'ready' && $matches && $first === $second;
-        $details[$version] = array('checks' => $checks, 'repeat' => $first === $second);
+        $failurePoints = array('after_schema');
+		foreach (array('1.0' => array('after_upgrade_110', 'after_upgrade_120', 'after_upgrade_130', 'after_upgrade_140', 'after_upgrade_160'), '1.1' => array('after_upgrade_120', 'after_upgrade_130', 'after_upgrade_140', 'after_upgrade_160'), '1.2' => array('after_upgrade_130', 'after_upgrade_140', 'after_upgrade_160'))[$version] as $point) $failurePoints[] = $point;
+		$failurePoints[] = 'before_final_marker';
+		$retries = true; $retryFailures = array();
+		foreach ($failurePoints as $point) {
+			$retries = $retries && upgrade_preservation_seed($fixture);
+			$upgradeFailurePoint = $point;
+			unset($GLOBALS['gigpress_db_bootstrap_result']);
+			$blocked = gigpress_db_bootstrap();
+			$during = gigpress_upgrade_preservation_snapshot();
+			$markerSafe = ($during['settings']['db_version'] ?? null) === $version;
+			$journalPresent = is_array(get_option('gigpress_upgrade_state', false));
+			$upgradeFailurePoint = null;
+			unset($GLOBALS['gigpress_db_bootstrap_result']);
+			$retry = gigpress_db_bootstrap();
+			$afterRetry = gigpress_upgrade_preservation_snapshot();
+			list($retryChecks, $retryMatches) = gigpress_upgrade_preservation_manifest_matches($fixture, $afterRetry);
+			$pointPass = $blocked['status'] === 'blocked' && $markerSafe && $journalPresent && $retry['status'] === 'ready' && $retryMatches;
+			if (!$pointPass) $retryFailures[$point] = array('blocked' => $blocked, 'marker_safe' => $markerSafe, 'journal_present' => $journalPresent, 'retry' => $retry, 'manifest' => $retryChecks);
+			$retries = $retries && $pointPass;
+		}
+        $passes = $passes && $ready['status'] === 'ready' && $repeat['status'] === 'ready' && $matches && $first === $second && $retries;
+        $details[$version] = array('checks' => $checks, 'repeat' => $first === $second, 'retries' => $retries, 'retry_failures' => $retryFailures, 'seeded' => $seeded, 'actual_show_ids' => array_map('intval', array_column($first['shows'], 'show_id')));
     }
     return array('status' => $passes ? 'PASS' : 'FAIL', 'fixtures' => $details);
 }
