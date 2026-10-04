@@ -442,6 +442,7 @@ function gigpress_delete_show() {
 	$ids = gigpress_trash_selection($post, $stage === 'preview');
 	if ($ids === false || !$ids) return gigpress_trash_blocked($state, __('Select shows using the list checkboxes or a row Trash button, then retry.', 'gigpress'));
 	if ($stage === 'preview') {
+		gigpress_list_query($state);
 		$intent = array('owner' => get_current_user_id(), 'expires' => time() + 900, 'ids' => $ids, 'state' => $state, 'rows' => array(), 'identities' => array());
 		foreach ($ids as $id) {
 			$intent['rows'][$id] = gigpress_trash_row($id);
@@ -463,6 +464,7 @@ function gigpress_delete_show() {
 	try {
 		if (get_transient($key) !== $intent || !delete_transient($key)) return gigpress_trash_blocked($state, __('This confirmation is already used. Review the shows again.', 'gigpress'));
 		if ($stage === 'cancel') {
+			gigpress_list_query($state);
 			echo '<div class="notice notice-info" role="status"><p>' . esc_html__('Canceled. No shows were changed.', 'gigpress') . ' <a href="' . esc_url(gigpress_list_url($state)) . '">' . esc_html__('View list', 'gigpress') . '</a></p></div>';
 			return array('status' => 'canceled', 'state' => $state, 'changed_ids' => array());
 		}
@@ -471,19 +473,30 @@ function gigpress_delete_show() {
 			$row = gigpress_trash_row($id);
 			if (!$row) { $result = 'missing'; $reason = __('This show no longer exists. Return to the list to reselect.', 'gigpress'); }
 			elseif ($row['show_status'] === 'deleted') { $result = 'already_trashed'; $reason = __('This show is already in trash; it was not changed.', 'gigpress'); }
-			elseif ($row !== $intent['rows'][$id] || !in_array($row['show_status'], array('active', 'soldout', 'cancelled'), true)) { $result = 'stale'; $reason = __('This show changed since review. Open it and review the current details before retrying.', 'gigpress'); }
+			elseif (!in_array($row['show_status'], array('active', 'soldout', 'cancelled'), true)) { $result = 'stale'; $reason = __('This show cannot be moved to trash in its current status. Open it and review the details.', 'gigpress'); }
+			elseif ($row !== $intent['rows'][$id]) { $result = 'stale'; $reason = __('This show changed since review. Open it and review the current details before retrying.', 'gigpress'); }
 			else {
-				$write = $wpdb->update(GIGPRESS_SHOWS, array('show_status' => 'deleted'), array('show_id' => $id, 'show_status' => $row['show_status']), array('%s'), array('%d', '%s'));
+				$write = $wpdb->update(GIGPRESS_SHOWS, array('show_status' => 'deleted'), $row, array('%s'));
 				$expected = $row; $expected['show_status'] = 'deleted';
 				if ($write === 1 && gigpress_trash_row($id) === $expected) { $result = 'changed'; $reason = __('Moved to trash.', 'gigpress'); $changed[] = $id; }
+				elseif ($write === 0) { $result = 'stale'; $reason = __('This show did not match the reviewed state when the change was attempted. Review it again before retrying.', 'gigpress'); }
 				else { $result = 'failed'; $reason = __('The change could not be verified. Return to the list, check this show and retry.', 'gigpress'); }
 			}
 			$results[] = array('show_id' => $id, 'result' => $result, 'reason' => $reason, 'identity' => $intent['identities'][$id]);
 		}
+		// Recount after writes so every result/Undo link returns to an existing page.
+		gigpress_list_query($state);
+		foreach ($results as &$item) {
+			$available = gigpress_trash_row($item['show_id']);
+			$editable = $available && $available['show_status'] !== 'deleted';
+			$item['url'] = gigpress_list_url($state, $editable ? array('page' => 'gigpress/gigpress.php', 'gpaction' => 'edit', 'show_id' => $item['show_id']) : array());
+			$item['link_text'] = $editable ? __('Edit show and review details', 'gigpress') : __('View list and reselect shows', 'gigpress');
+		}
+		unset($item);
 		echo '<div class="notice ' . (count($changed) === count($ids) ? 'notice-success' : 'notice-warning') . '" role="status"><p>' . esc_html(sprintf(__('%1$d shows moved to trash; %2$d could not be changed.', 'gigpress'), count($changed), count($ids) - count($changed))) . ' ';
 		if ($changed) echo '<a href="' . esc_url(wp_nonce_url(gigpress_list_url($state, array('gpaction' => 'undo', 'show_id' => implode(',', $changed))), 'gigpress-action')) . '">' . esc_html__('Undo', 'gigpress') . '</a> ';
 		echo '<a href="' . esc_url(gigpress_list_url($state)) . '">' . esc_html__('View list', 'gigpress') . '</a></p><ul>';
-		foreach ($results as $item) echo '<li>' . esc_html($item['identity'] . ': ' . $item['reason']) . '</li>';
+		foreach ($results as $item) echo '<li>' . esc_html($item['identity'] . ': ' . $item['reason']) . ' <a href="' . esc_url($item['url']) . '">' . esc_html($item['link_text']) . '</a></li>';
 		echo '</ul></div>';
 		return array('status' => 'completed', 'state' => $state, 'changed_ids' => $changed, 'results' => $results);
 	} finally { delete_option($claim); }
@@ -875,33 +888,25 @@ function gigpress_undo($type) {
 	check_admin_referer('gigpress-action');
 	if (!gigpress_require_database_ready()) return false;
 	
-	if($type == "show") {
-		
-		$show_ids = explode(',', $_REQUEST['show_id']);
-		
-		if(count($show_ids) > 1) {
-			// We're restoring multiple shows, so we santiize each show_id individually
-			$shows = array();
-			foreach($show_ids as $show) {
-				$shows[] = $wpdb->prepare('%d', $show);
-			}
-			$shows = implode(',', $shows);
-		} else {
-			$shows = $wpdb->prepare('%d', $_REQUEST['show_id']);
+	if ($type === 'show') {
+		global $gpo;
+		$state = gigpress_list_state(wp_unslash($_GET));
+		if (!current_user_can($gpo['user_level'] ?? 'activate_plugins')) return gigpress_trash_blocked($state, __('Your account cannot restore shows. Ask a site administrator for access.', 'gigpress'));
+		$value = $_REQUEST['show_id'] ?? '';
+		$ids = is_string($value) ? gigpress_trash_selection(array('show_id' => explode(',', $value))) : false;
+		if (!$ids) return gigpress_trash_blocked($state, __('The restore selection is invalid. Return to the list and retry.', 'gigpress'));
+		$restored = 0; $skipped = 0;
+		foreach ($ids as $id) {
+			$row = gigpress_trash_row($id);
+			if (!$row || $row['show_status'] !== 'deleted') { $skipped++; continue; }
+			$write = $wpdb->update(GIGPRESS_SHOWS, array('show_status' => 'active'), array('show_id' => $id, 'show_status' => 'deleted'), array('%s'), array('%d', '%s'));
+			$expected = $row; $expected['show_status'] = 'active';
+			if ($write === 1 && gigpress_trash_row($id) === $expected) $restored++;
+			else $skipped++;
 		}
-					
-		// Restore the show(s)
-		$undo = $wpdb->query("UPDATE ".GIGPRESS_SHOWS." SET show_status = 'active' WHERE show_id IN($shows)");		
-		
-		if($undo != FALSE) { ?>
-			<div id="message" class="updated fade">
-				<p><?php _e("Show(s) successfully restored.", "gigpress"); ?></p>
-			</div>
-		<?php } elseif($undo === FALSE) { ?>
-			<div id="message" class="error fade">
-				<p><?php _e("We ran into some trouble restoring your show(s). Sorry.", "gigpress"); ?></p>
-			</div>				
-		<?php }
+		gigpress_list_query($state);
+		echo '<div class="notice notice-info" role="status"><p>' . esc_html(sprintf(__('%1$d shows restored; %2$d were already restored, missing or could not be changed.', 'gigpress'), $restored, $skipped)) . ' <a href="' . esc_url(gigpress_list_url($state)) . '">' . esc_html__('View list', 'gigpress') . '</a></p></div>';
+		return array('status' => 'restored', 'restored' => $restored, 'skipped' => $skipped, 'state' => $state);
 	}
 	
 	if($type == "tour") {

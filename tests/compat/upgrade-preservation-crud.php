@@ -26,9 +26,10 @@ function gigpress_upgrade_preservation_confirmed_trash($request, &$outcome = nul
 	$html = ob_get_clean();
 	if (($preview['status'] ?? '') !== 'preview') { $outcome = $preview; return $html; }
 	preg_match('/name="trash_token" value="([^"]+)"/', $html, $matches);
+	preg_match('/name="_wpnonce" value="([^"]+)"/', $html, $nonceMatches);
 	$token = html_entity_decode($matches[1] ?? '', ENT_QUOTES, 'UTF-8');
 	$_POST = array_merge($request, array('gpaction' => 'delete', 'trash_stage' => 'confirm', 'trash_token' => $token,
-		'_wpnonce' => wp_create_nonce('gigpress-trash-confirm-' . $token)));
+		'_wpnonce' => $nonceMatches[1] ?? ''));
 	$_REQUEST = $_POST;
 	ob_start();
 	$outcome = gigpress_delete_show();

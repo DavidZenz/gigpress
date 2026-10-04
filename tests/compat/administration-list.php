@@ -8,9 +8,10 @@ function gigpress_administration_list_request($post = array(), $get = array(), $
     $_FILES = array();
     $filter = function () { return 'gigpress_administration_list_die'; };
     add_filter('wp_die_handler', $filter);
+    $level = ob_get_level();
     ob_start();
     try { $outcome = $render ? gigpress_admin_shows() : gigpress_delete_show(); }
-    catch (RuntimeException $exception) { $outcome = array('status' => 'blocked'); }
+    catch (RuntimeException $exception) { while (ob_get_level() > $level + 1) ob_end_clean(); $outcome = array('status' => 'blocked'); }
     finally { remove_filter('wp_die_handler', $filter); }
     return array('outcome' => $outcome, 'html' => ob_get_clean());
 }
@@ -51,8 +52,12 @@ function gigpress_administration_list_preview($ids, $state, $single = null) {
 function gigpress_administration_list_confirmation($preview, $ids, $state, $stage = 'confirm') {
     preg_match('/name="trash_token" value="([^"]+)"/', $preview['html'], $token);
     $token = html_entity_decode($token[1] ?? '', ENT_QUOTES, 'UTF-8');
-    return array_merge($state, array('gpaction' => 'delete', 'trash_stage' => $stage, 'trash_token' => $token, 'show_id' => $ids,
-        '_wpnonce' => wp_create_nonce('gigpress-trash-' . $stage . '-' . $token)));
+    preg_match('/name="_wpnonce" value="([^"]+)"/', $preview['html'], $nonce);
+    preg_match('/name="trash_cancel_nonce" value="([^"]+)"/', $preview['html'], $cancelNonce);
+    $post = array_merge($state, array('gpaction' => 'delete', 'trash_stage' => $stage, 'trash_token' => $token, 'show_id' => $ids,
+        '_wpnonce' => $nonce[1] ?? ''));
+    if ($stage === 'cancel') $post['trash_cancel_nonce'] = $cancelNonce[1] ?? '';
+    return $post;
 }
 
 function gigpress_administration_list_case($case) {
@@ -96,8 +101,8 @@ function gigpress_administration_list_bulk() {
     $baseline = gigpress_administration_list_snapshot();
     $filter = function ($sql) use ($failed, $zero) {
         if (!preg_match('/^UPDATE\s+`?' . preg_quote(GIGPRESS_SHOWS, '/') . '`?\s/i', $sql)) return $sql;
-        if (preg_match('/`show_id`\s*=\s*' . $failed . '\b/', $sql)) return 'SELECT * FROM gigpress_intentionally_missing_list_table';
-        if (preg_match('/`show_id`\s*=\s*' . $zero . '\b/', $sql)) return str_replace('`show_id` = ' . $zero, '`show_id` = -1', $sql);
+        if (preg_match('/`show_id`\s*=\s*\x27?' . $failed . '\b/', $sql)) return 'SELECT * FROM gigpress_intentionally_missing_list_table';
+        if (preg_match('/`show_id`\s*=\s*\x27?' . $zero . '\b/', $sql)) return preg_replace('/`show_id`\s*=\s*\x27?' . $zero . '\b\x27?/', '`show_id` = -1', $sql);
         return $sql;
     };
     $suppressed = $wpdb->suppress_errors(true); add_filter('query', $filter);
@@ -140,7 +145,24 @@ function gigpress_administration_list_bulk() {
         ob_start(); gigpress_undo('show'); $repeatHtml = ob_get_clean();
         $checks['already_restored_undo_no_changes'] = gigpress_administration_list_snapshot() === $restored;
         $checks['already_restored_undo_truthful_text'] = strpos($repeatHtml, '0 shows restored') !== false;
+        $forged = array_merge($undo, array('_wpnonce' => 'invalid'));
+        gigpress_administration_list_request(array(), $forged, true, 'GET');
+        $checks['undo_invalid_nonce_no_changes'] = gigpress_administration_list_snapshot() === $restored;
+        $owner = get_current_user_id(); wp_set_current_user(0);
+        gigpress_administration_list_request(array(), array_merge($undo, array('_wpnonce' => wp_create_nonce('gigpress-action'))), true, 'GET');
+        wp_set_current_user($owner);
+        $checks['undo_capability_no_changes'] = gigpress_administration_list_snapshot() === $restored;
+        $GLOBALS['gigpress_db_bootstrap_result'] = array('status' => 'blocked', 'code' => 'unsafe_metadata');
+        gigpress_administration_list_request(array(), $undo, true, 'GET');
+        unset($GLOBALS['gigpress_db_bootstrap_result']);
+        $checks['undo_readiness_no_changes'] = gigpress_administration_list_snapshot() === $restored;
     }
+    $ineligible = gigpress_administration_list_seed(1); $ineligibleId = $ineligible['ids'][0];
+    $wpdb->update(GIGPRESS_SHOWS, array('show_status' => 'unsupported'), array('show_id' => $ineligibleId));
+    $ineligibleBefore = gigpress_administration_list_snapshot();
+    $ineligiblePreview = gigpress_administration_list_preview(array($ineligibleId), $ineligible['state']);
+    $ineligibleResult = gigpress_administration_list_request(gigpress_administration_list_confirmation($ineligiblePreview, array($ineligibleId), $ineligible['state']));
+    $checks['ineligible_no_changes_and_explanation'] = gigpress_administration_list_snapshot() === $ineligibleBefore && ($ineligibleResult['outcome']['results'][0]['result'] ?? '') === 'stale' && strpos($ineligibleResult['html'], 'current status') !== false;
     // Delete the sole row on page two, keeping all the other list choices.
     $last = gigpress_administration_list_seed(11);
     $lastState = array_merge($last['state'], array('sort' => 'asc', 'gp-page' => 2));
@@ -153,6 +175,16 @@ function gigpress_administration_list_bulk() {
     foreach ($lastState as $key => $value) if ($key !== 'gp-page') $checks['last_page_retains_' . $key] = ($lastResult['outcome']['state'][$key] ?? null) === $value;
     $checks['last_page_unselected_equal_rows_remain'] = gigpress_administration_list_row_ids($lastResult['html']) === array_slice($last['ids'], 0, 10);
     $checks['no_header_selection_ids'] = gigpress_administration_list_document($lastResult['html'])->query('//thead//input[@name] | //tfoot//input[@name]')->length === 0;
+    $uri = $_SERVER['REQUEST_URI'] ?? null;
+    $nav = gigpress_administration_list_seed(23);
+    $undoState = array_merge($nav['state'], array('gpaction' => 'undo', 'show_id' => (string) $nav['ids'][0], '_wpnonce' => wp_create_nonce('gigpress-action')));
+    $_SERVER['REQUEST_URI'] = '/wp-admin/admin.php?' . http_build_query($undoState);
+    $afterUndo = gigpress_administration_list_request(array(), $undoState, true, 'GET');
+    if ($uri === null) unset($_SERVER['REQUEST_URI']); else $_SERVER['REQUEST_URI'] = $uri;
+    foreach (gigpress_administration_list_document($afterUndo['html'])->query('//a[contains(@class,"page-numbers")]') as $i => $node) {
+        parse_str((string) parse_url($node->getAttribute('href'), PHP_URL_QUERY), $args);
+        $checks['pagination_after_action_has_no_mutation_' . $i] = !isset($args['gpaction']) && !isset($args['show_id']) && !isset($args['_wpnonce']);
+    }
     return $checks;
 }
 

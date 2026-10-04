@@ -21,11 +21,17 @@ function gigpress_admin_shows() {
 	if ($data['total_pages'] > 1) {
 		// The shared helper reads GET; supply the validated, clamped page during this call.
 		$oldGet = $_GET;
-		$_GET = array_merge($_GET, $state);
+		$oldUri = $_SERVER['REQUEST_URI'] ?? null;
+		$_GET = $state;
+		$cleanUrl = gigpress_list_url($state);
+		$_SERVER['REQUEST_URI'] = wp_parse_url($cleanUrl, PHP_URL_PATH) . '?' . wp_parse_url($cleanUrl, PHP_URL_QUERY);
 		$args = array_merge(array('page' => 'gigpress-shows'), $state);
 		unset($args['gp-page']);
-		$built = gigpress_admin_pagination($data['count'], $state['limit'], $args);
-		$_GET = $oldGet;
+		try { $built = gigpress_admin_pagination($data['count'], $state['limit'], $args); }
+		finally {
+			$_GET = $oldGet;
+			if ($oldUri === null) unset($_SERVER['REQUEST_URI']); else $_SERVER['REQUEST_URI'] = $oldUri;
+		}
 		$pagination['output'] = is_array($built) ? $built['output'] : '';
 	}
 	$reset = array_merge($state, array('artist_id' => -1, 'venue_id' => -1, 'tour_id' => -1, 'gp-page' => 1));
@@ -78,7 +84,10 @@ function gigpress_admin_shows() {
 				</tr></<?php echo $section; ?>>
 				<?php endforeach; ?>
 				<tbody>
-				<?php foreach ((array) $data['rows'] as $show) : $showdata = gigpress_prepare($show, 'admin'); ?>
+				<?php foreach ((array) $data['rows'] as $show) :
+					$showdata = gigpress_prepare($show, 'admin');
+					foreach (array('date', 'end_date', 'artist', 'venue', 'city', 'state', 'country', 'tour', 'time', 'price', 'admittance', 'ticket_link', 'external_link', 'ticket_phone', 'notes', 'related_edit') as $key) $showdata[$key] = wp_kses_post($showdata[$key]);
+				?>
 					<tr class="<?php echo esc_attr('gigpress-' . $showdata['status']); ?>">
 						<th scope="row" class="check-column"><input id="gp-select-show-<?php echo esc_attr($show->show_id); ?>" type="checkbox" name="show_id[]" value="<?php echo esc_attr($show->show_id); ?>" /><label class="screen-reader-text" for="gp-select-show-<?php echo esc_attr($show->show_id); ?>"><?php echo esc_html(sprintf(__('Select show #%d', 'gigpress'), $show->show_id)); ?></label></th>
 						<td><span class="gigpress-date"><?php echo $showdata['date']; if ($showdata['end_date']) echo ' - ' . $showdata['end_date']; ?></span></td>
