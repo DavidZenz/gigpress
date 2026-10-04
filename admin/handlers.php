@@ -364,6 +364,22 @@ function gigpress_list_state_fields($state) {
 	foreach ($state as $key => $value) echo '<input type="hidden" name="' . esc_attr($key) . '" value="' . esc_attr($value) . '" />';
 }
 
+function gigpress_list_query(&$state) {
+	global $wpdb;
+	$from = ' FROM ' . GIGPRESS_SHOWS . ' s JOIN ' . GIGPRESS_ARTISTS . ' a ON s.show_artist_id = a.artist_id JOIN ' . GIGPRESS_VENUES . ' v ON s.show_venue_id = v.venue_id LEFT JOIN ' . GIGPRESS_TOURS . ' t ON s.show_tour_id = t.tour_id';
+	$where = " WHERE s.show_status != 'deleted'";
+	if ($state['scope'] !== 'all') $where .= $wpdb->prepare(' AND s.show_expire ' . ($state['scope'] === 'past' ? '<' : '>=') . ' %s', GIGPRESS_NOW);
+	foreach (array('artist_id' => 'show_artist_id', 'venue_id' => 'show_venue_id', 'tour_id' => 'show_tour_id') as $key => $column)
+		if ($state[$key] !== -1) $where .= $wpdb->prepare(' AND s.' . $column . ' = %d', $state[$key]);
+	$count = (int) $wpdb->get_var('SELECT COUNT(*)' . $from . $where);
+	$pages = max(1, (int) ceil($count / $state['limit']));
+	$state['gp-page'] = min($pages, max(1, $state['gp-page']));
+	$offset = ($state['gp-page'] - 1) * $state['limit'];
+	$sort = $state['sort'] === 'desc' ? 'DESC' : 'ASC';
+	$rows = $wpdb->get_results('SELECT *' . $from . $where . ' ORDER BY s.show_date ' . $sort . ', s.show_expire ' . $sort . ', s.show_time ' . $sort . ', s.show_id ' . $sort . $wpdb->prepare(' LIMIT %d OFFSET %d', $state['limit'], $offset));
+	return array('rows' => $rows, 'count' => $count, 'total_pages' => $pages, 'offset' => $offset, 'records_per_page' => $state['limit']);
+}
+
 function gigpress_trash_selection($request, $preview = false) {
 	if ($preview && array_key_exists('trash_single_id', $request)) {
 		$id = gigpress_list_positive_id($request['trash_single_id']);
