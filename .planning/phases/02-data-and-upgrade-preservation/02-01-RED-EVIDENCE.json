@@ -1,0 +1,9 @@
+{
+  "command": "rtk bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario upgrade-preservation --case tracer-1.4",
+  "exitCode": 2,
+  "targetTest": "upgrade-preservation.tracer-1.4",
+  "targetFile": "tests/compat/probe.php",
+  "expected": "The contract fails until gigpress_db_bootstrap coordinates the reconstructed 1.4 upgrade.",
+  "actual": "Upgrade coordinator is not available for the reconstructed fixture",
+  "output": "not ok 1 - upgrade-preservation.tracer-1.4\n# tests 1\n# pass 0\n# fail 1"
+}

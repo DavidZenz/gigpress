@@ -623,12 +623,13 @@ if [[ "$MODE" == matrix ]]; then
 fi
 
 [[ "$MODE" == cell ]] || fail "supported commands: cell, matrix, lint, metadata, self-test, runtime-floor, menu-contract"
-WP_VERSION=''; PHP_VERSION=''; SCENARIO='activation-menu'; CONFLICT_FIXTURE=''; CONFLICT_MODE=''; CONFLICT_POSITION=''
+WP_VERSION=''; PHP_VERSION=''; SCENARIO='activation-menu'; UPGRADE_CASE='tracer-1.4'; CONFLICT_FIXTURE=''; CONFLICT_MODE=''; CONFLICT_POSITION=''
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --wp) WP_VERSION=${2:-}; shift 2 ;;
     --php) PHP_VERSION=${2:-}; shift 2 ;;
     --scenario) SCENARIO=${2:-}; shift 2 ;;
+    --case) UPGRADE_CASE=${2:-}; shift 2 ;;
     --conflict-fixture) CONFLICT_FIXTURE=${2:-}; shift 2 ;;
     --conflict-mode) CONFLICT_MODE=${2:-}; shift 2 ;;
     --conflict-position) CONFLICT_POSITION=${2:-}; shift 2 ;;
@@ -640,7 +641,8 @@ require_value --wp "$WP_VERSION"; require_value --php "$PHP_VERSION"
 [[ "$PHP_VERSION" =~ ^[0-9]+[.][0-9]+$ ]] || fail "PHP must be a major.minor version"
 [[ "$PHP_VERSION" != 8.2 ]] || fail "PHP 8.2 is diagnostic-only and cannot be a supported cell"
 case "$SCENARIO" in
-  activation-menu|admin-menu|csv-roundtrip|full-workflows) ;;
+  activation-menu|admin-menu|csv-roundtrip|full-workflows) [[ "$UPGRADE_CASE" == tracer-1.4 ]] || fail "--case is only supported by upgrade-preservation" ;;
+  upgrade-preservation) [[ "$UPGRADE_CASE" =~ ^(tracer-1\.4|safety-1\.4|metadata-classification)$ ]] || fail "unsupported upgrade-preservation case: $UPGRADE_CASE" ;;
   *) fail "unsupported cell scenario: $SCENARIO" ;;
 esac
 if [[ -n "$CONFLICT_FIXTURE" || -n "$CONFLICT_MODE" ]]; then
@@ -682,7 +684,18 @@ install_archived_wordpress_core
 if [[ "$CONFLICT_MODE" == order-only ]]; then
   compose_env exec -T wordpress sh -c 'cp /var/www/html/wp-content/plugins/gigpress/tests/compat/fixtures/menu-conflict-plugin.php /var/www/html/wp-content/plugins/menu-conflict-plugin.php'
 fi
-output=$(compose_env exec -T -e COMPAT_PURPOSE="$SCENARIO" -e COMPAT_CONFLICT_MODE="$CONFLICT_MODE" -e COMPAT_CONFLICT_POSITION="$CONFLICT_POSITION" wordpress php /compat/probe.php) || { printf '%s\n' "$output" >&2; fail "probe failed"; }
+set +e
+output=$(compose_env exec -T -e COMPAT_PURPOSE="$SCENARIO" -e COMPAT_UPGRADE_CASE="$UPGRADE_CASE" -e COMPAT_CONFLICT_MODE="$CONFLICT_MODE" -e COMPAT_CONFLICT_POSITION="$CONFLICT_POSITION" wordpress php /compat/probe.php)
+probe_status=$?
+set -e
+if [[ "$probe_status" -ne 0 ]]; then
+  printf '%s\n' "$output" >&2
+  if [[ "$SCENARIO" == upgrade-preservation ]]; then
+    printf 'not ok 1 - upgrade-preservation.%s\n' "$UPGRADE_CASE" >&2
+    printf '# tests 1\n# pass 0\n# fail 1\n' >&2
+  fi
+  fail "probe failed"
+fi
 image="wordpress:${WORDPRESS_IMAGE_VERSION}-php${PHP_VERSION}-apache"
 image_id=$(rtk docker image inspect --format '{{.Id}}' "$image")
 result=$(printf '%s\n' "$output" | rtk proxy jq -c --arg image "$image" --arg image_id "$image_id" --arg source_revision "$(rtk proxy git rev-parse HEAD)" '. + {image: $image, image_id: $image_id, source_revision: $source_revision}')
@@ -694,6 +707,8 @@ elif [[ "$SCENARIO" == admin-menu ]]; then
   printf '%s\n' "$output" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.menu_warnings | length == 0) and (.plugin_errors | length == 0) and ((.menu_slugs | length) == (.menu_slugs | unique | length)) and ((.menu_slugs | index("edit-comments.php")) as $comments | (.menu_slugs | index("separator-gp")) as $separator | (.menu_slugs | index("gigpress.php")) as $gigpress | ($comments != null and $separator == ($comments + 1) and $gigpress == ($separator + 1)))' >/dev/null || fail "admin-menu cell did not preserve warning-free preferred GigPress placement"
 elif [[ "$SCENARIO" == full-workflows ]]; then
   printf '%s\n' "$result" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.plugin_errors | length == 0) and .full_workflows.status == "PASS" and .full_workflows.admin_create_edit_read and .full_workflows.public_shortcode and .full_workflows.rss and .full_workflows.ical and .full_workflows.csv_import_export and .full_workflows.duplicate_preserved' >/dev/null || fail "full workflow cell did not satisfy the compatibility contract"
+elif [[ "$SCENARIO" == upgrade-preservation ]]; then
+  printf '%s\n' "$result" | rtk jq -e --arg case "$UPGRADE_CASE" '.status == "PASS" and .plugin_active == true and (.plugin_errors | length == 0) and .upgrade_preservation.status == "PASS" and .upgrade_preservation.case == $case and .upgrade_preservation.manifest_matches and .upgrade_preservation.repeat_matches and .upgrade_preservation.fixture == "reconstructed-1.4"' >/dev/null || fail "upgrade preservation cell did not satisfy the contract"
 else
   printf '%s\n' "$output" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.menu_slugs | index("gigpress.php")) and (.plugin_errors | length == 0)' >/dev/null || fail "probe did not report a warning-free active GigPress menu"
 fi

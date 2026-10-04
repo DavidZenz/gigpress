@@ -33,6 +33,8 @@ register_shutdown_function(function () use (&$pluginErrors, &$fatal) {
 });
 
 $purpose = getenv('COMPAT_PURPOSE') ?: 'activation-menu';
+$upgradeCase = getenv('COMPAT_UPGRADE_CASE') ?: 'tracer-1.4';
+$upgradePreservation = null;
 
 /* The controlled fixture keeps a narrow API facade for its isolated guard contract.
  * The real GigPress low-floor check uses the normal WordPress bootstrap below.
@@ -163,6 +165,14 @@ if (!is_blog_installed()) {
 }
 $admin = get_user_by('login', 'compat-admin');
 wp_set_current_user($admin->ID);
+$upgradeFixture = null;
+if ($purpose === 'upgrade-preservation') {
+    $fixturePath = '/var/www/html/wp-content/plugins/gigpress/tests/compat/fixtures/upgrade-preservation/1.4.php';
+    $upgradeFixture = is_readable($fixturePath) ? require $fixturePath : null;
+    if (!is_array($upgradeFixture) || ($upgradeFixture['label'] ?? '') !== 'reconstructed-1.4') {
+        $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Reconstructed 1.4 fixture is unavailable', 'file' => $fixturePath, 'line' => 0);
+    }
+}
 $fixturePurpose = in_array($purpose, array('fixture-activate', 'fixture-low', 'fixture-recover'), true);
 $plugin = $fixturePurpose ? 'php-floor-plugin.php' : 'gigpress/gigpress.php';
 $skipGigPressActivation = $purpose === 'real-low-live'
@@ -175,6 +185,19 @@ if (($purpose === 'fixture-activate' || !$fixturePurpose) && !$skipGigPressActiv
     }
 } elseif (!$skipGigPressActivation && !is_plugin_active($plugin)) {
     $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Controlled fixture lost active state', 'file' => __FILE__, 'line' => __LINE__);
+}
+if ($purpose === 'upgrade-preservation') {
+    $ok = function_exists('gigpress_db_bootstrap') && is_array($upgradeFixture);
+    $upgradePreservation = array(
+        'status' => $ok ? 'PASS' : 'FAIL',
+        'case' => $upgradeCase,
+        'fixture' => is_array($upgradeFixture) ? $upgradeFixture['label'] : null,
+        'manifest_matches' => false,
+        'repeat_matches' => false,
+    );
+    if (!$ok) {
+        $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Upgrade coordinator is not available for the reconstructed fixture', 'file' => WP_PLUGIN_DIR . '/gigpress/admin/db.php', 'line' => 0);
+    }
 }
 if (($purpose === 'diagnose-menu' && (getenv('COMPAT_CONFLICT_MODE') ?: '') === 'exact-key-late-add')
     || ($purpose === 'admin-menu' && (getenv('COMPAT_CONFLICT_MODE') ?: '') === 'order-only')) {
@@ -417,6 +440,7 @@ $result = array(
     'purpose' => $purpose,
     'csv_roundtrip' => $csvRoundTrip,
     'full_workflows' => $fullWorkflows,
+    'upgrade_preservation' => $upgradePreservation,
     'fixture_runtime' => $fixtureRuntime,
     'real_plugin_runtime' => $realPluginRuntime,
     'real_plugin_inventory' => $real_plugin_inventory,
