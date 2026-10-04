@@ -437,6 +437,7 @@ function gigpress_admin_pagination($total_records, $records_per_page, $args) {
 
 
 function gigpress_db_in($value, $strip_tags = TRUE) {
+	$value = is_scalar($value) ? (string) $value : '';
 	$value = stripslashes(trim($value));
 	if($strip_tags == TRUE) {
 		$value = sanitize_text_field($value, TRUE);
@@ -448,6 +449,7 @@ function gigpress_db_in($value, $strip_tags = TRUE) {
 
 
 function gigpress_db_out($value) {
+	$value = is_scalar($value) ? (string) $value : '';
 	return htmlspecialchars(stripslashes(trim($value)), ENT_QUOTES);
 }
 
