@@ -1,8 +1,8 @@
 # Compatibility Matrix Evidence
 
-**Checked:** 2026-10-04T07:20:40Z
+**Checked:** 2026-10-04T08:07:04Z
 
-Source revision: `0fab24d1c2cf470f8308011dd2c2e71ef2514ecd`
+Source revision: `7a22f7280277fe2da0715abe9e22cdcca6a4998c`
 
 ## Refreshed upstream sources
 
@@ -27,12 +27,12 @@ and duplicate-row preservation all passed. PHP 8.2 is absent from this table.
 
 | WordPress | PHP | Image | Image ID | Admin | Public | RSS | iCalendar | CSV + duplicate | Result | Result SHA-256 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 7.0.6 | 8.3.35 | `wordpress:7.1.2-php8.3-apache` | `sha256:4abf7a450ee477dde967584f8174d7e03221d224c4971a0c38d84e7254426e64` | PASS | PASS | PASS | PASS | PASS | PASS | `a79135c3ddedc24747ad296a659b967c7237ef3e20e300ee0d485deddffd71ab` |
-| 7.0.6 | 8.4.26 | `wordpress:7.1.2-php8.4-apache` | `sha256:85ee71a393b0f3f7a45b2e293978f1c9ab94fb421161080e54f911eeb2501bdc` | PASS | PASS | PASS | PASS | PASS | PASS | `a014ade8cc19aae484d4bb385042cad3961dbbec58c6902c9ecda2d702ea087a` |
-| 7.0.6 | 8.5.11 | `wordpress:7.1.2-php8.5-apache` | `sha256:9d881655fccdcfd19b779320ca819310b51061e1ba3c086012ecbf69a177d521` | PASS | PASS | PASS | PASS | PASS | PASS | `795d005bff0da2cf63b7784f5e9765095e527c2e1d5371a2f6695d27528ceb5a` |
-| 7.1.2 | 8.3.35 | `wordpress:7.1.2-php8.3-apache` | `sha256:4abf7a450ee477dde967584f8174d7e03221d224c4971a0c38d84e7254426e64` | PASS | PASS | PASS | PASS | PASS | PASS | `6be9567e177b8a53b999dc3b32b7c36213139dde9ec3c99e9749ca9abe7be704` |
-| 7.1.2 | 8.4.26 | `wordpress:7.1.2-php8.4-apache` | `sha256:85ee71a393b0f3f7a45b2e293978f1c9ab94fb421161080e54f911eeb2501bdc` | PASS | PASS | PASS | PASS | PASS | PASS | `72e553da5c1f25dc2cab1a3787d8ec701afa530e230cd9b3156b8cc7e578c033` |
-| 7.1.2 | 8.5.11 | `wordpress:7.1.2-php8.5-apache` | `sha256:9d881655fccdcfd19b779320ca819310b51061e1ba3c086012ecbf69a177d521` | PASS | PASS | PASS | PASS | PASS | PASS | `29e6d0c4026aead5ae978637d792a6a7cc07184356b07d110ce6cbeaacae70af` |
+| 7.0.6 | 8.3.35 | `wordpress:7.1.2-php8.3-apache` | `sha256:4abf7a450ee477dde967584f8174d7e03221d224c4971a0c38d84e7254426e64` | PASS | PASS | PASS | PASS | PASS | PASS | `6af0c4a451f212dfe2fec0235797775db3e6a5801fc3d059c6cbf795417b0d0f` |
+| 7.0.6 | 8.4.26 | `wordpress:7.1.2-php8.4-apache` | `sha256:85ee71a393b0f3f7a45b2e293978f1c9ab94fb421161080e54f911eeb2501bdc` | PASS | PASS | PASS | PASS | PASS | PASS | `3c18775c8eead93a577a9afe0915f79284342a1e00bf11acbba30efe898deee9` |
+| 7.0.6 | 8.5.11 | `wordpress:7.1.2-php8.5-apache` | `sha256:9d881655fccdcfd19b779320ca819310b51061e1ba3c086012ecbf69a177d521` | PASS | PASS | PASS | PASS | PASS | PASS | `9a0b8f53286f11f431e4adc829bc90267d5e3da7e00ceadf036ec9dea84a3faa` |
+| 7.1.2 | 8.3.35 | `wordpress:7.1.2-php8.3-apache` | `sha256:4abf7a450ee477dde967584f8174d7e03221d224c4971a0c38d84e7254426e64` | PASS | PASS | PASS | PASS | PASS | PASS | `f94ae07bbeb0daee0fcc5248618e242592932fb5d70624ab82187b0964ea749c` |
+| 7.1.2 | 8.4.26 | `wordpress:7.1.2-php8.4-apache` | `sha256:85ee71a393b0f3f7a45b2e293978f1c9ab94fb421161080e54f911eeb2501bdc` | PASS | PASS | PASS | PASS | PASS | PASS | `2c17e24e6b737da8ccfb191e1168453710dac83b2ce76e6297bbc771aa71498f` |
+| 7.1.2 | 8.5.11 | `wordpress:7.1.2-php8.5-apache` | `sha256:9d881655fccdcfd19b779320ca819310b51061e1ba3c086012ecbf69a177d521` | PASS | PASS | PASS | PASS | PASS | PASS | `53fb185e987e67467cb307bd460f77e77a0d0fa089e9d9571e38dd1234ac5faa` |
 
 Fixture SHA-256: `8ff7322ca6afdd134c96a9cc0c6fe6a87ed00ac405fc3f300606b8fb6f082975`
 for `tests/compat/fixtures/shows.csv`.
