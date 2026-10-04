@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 6
+open_count: 7
 waived_count: 0
-fixed_count: 2
-total_count: 8
-last_updated: 2026-10-04T21:07:11.104Z
+fixed_count: 3
+total_count: 10
+last_updated: 2026-10-04T21:26:14.671Z
 ---
 
 # Broken Windows Ledger
@@ -23,6 +23,8 @@ last_updated: 2026-10-04T21:07:11.104Z
 | 6 | 03 | deviation | admin/new.php |  | Resolved renderer regression by restoring welcome dismissal with capability, nonce and readiness guards; four regression checks pass. | fixed |  | 2026-10-04T20:52:25.172Z | 2026-10-04T20:52:37.481Z |
 | 7 | 03 | unrun-verify | admin/new.php |  | Actual browser picker, incomplete typed date, focus and no-JS keyboard evidence belongs to Plan 03-04 and remains pending. | open |  | 2026-10-04T20:52:25.383Z |  |
 | 8 | 03 | unrun-verify | admin/settings.php |  | 03-04 must verify actual settings options.php HTTP save, invalid nonce and unauthorized denial, plus keyboard jump/focus behavior; 03-02 callback and markup checks do not establish these interactions. | open |  | 2026-10-04T21:07:11.104Z |  |
+| 9 | 03 | unrun-verify | admin/shows.php |  | Plan 03-04 must record actual HTTP/no-JS and keyboard single/bulk selection, Confirm/Cancel, retained list choices and per-ID feedback. | open |  | 2026-10-04T21:24:56.120Z |  |
+| 10 | 03 | deviation | admin/shows.php | 119 | Task 03-03-01 introduced safe local one-page pagination fallback early to unblock the confirmation tracer; Task 03-03-02 completed normalized page metadata. | fixed |  | 2026-10-04T21:25:44.506Z | 2026-10-04T21:26:14.671Z |
 
 ````json
 [
@@ -128,6 +130,32 @@ last_updated: 2026-10-04T21:07:11.104Z
     "reason": "",
     "recorded_at": "2026-10-04T21:07:11.104Z",
     "resolved_at": null,
+    "milestone": null
+  },
+  {
+    "id": 9,
+    "kind": "unrun-verify",
+    "phase": "03",
+    "file": "admin/shows.php",
+    "line": null,
+    "description": "Plan 03-04 must record actual HTTP/no-JS and keyboard single/bulk selection, Confirm/Cancel, retained list choices and per-ID feedback.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-04T21:24:56.120Z",
+    "resolved_at": null,
+    "milestone": null
+  },
+  {
+    "id": 10,
+    "kind": "deviation",
+    "phase": "03",
+    "file": "admin/shows.php",
+    "line": 119,
+    "description": "Task 03-03-01 introduced safe local one-page pagination fallback early to unblock the confirmation tracer; Task 03-03-02 completed normalized page metadata.",
+    "status": "fixed",
+    "reason": "",
+    "recorded_at": "2026-10-04T21:25:44.506Z",
+    "resolved_at": "2026-10-04T21:26:14.671Z",
     "milestone": null
   }
 ]

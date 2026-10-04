@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "phase": "03",
+  "plan": "03-03",
+  "status": "complete",
+  "project_root": "/Users/davidzenz/gigpress",
+  "branch": "codex/phase-01-04-menu",
+  "isolation": "none",
+  "plan_head_before": "6ea26b7146c8b4965bb15f9671e941f87330be24",
+  "plan_head_after": "8a8339990c9cac2c49b55eab146801391b894395",
+  "actuals": {"tokens": 18443, "diff_characters": 73769, "tasks": 3, "commits": 6},
+  "files": ["admin/shows.php", "admin/handlers.php", "tests/compat/administration-list.php", "tests/compat/upgrade-preservation-crud.php"],
+  "tasks": [
+    {"id": "03-03-01", "red_commit": "7fdaedf", "green_commit": "b21cb41", "red_assertions": 23, "red_verdict": "RED_EVIDENCE_OK", "green_assertions": 30, "tracer_feedback": "PASS"},
+    {"id": "03-03-02", "red_commit": "d34d539", "green_commit": "137568e", "red_assertions": 254, "red_verdict": "RED_EVIDENCE_OK", "green_assertions": 266},
+    {"id": "03-03-03", "red_commit": "84ef630", "green_commit": "8a83399", "red_assertions": 90, "red_verdict": "RED_EVIDENCE_OK", "green_assertions": 164}
+  ],
+  "administration_aggregate": {
+    "command": "rtk proxy /usr/bin/time -p bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario administration-workflows --case all",
+    "status": "PASS",
+    "exit_code": 0,
+    "source_revision": "8a8339990c9cac2c49b55eab146801391b894395",
+    "wordpress": "7.1.2",
+    "php": "8.3.35",
+    "image": "wordpress:php8.3-apache",
+    "image_id": "sha256:4abf7a450ee477dde967584f8174d7e03221d224c4971a0c38d84e7254426e64",
+    "wall_seconds": 17.82,
+    "assertion_count": 890,
+    "warning_count": 0,
+    "fatal_count": 0,
+    "plugin_error_count": 0,
+    "cases": [
+      {"case": "entry-create", "status": "PASS", "assertion_count": 9, "elapsed_seconds": 0.0147},
+      {"case": "entry-recovery", "status": "PASS", "assertion_count": 130, "elapsed_seconds": 0.1759},
+      {"case": "entry-controls", "status": "PASS", "assertion_count": 67, "elapsed_seconds": 0.052},
+      {"case": "settings-save", "status": "PASS", "assertion_count": 54, "elapsed_seconds": 0.057},
+      {"case": "settings-sections", "status": "PASS", "assertion_count": 170, "elapsed_seconds": 0.0111},
+      {"case": "list-single", "status": "PASS", "assertion_count": 30, "elapsed_seconds": 0.1348},
+      {"case": "list-navigation", "status": "PASS", "assertion_count": 266, "elapsed_seconds": 0.3218},
+      {"case": "list-bulk", "status": "PASS", "assertion_count": 164, "elapsed_seconds": 0.1645}
+    ]
+  },
+  "regressions": [
+    {"command": "rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario upgrade-preservation --case show-lifecycle", "status": "PASS", "exit_code": 0, "note": "Final issued-token/nonce adapter and guarded row predicates tested before the final task commit."},
+    {"command": "rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario upgrade-preservation --case all", "status": "PASS", "exit_code": 0, "case_count": 11, "warning_count": 0, "fatal_count": 0, "plugin_error_count": 0},
+    {"command": "rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario full-workflows", "status": "PASS", "exit_code": 0},
+    {"command": "rtk proxy bash tests/compat/run.sh lint --php-branches 8.3 --files admin/shows.php,admin/handlers.php,tests/compat/administration-list.php,tests/compat/upgrade-preservation-crud.php", "status": "PASS", "exit_code": 0},
+    {"command": "rtk proxy git diff --check", "status": "PASS", "exit_code": 0}
+  ],
+  "pending_browser_owner": "03-04",
+  "pending_windows_entry": 9,
+  "resolved_deviation_windows_entry": 10,
+  "global_requirements_pending": ["ADMIN-02", "UX-01"]
+}
