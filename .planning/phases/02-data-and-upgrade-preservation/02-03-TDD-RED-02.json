@@ -1,0 +1,9 @@
+{
+  "command": "rtk bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario upgrade-preservation --case entity-guards",
+  "exitCode": 2,
+  "targetTest": "upgrade-preservation.entity-guards",
+  "targetFile": "tests/compat/upgrade-preservation-crud.php",
+  "expected": "Artist and venue delete controls and direct handler requests reject active or trashed show dependencies while preserving the unreferenced delete path.",
+  "actual": "not ok 1 - upgrade-preservation.entity-guards; Post-upgrade show lifecycle did not preserve handler semantics.",
+  "output": "not ok 1 - upgrade-preservation.entity-guards\n# tests 1\n# pass 0\n# fail 1"
+}
