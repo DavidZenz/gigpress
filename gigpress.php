@@ -460,7 +460,64 @@ function gigpress_intl() {
 
 
 function register_gigpress_settings() {
-	register_setting('gigpress','gigpress_settings');
+	register_setting('gigpress', 'gigpress_settings', array('sanitize_callback' => 'gigpress_sanitize_settings'));
+}
+
+/* Only the Settings API form owns editable controls. Other callers, including
+ * migrations and sticky show defaults, supply trusted programmatic updates. */
+function gigpress_sanitize_settings($submitted) {
+	$stored = get_option('gigpress_settings', array());
+	$stored = is_array($stored) ? $stored : array();
+	if (!is_array($submitted)) {
+		add_settings_error('gigpress_settings', 'gigpress-settings-shape', __('Settings could not be saved. Please use the settings form and try again.', 'gigpress'));
+		return $stored;
+	}
+	$is_form = ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+		&& ($_POST['option_page'] ?? null) === 'gigpress' && ($_POST['action'] ?? null) === 'update';
+	if (!$is_form) return array_replace($stored, $submitted);
+
+	$flags = array('alternate_clock', 'display_country', 'artist_link', 'target_blank', 'autocreate_post', 'category_exclude',
+		'relatedlink_date', 'relatedlink_city', 'relatedlink_notes', 'rss_head', 'display_subscriptions', 'load_jquery', 'disable_css', 'disable_js');
+	$text = array('date_format', 'date_format_long', 'time_format', 'noupcoming', 'nopast', 'artist_label', 'tour_label',
+		'external_link_label', 'buy_tickets_label', 'age_restrictions', 'related_heading', 'related', 'rss_title');
+	$choices = array('country_view' => array('', 'long'), 'related_position' => array('before', 'after', 'nowhere'),
+		'output_schema_json' => array('y', 'n'), 'user_level' => array('activate_plugins', 'edit_published_posts', 'publish_posts', 'edit_posts'));
+	$editable = array_merge($flags, $text, array_keys($choices), array('shows_page', 'rss_limit', 'related_category'));
+	foreach ($editable as $key) {
+		if (!array_key_exists($key, $submitted)) continue;
+		$value = $submitted[$key];
+		$valid = is_scalar($value) && !is_float($value);
+		/* Preserve exact existing types as well as uncommon current choices on an
+		 * unchanged submission. An arbitrary new unsupported choice is rejected. */
+		if ($valid && array_key_exists($key, $stored) && is_scalar($stored[$key]) && (string) $value === (string) $stored[$key]) continue;
+		if ($valid) {
+			$value = (string) $value;
+			if (in_array($key, $flags, true)) {
+				$valid = in_array($value, array('0', '1'), true);
+				$value = (int) $value;
+			} elseif (isset($choices[$key])) {
+				$valid = in_array($value, $choices[$key], true);
+			} elseif ($key === 'rss_limit' || $key === 'related_category') {
+				$valid = preg_match('/^[0-9]+$/D', $value) === 1 && (float) $value <= PHP_INT_MAX;
+				if ($valid && $key === 'related_category') $valid = (bool) term_exists((int) $value, 'category');
+				$value = (int) $value;
+			} elseif ($key === 'shows_page') {
+				$parts = wp_parse_url($value);
+				$valid = $value === '' || (is_array($parts) && !empty($parts['host']) && isset($parts['scheme'])
+					&& in_array(strtolower($parts['scheme']), array('http', 'https'), true) && esc_url_raw($value) === $value);
+			} else {
+				$valid = strpos($value, "\0") === false;
+			}
+		}
+		if ($valid) {
+			$stored[$key] = $value;
+		} else {
+			/* No option writes here: WordPress may sanitize more than once. */
+			add_settings_error('gigpress_settings', 'gigpress-settings-' . $key,
+				sprintf(__('The value for %s could not be saved. Its previous value has been kept.', 'gigpress'), str_replace('_', ' ', $key)));
+		}
+	}
+	return $stored;
 }
 
 

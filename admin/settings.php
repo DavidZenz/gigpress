@@ -212,16 +212,7 @@ function gigpress_settings() {
 		
 	</table>
 			
-		<?php // We need to populate the form with the options not represented here, or else they'll get deleted ?>
-		<input type="hidden" name="gigpress_settings[db_version]" value="<?php echo $gpo['db_version']; ?>" />
-		<input type="hidden" name="gigpress_settings[default_country]" value="<?php echo $gpo['default_country']; ?>" />
-		<input type="hidden" name="gigpress_settings[default_date]" value="<?php echo $gpo['default_date']; ?>" />
-		<input type="hidden" name="gigpress_settings[default_time]" value="<?php echo $gpo['default_time']; ?>" />
-		<input type="hidden" name="gigpress_settings[default_tour]" value="<?php echo $gpo['default_tour']; ?>" />
-		<input type="hidden" name="gigpress_settings[default_artist]" value="<?php echo $gpo['default_artist']; ?>" />
-		<input type="hidden" name="gigpress_settings[default_title]" value="<?php echo $gpo['default_title']; ?>" />
-		<input type="hidden" name="gigpress_settings[related_date]" value="<?php echo $gpo['related_date']; ?>" />
-		<input type="hidden" name="gigpress_settings[welcome]" value="<?php $gpo['welcome']; ?>" />
+		<?php // Unrendered settings are preserved from storage by the registered sanitizer. ?>
 		
 		<?php settings_fields('gigpress'); ?>
 		
