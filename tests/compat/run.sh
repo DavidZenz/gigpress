@@ -63,7 +63,10 @@ run_metadata() {
   if [[ "$require_tested_line_pass" == true ]]; then
     rtk grep -Fq "| ${tested_up_to}" "$ROOT/$matrix_evidence" || fail "matrix evidence has no row for readme Tested up to ${tested_up_to}"
     rtk grep -Fq 'PASS' "$ROOT/$matrix_evidence" || fail "matrix evidence has no passing workflow rows"
-    rtk grep -Fq "Source revision: \`$(git -C "$ROOT" rev-parse HEAD)\`" "$ROOT/$matrix_evidence" || fail "matrix evidence does not name this source revision"
+    evidence_revision=$(awk -F'`' '/^Source revision: `/ { print $2; exit }' "$ROOT/$matrix_evidence")
+    [[ "$evidence_revision" =~ ^[0-9a-f]{40}$ ]] || fail "matrix evidence has no full source revision"
+    git -C "$ROOT" merge-base --is-ancestor "$evidence_revision" HEAD || fail "matrix evidence source revision is not in this checkout"
+    git -C "$ROOT" diff --quiet "$evidence_revision" HEAD -- gigpress.php || fail "packaged plugin metadata differs from the matrix evidence source revision"
   fi
   printf '{"status":"PASS","wordpress_min":"%s","php_min":"%s","tested_up_to":"%s"}\n' "$header_wp" "$header_php" "$tested_up_to"
 }
