@@ -301,7 +301,7 @@ PHP
   set -e
   printf '%s\n' "$output" | tee "$RESULT_DIR/${wp}-php${php}-menu-contract.json"
   [[ "$status" -eq 0 ]] || return "$status"
-  printf '%s\n' "$output" | rtk jq -e '.status == "PASS" and .target == "menu-contract" and (.failures | length == 0)' >/dev/null || fail "menu-contract did not satisfy its contract"
+  printf '%s\n' "$output" | rtk sed -n '1p' | rtk jq -e '.status == "PASS" and .target == "menu-contract" and (.failures | length == 0)' >/dev/null || fail "menu-contract did not satisfy its contract"
 }
 
 run_matrix() {

@@ -72,7 +72,7 @@ require('lib/countries.php');
 
 function gigpress_admin_menu() {
 	
-	global $gpo, $wp_version;
+	global $gpo, $wp_version, $menu;
 	
 	$add = __("Add a show", "gigpress");
 	$shows = __("Shows", "gigpress");
@@ -99,6 +99,16 @@ function gigpress_admin_menu() {
 		require('admin/debug.php');
 		add_submenu_page(__FILE__, "GigPress &rsaquo; Debug", 'Debug', 'manage_options', "gigpress-debug", "gigpress_debug");
 	}	
+
+	$menu_slugs = array();
+	foreach((array) $menu as $menu_item) {
+		if(isset($menu_item[2])) {
+			$menu_slugs[] = $menu_item[2];
+		}
+	}
+	if(in_array('edit-comments.php', $menu_slugs, true) && in_array('gigpress/gigpress.php', $menu_slugs, true) && !in_array('separator-gp', $menu_slugs, true)) {
+		$menu[] = array('', 'read', 'separator-gp', '', 'wp-menu-separator');
+	}
 
 }
 
@@ -455,35 +465,31 @@ function gigpress_favorites($actions) {
 
 
 function custom_menu_order($menu_order) {
-	
-	if($current_position = array_search('gigpress/gigpress.php', $menu_order))
-	{
-		// Add a new separator to the menu array
-		global $menu;
-		$menu[] = array('', 'read', 'separator-gp', '', 'wp-menu-separator');
-		
-		// Remove the current instance of GigPress
-		unset($menu_order[$current_position]);
-		
-		// Create a new array to hold the menu order
-		$new_menu_order = array();
-		
-		// Replicate the existing order,
-		// inserting GigPress and separator where desired
-		foreach($menu_order as $menu_item) {
-			$new_menu_order[] = $menu_item;
-			if($menu_item == 'edit-comments.php')
-			{
-				$new_menu_order[] =  'separator-gp';
-				$new_menu_order[] = 'gigpress/gigpress.php';		
-			}
+	if(!is_array($menu_order) || !empty($GLOBALS['gigpress_menu_order_conflict'])) {
+		return $menu_order;
+	}
+
+	$required_slugs = array('edit-comments.php', 'separator-gp', 'gigpress/gigpress.php');
+	foreach($required_slugs as $required_slug) {
+		if(count(array_keys($menu_order, $required_slug, true)) !== 1) {
+			return $menu_order;
 		}
 	}
-	else
-	{
-		$new_menu_order = $menu_order;		
+
+	$new_menu_order = array();
+	foreach($menu_order as $menu_item) {
+		if($menu_item !== 'separator-gp' && $menu_item !== 'gigpress/gigpress.php') {
+			$new_menu_order[] = $menu_item;
+		}
 	}
-	return $new_menu_order;		
+
+	$comments_position = array_search('edit-comments.php', $new_menu_order, true);
+	if($comments_position === false) {
+		return $menu_order;
+	}
+
+	array_splice($new_menu_order, $comments_position + 1, 0, array('separator-gp', 'gigpress/gigpress.php'));
+	return $new_menu_order;
 }
 
 
