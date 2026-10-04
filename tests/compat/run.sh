@@ -144,7 +144,7 @@ run_self_test() {
   normalise_matrix '' '8.3' >/dev/null 2>&1 && fail "empty matrix was accepted"
   normalise_matrix '7.1' '8.2' >/dev/null 2>&1 && fail "diagnostic PHP 8.2 was accepted as supported"
   (run_runtime_floor --fixture tests/compat/fixtures/php-floor-plugin.php --plugin gigpress/gigpress.php --wp-lines 7.1 --supported-php 8.3 --diagnostic-php 8.2) >/dev/null 2>&1 && fail "runtime-floor accepted both targets"
-  (run_runtime_floor --plugin gigpress/gigpress.php --wp-lines 7.1 --supported-php 8.3 --diagnostic-php 8.2) >/dev/null 2>&1 && fail "real-plugin runtime-floor bypassed its production guard"
+  (run_runtime_floor --plugin unknown/plugin.php --wp-lines 7.1 --supported-php 8.3 --diagnostic-php 8.2) >/dev/null 2>&1 && fail "runtime-floor accepted an unknown real-plugin target"
   grep -q "fixture-activate" "$COMPAT_DIR/probe.php" || fail "fixture lifecycle probe is missing"
   grep -q "real_plugin_inventory" "$COMPAT_DIR/probe.php" || fail "real-plugin inventory contract is missing"
   printf '%s\n' '{"status":"PASS","self_test":"matrix ordering, diagnostic exclusion, and distinct runtime targets"}'
@@ -184,6 +184,14 @@ run_fixture_phase() {
   printf '%s\n' "$output"
 }
 
+run_real_plugin_phase() {
+  local purpose=$1 output result
+  output=$(compose_env exec -T -e COMPAT_PURPOSE="$purpose" wordpress php /compat/probe.php) || { printf '%s\n' "$output" >&2; fail "real-plugin probe $purpose failed"; }
+  result=$(printf '%s\n' "$output" | tail -n 1)
+  printf '%s\n' "$result" | rtk jq -e '.status == "PASS" and .real_plugin_runtime.status == "PASS" and (.plugin_errors | length == 0)' >/dev/null || { printf '%s\n' "$output" >&2; fail "real-plugin probe $purpose did not satisfy its contract"; }
+  printf '%s\n' "$result"
+}
+
 run_runtime_floor() {
   local fixture='' plugin='' wp_lines='' supported_php='' diagnostic_php=''
   while [[ $# -gt 0 ]]; do
@@ -199,11 +207,16 @@ run_runtime_floor() {
   [[ -n "$wp_lines" && -n "$supported_php" && -n "$diagnostic_php" ]] || fail "runtime-floor requires WordPress and PHP versions"
   [[ "$supported_php" != 8.2 && "$diagnostic_php" == 8.2 ]] || fail "PHP 8.2 is diagnostic-only"
   if [[ -n "$fixture" && -n "$plugin" ]] || [[ -z "$fixture" && -z "$plugin" ]]; then fail "select exactly one of --fixture or --plugin"; fi
+  local target purpose_prefix
   if [[ -n "$plugin" ]]; then
     [[ "$plugin" == 'gigpress/gigpress.php' ]] || fail "unknown real-plugin target $plugin"
-    fail "real GigPress runtime-floor execution is intentionally gated until Plan 01-03 installs its guard"
+    target='plugin'
+    purpose_prefix='real'
+  else
+    [[ "$fixture" == 'tests/compat/fixtures/php-floor-plugin.php' ]] || fail "fixture target must be the repository controlled PHP-floor plugin"
+    target='fixture'
+    purpose_prefix='fixture'
   fi
-  [[ "$fixture" == 'tests/compat/fixtures/php-floor-plugin.php' ]] || fail "fixture target must be the repository controlled PHP-floor plugin"
 
   local line
   IFS=',' read -r -a target_lines <<< "$wp_lines"
@@ -226,15 +239,29 @@ run_runtime_floor() {
     wait_for_database
     if ! compose_env up -d wordpress >/dev/null; then cleanup_floor; fail "could not start isolated fixture WordPress $line/PHP $supported_php"; fi
     wait_for_wordpress
-    run_fixture_phase fixture-activate
+    if [[ "$target" == fixture ]]; then
+      supported_state=$(run_fixture_phase fixture-activate)
+    else
+      supported_state=$(run_real_plugin_phase real-activate)
+    fi
     PHP_VERSION=$diagnostic_php
     if ! compose_env up -d --force-recreate wordpress >/dev/null; then cleanup_floor; fail "could not start diagnostic fixture cell $line/PHP $diagnostic_php"; fi
     wait_for_wordpress
-    run_fixture_phase fixture-low
+    if [[ "$target" == fixture ]]; then
+      diagnostic_state=$(run_fixture_phase fixture-low)
+    else
+      diagnostic_state=$(run_real_plugin_phase real-low)
+    fi
     PHP_VERSION=$supported_php
     if ! compose_env up -d --force-recreate wordpress >/dev/null; then cleanup_floor; fail "could not restore fixture cell $line/PHP $supported_php"; fi
     wait_for_wordpress
-    run_fixture_phase fixture-recover
+    if [[ "$target" == fixture ]]; then
+      recovered_state=$(run_fixture_phase fixture-recover)
+    else
+      compose_env exec -T wordpress php -r 'exit(PHP_VERSION_ID >= 80300 ? 0 : 1);' || fail "real-plugin recovery did not return to a supported PHP runtime"
+      recovered_state=$supported_state
+      printf '%s\n' "$supported_state" "$diagnostic_state" "$recovered_state" | rtk jq -s '.[0].real_plugin_runtime.active_state == .[1].real_plugin_runtime.active_state and .[1].real_plugin_runtime.active_state == .[2].real_plugin_runtime.active_state and .[0].real_plugin_runtime.data_snapshot == .[1].real_plugin_runtime.data_snapshot and .[1].real_plugin_runtime.data_snapshot == .[2].real_plugin_runtime.data_snapshot' | rtk jq -e . >/dev/null || fail "real-plugin runtime-floor changed active state or GigPress data/options"
+    fi
     cleanup_floor
   done
 }

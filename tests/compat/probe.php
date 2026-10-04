@@ -41,10 +41,15 @@ $purpose = getenv('COMPAT_PURPOSE') ?: 'activation-menu';
  * actual active_plugins option and provide only the two plugin API calls that
  * the fixture itself uses. Supported-runtime requests still boot WordPress.
  */
-if (in_array($purpose, array('fixture-low', 'fixture-recover'), true)) {
-    $plugin = 'php-floor-plugin.php';
-    $notice = 'PHP 8.3 or newer is required for the controlled compatibility fixture.';
-    $fixturePath = '/var/www/html/wp-content/plugins/php-floor-plugin.php';
+if (in_array($purpose, array('fixture-low', 'fixture-recover', 'real-low'), true)) {
+    $isRealPlugin = $purpose === 'real-low';
+    $plugin = $isRealPlugin ? 'gigpress/gigpress.php' : 'php-floor-plugin.php';
+    $notice = $isRealPlugin
+        ? 'GigPress requires PHP 8.3 or newer. This site is running an incompatible PHP version.'
+        : 'PHP 8.3 or newer is required for the controlled compatibility fixture.';
+    $fixturePath = $isRealPlugin
+        ? '/var/www/html/wp-content/plugins/gigpress/gigpress.php'
+        : '/var/www/html/wp-content/plugins/php-floor-plugin.php';
     $db = mysqli_connect(
         getenv('WORDPRESS_DB_HOST') ?: 'db',
         getenv('WORDPRESS_DB_USER') ?: 'wordpress',
@@ -62,6 +67,20 @@ if (in_array($purpose, array('fixture-low', 'fixture-recover'), true)) {
             $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Controlled fixture lost active state in the isolated database', 'file' => __FILE__, 'line' => __LINE__);
         }
     }
+    $realDataSnapshot = array();
+    if ($isRealPlugin && $db) {
+        $realDataSnapshot = array('options' => array(), 'table_rows' => array());
+        $options = mysqli_query($db, "SELECT option_name, option_value FROM wp_options WHERE option_name LIKE 'gigpress\\_%' ORDER BY option_name");
+        while ($options && ($optionRow = mysqli_fetch_assoc($options))) {
+            $realDataSnapshot['options'][] = $optionRow;
+        }
+        $tables = mysqli_query($db, "SHOW TABLES LIKE 'wp_gigpress\\_%'");
+        while ($tables && ($tableRow = mysqli_fetch_row($tables))) {
+            $table = $tableRow[0];
+            $count = mysqli_query($db, "SELECT COUNT(*) FROM `{$table}`");
+            $realDataSnapshot['table_rows'][$table] = $count ? (int) mysqli_fetch_row($count)[0] : null;
+        }
+    }
 
     $compatHooks = array();
     $compatCanManagePlugins = true;
@@ -72,6 +91,9 @@ if (in_array($purpose, array('fixture-low', 'fixture-recover'), true)) {
     function current_user_can($capability) {
         global $compatCanManagePlugins;
         return $capability === 'activate_plugins' && $compatCanManagePlugins;
+    }
+    function esc_html($text) {
+        return htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
     }
     function compat_fixture_notices() {
         global $compatHooks;
@@ -87,19 +109,33 @@ if (in_array($purpose, array('fixture-low', 'fixture-recover'), true)) {
     } else {
         require $fixturePath;
     }
-    $normalSurface = function_exists('php_floor_fixture_normal_surface');
+    $normalSurface = $isRealPlugin
+        ? function_exists('gigpress_admin_menu') || function_exists('gigpress_shows') || function_exists('gigpress_ical')
+        : function_exists('php_floor_fixture_normal_surface');
     $first = '';
     $second = '';
     $unauthorized = '';
     $public = '';
-    if ($purpose === 'fixture-low') {
+    if ($purpose === 'fixture-low' || $purpose === 'real-low') {
         $first = compat_fixture_notices();
         $second = compat_fixture_notices();
         $compatCanManagePlugins = false;
         $unauthorized = compat_fixture_notices();
         $public = compat_fixture_notices();
+        $normalModules = array('admin/db.php', 'output/gigpress_shows.php', 'output/ical.php');
+        $loadedModules = array();
+        foreach (get_included_files() as $includedFile) {
+            foreach ($normalModules as $module) {
+                if (substr(str_replace('\\', '/', $includedFile), -strlen($module)) === $module) {
+                    $loadedModules[] = $module;
+                }
+            }
+        }
+        $normalHooks = isset($compatHooks['admin_menu']) || isset($compatHooks['init']);
         $ok = !$pluginErrors
             && !$normalSurface
+            && !$normalHooks
+            && !$loadedModules
             && isset($compatHooks['admin_notices'])
             && substr_count($first, $notice) === 1
             && substr_count($second, $notice) === 1
@@ -123,6 +159,16 @@ if (in_array($purpose, array('fixture-low', 'fixture-recover'), true)) {
     if (!$ok) {
         $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Controlled fixture runtime-floor contract failed', 'file' => __FILE__, 'line' => __LINE__);
     }
+    $realPluginRuntime = $isRealPlugin ? array(
+        'status' => $ok ? 'PASS' : 'FAIL',
+        'active_state' => array('active_plugins' => $activePlugins, 'network_active_plugins' => array()),
+        'data_snapshot' => $realDataSnapshot,
+        'normal_surface' => $normalSurface,
+        'normal_hooks' => $normalHooks,
+        'loaded_modules' => $loadedModules,
+        'first_notice' => $first,
+        'second_notice' => $second,
+    ) : null;
     $result = array(
         'status' => $pluginErrors ? 'FAIL' : 'PASS',
         'wordpress_version' => 'diagnostic-bootstrap-bypassed',
@@ -134,6 +180,7 @@ if (in_array($purpose, array('fixture-low', 'fixture-recover'), true)) {
         'purpose' => $purpose,
         'csv_roundtrip' => null,
         'fixture_runtime' => $fixtureRuntime,
+        'real_plugin_runtime' => $realPluginRuntime,
     );
     echo json_encode($result, JSON_UNESCAPED_SLASHES) . PHP_EOL;
     exit($result['status'] === 'PASS' ? 0 : 1);
@@ -215,6 +262,39 @@ $real_plugin_inventory = array(
     'hooks' => array('admin_menu' => 'gigpress_admin_menu', 'init' => 'gigpress_init'),
     'modules' => array('admin/db.php', 'output/gigpress_shows.php', 'output/ical.php'),
 );
+$realPluginRuntime = null;
+if (in_array($purpose, array('real-activate', 'real-recover'), true)) {
+    $capture_notices = function () {
+        ob_start();
+        do_action('admin_notices');
+        return ob_get_clean();
+    };
+    $activePlugins = (array) get_option('active_plugins', array());
+    $options = $wpdb->get_results("SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE 'gigpress\\_%' ORDER BY option_name", ARRAY_A);
+    $tables = $wpdb->get_col("SHOW TABLES LIKE '{$wpdb->prefix}gigpress\\_%'");
+    $tableRows = array();
+    foreach ((array) $tables as $table) {
+        $tableRows[$table] = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table}");
+    }
+    $normalSurface = function_exists('gigpress_admin_menu') && function_exists('gigpress_shows') && function_exists('gigpress_ical');
+    $normalHooks = has_action('admin_menu', 'gigpress_admin_menu') && has_action('init', 'add_gigpress_feeds');
+    $notices = $capture_notices();
+    $ok = is_plugin_active($plugin)
+        && $normalSurface
+        && $normalHooks
+        && strpos($notices, 'GigPress requires PHP 8.3 or newer.') === false;
+    $realPluginRuntime = array(
+        'status' => $ok ? 'PASS' : 'FAIL',
+        'active_state' => array('active_plugins' => $activePlugins, 'network_active_plugins' => array()),
+        'data_snapshot' => array('options' => $options, 'table_rows' => $tableRows),
+        'normal_surface' => $normalSurface,
+        'normal_hooks' => (bool) $normalHooks,
+        'notice_present' => strpos($notices, 'GigPress requires PHP 8.3 or newer.') !== false,
+    );
+    if (!$ok) {
+        $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Real GigPress supported-runtime contract failed', 'file' => __FILE__, 'line' => __LINE__);
+    }
+}
 $menuTrace = null;
 if ($purpose === 'diagnose-menu' && function_exists('gigpress_menu_trace_result')) {
     $pluginData = get_plugin_data(WP_PLUGIN_DIR . '/gigpress/gigpress.php', false, false);
@@ -269,6 +349,7 @@ $result = array(
     'purpose' => $purpose,
     'csv_roundtrip' => $csvRoundTrip,
     'fixture_runtime' => $fixtureRuntime,
+    'real_plugin_runtime' => $realPluginRuntime,
     'real_plugin_inventory' => $real_plugin_inventory,
     'menu_trace' => $menuTrace,
 );

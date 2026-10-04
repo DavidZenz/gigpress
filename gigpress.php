@@ -23,6 +23,15 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 */
 
+if (PHP_VERSION_ID < 80300) {
+    function gigpress_php_compatibility_notice() {
+        if (current_user_can('activate_plugins')) {
+            echo '<div class="notice notice-warning"><p>' . esc_html('GigPress requires PHP 8.3 or newer. This site is running an incompatible PHP version.') . '</p></div>';
+        }
+    }
+
+    add_action('admin_notices', 'gigpress_php_compatibility_notice');
+} else {
 global $wpdb;
 
 // Define useful constants
@@ -638,4 +647,5 @@ add_shortcode('gigpress_related_shows','gigpress_show_related');
 
 // We're forced to bed, but we're free to dream.
 
+}
 ?>
