@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 02
 current_phase_name: Data and Upgrade Preservation
 status: executing
-stopped_at: Completed 02-02-PLAN.md
-last_updated: "2026-10-04T13:38:08.859Z"
+stopped_at: Completed 02-03-PLAN.md
+last_updated: "2026-10-04T13:57:19.438Z"
 last_activity: 2026-10-04
 last_activity_desc: Phase 02 execution started
-state_head: 02b19e807862bdbb582c033d8a660863b8127812
+state_head: 7ba699c08e482e28e11beab1ebc374a14d06f824
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
   percent: 20
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 02 (Data and Upgrade Preservation) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-10-04 — Phase 02 execution started
 
@@ -63,6 +63,7 @@ Progress: ░░░░░░░░░░ [██░░░░░░░░] 20%
 | Phase 01 P05 | 90m | 2 tasks | 7 files |
 | Phase 02-data-and-upgrade-preservation P01 | 12min | 2 tasks | 7 files |
 | Phase 02-data-and-upgrade-preservation P02 | 33m | 3 tasks | 11 files |
+| Phase 02-data-and-upgrade-preservation P03 | 8m | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,9 @@ Recent decisions affecting current work:
 - [Phase 02-data-and-upgrade-preservation]: Journal transformed settings after each successful legacy step so retries resume with source-specific semantics.
 - [Phase 02-data-and-upgrade-preservation]: Reuse exact artist and venue identity matches after interruption; reject ambiguous generated mappings.
 - [Phase 02-data-and-upgrade-preservation]: Keep current 1.6 as a populated no-op fixture with every documented default present.
+- [Phase 02-data-and-upgrade-preservation]: Run coordinator readiness checks after nonce verification before each covered mutation.
+- [Phase 02-data-and-upgrade-preservation]: Count all show statuses for entity deletion while retaining active-only list counts.
+- [Phase 02-data-and-upgrade-preservation]: Use gigpress_tour_restore_map for exact pending undo ownership and retain the row marker only as a compatibility hint.
 
 ### Pending Todos
 
@@ -100,6 +104,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-04T13:38:08.837Z
-Stopped at: Completed 02-02-PLAN.md
+Last session: 2026-10-04T13:57:19.416Z
+Stopped at: Completed 02-03-PLAN.md
 Resume file: None
