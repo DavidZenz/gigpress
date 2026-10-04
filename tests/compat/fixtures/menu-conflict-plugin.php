@@ -10,7 +10,12 @@ function gigpress_menu_conflict_late_add($menuOrder) {
     if (function_exists('gigpress_menu_trace_mark_row')) {
         gigpress_menu_trace_mark_row('separator-gigpress');
     }
-    return $menuOrder;
+    /*
+     * Model an incompatible order callback that drops every incoming key.
+     * WordPress then compares this late row against another unranked row and
+     * falls back to its earlier snapshot, which does not contain this slug.
+     */
+    return array();
 }
 
 function gigpress_menu_conflict_order_only($menuOrder) {

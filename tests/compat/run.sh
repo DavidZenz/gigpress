@@ -194,8 +194,9 @@ run_self_test() {
   (run_runtime_floor --plugin unknown/plugin.php --wp-lines 7.1 --supported-php 8.3 --diagnostic-php 8.2) >/dev/null 2>&1 && fail "runtime-floor accepted an unknown real-plugin target"
   grep -q "fixture-activate" "$COMPAT_DIR/probe.php" || fail "fixture lifecycle probe is missing"
   grep -q "real_plugin_inventory" "$COMPAT_DIR/probe.php" || fail "real-plugin inventory contract is missing"
-  grep -Fq "if (\$purpose !== 'real-recover')" "$COMPAT_DIR/probe.php" || fail "real-plugin recovery does not use the normal active-plugin bootstrap"
+  grep -Fq "if (!in_array(\$purpose, array('real-recover', 'real-low-live'), true))" "$COMPAT_DIR/probe.php" || fail "real-plugin low-floor and recovery probes do not use normal active-plugin bootstrap"
   grep -Fq "update_option('siteurl', 'http://gigpress-compat.test')" "$COMPAT_DIR/probe.php" || fail "fresh installs do not seed a stable site URL for later recovery probes"
+  grep -Fq 'menu_trace.menu_warnings | any(' "$COMPAT_DIR/run.sh" || fail "exact-key diagnostic does not require the WordPress warning"
   cleanup_paths=$(grep -v 'cleanup_paths=' "$COMPAT_DIR/run.sh" | grep -Fc 'compose_env down --volumes --remove-orphans')
   [[ "$cleanup_paths" == 3 ]] || fail "all disposable Compose targets must use the configured cleanup environment"
   printf '%s\n' '{"status":"PASS","self_test":"matrix ordering, diagnostic exclusion, distinct runtime targets, supported recovery bootstrap, and Compose cleanup"}'
@@ -496,7 +497,7 @@ run_runtime_floor() {
     if [[ "$target" == fixture ]]; then
       diagnostic_state=$(run_fixture_phase fixture-low)
     else
-      diagnostic_state=$(run_real_plugin_phase real-low)
+      diagnostic_state=$(run_real_plugin_phase real-low-live)
     fi
     PHP_VERSION=$supported_php
     if ! compose_env up -d --force-recreate wordpress >/dev/null; then cleanup_floor; fail "could not restore fixture cell $line/PHP $supported_php"; fi
@@ -507,6 +508,7 @@ run_runtime_floor() {
       compose_env exec -T wordpress php -r 'exit(PHP_VERSION_ID >= 80300 ? 0 : 1);' || fail "real-plugin recovery did not return to a supported PHP runtime"
       recovered_state=$(run_real_plugin_phase real-recover)
       printf '%s\n' "$supported_state" "$diagnostic_state" "$recovered_state" | rtk jq -s '.[0].real_plugin_runtime.active_state == .[1].real_plugin_runtime.active_state and .[1].real_plugin_runtime.active_state == .[2].real_plugin_runtime.active_state and .[0].real_plugin_runtime.data_snapshot == .[1].real_plugin_runtime.data_snapshot and .[1].real_plugin_runtime.data_snapshot == .[2].real_plugin_runtime.data_snapshot' | rtk jq -e . >/dev/null || fail "real-plugin runtime-floor changed active state or GigPress data/options"
+      printf '%s\n' "$supported_state" "$diagnostic_state" "$recovered_state" | rtk jq -s --arg wp "$WP_VERSION" '{status:"PASS",wordpress:$wp,php_transition:[.[0].php_version,.[1].php_version,.[2].php_version],plugin_active_preserved:.[0].real_plugin_runtime.active_state == .[1].real_plugin_runtime.active_state and .[1].real_plugin_runtime.active_state == .[2].real_plugin_runtime.active_state,data_preserved:.[0].real_plugin_runtime.data_snapshot == .[1].real_plugin_runtime.data_snapshot and .[1].real_plugin_runtime.data_snapshot == .[2].real_plugin_runtime.data_snapshot,low_floor:.[1].real_plugin_runtime,recovery:.[2].real_plugin_runtime}'
     fi
     cleanup_floor
   done
@@ -572,7 +574,7 @@ run_diagnose_menu() {
   output=$(compose_env exec -T -e COMPAT_PURPOSE=diagnose-menu -e COMPAT_CONFLICT_MODE="$conflict_mode" -e COMPAT_SKIP_GIGPRESS_ACTIVATION="$skip_gigpress_activation" wordpress php /compat/probe.php) || { printf '%s\n' "$output" >&2; fail "menu diagnostic probe failed"; }
   printf '%s\n' "$output" | tee "$RESULT_DIR/${WP_VERSION}-php${PHP_VERSION}-diagnose-menu-${conflict_mode}.json"
   if [[ "$conflict_mode" == exact-key-late-add ]]; then
-    printf '%s\n' "$output" | rtk jq -e --arg key "$expect_key" '.status == "PASS" and .menu_trace.trace_is_request_local == true and (.menu_trace.row_creators | any(.slug == $key and .callback == "gigpress_menu_conflict_late_add" and .priority == 20)) and (.menu_trace.missing_from_input | index($key)) and (.menu_trace.missing_from_returned_order | index($key)) and (.menu_trace.callbacks | any(.identity == "gigpress_menu_conflict_late_add" and .priority == 20))' >/dev/null || fail "trace did not attribute the exact controlled separator key"
+    printf '%s\n' "$output" | rtk jq -e --arg key "$expect_key" '.status == "PASS" and .menu_trace.trace_is_request_local == true and (.menu_trace.row_creators | any(.slug == $key and .callback == "gigpress_menu_conflict_late_add" and .priority == 20)) and (.menu_trace.missing_from_input | index($key)) and (.menu_trace.missing_from_returned_order | index($key)) and (.menu_trace.callbacks | any(.identity == "gigpress_menu_conflict_late_add" and .priority == 20)) and (.menu_trace.menu_warnings | any(.message == ("Undefined array key \"" + $key + "\"")))' >/dev/null || fail "trace did not reproduce and attribute the exact controlled separator warning"
   else
     printf '%s\n' "$output" | rtk jq -e --arg key "$expect_key" '.status == "PASS" and (.menu_trace.final_slugs | index($key))' >/dev/null || fail "checkout-only trace did not retain the checkout separator"
   fi

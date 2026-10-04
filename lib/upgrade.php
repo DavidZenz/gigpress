@@ -3352,13 +3352,6 @@ if (!defined("PHP_PREFIX") && isset($_ENV["_"])) { define("PHP_PREFIX", substr($
          "E" => "_ENV",      // non-standard
       );
 
-      #-- alias long names (PHP < 4.0.6)    //@FIXME: does that belong here?
-      if (!isset($_REQUEST)) {
-         $_GET = & $HTTP_GET_VARS;
-         $_POST = & $HTTP_POST_VARS;
-         $_COOKIE = & $HTTP_COOKIE_VARS;
-      }
-      
       #-- copy
       foreach (str_split($types, 1) as $c) {
          if ($FROM = $alias[strtoupper($c)]) {

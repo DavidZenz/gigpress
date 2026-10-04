@@ -34,22 +34,13 @@ register_shutdown_function(function () use (&$pluginErrors, &$fatal) {
 
 $purpose = getenv('COMPAT_PURPOSE') ?: 'activation-menu';
 
-/*
- * The diagnostic PHP 8.2 image cannot complete the WordPress 7.0/7.1 core
- * bootstrap even though its mysqli driver can read the same disposable tables.
- * For the deliberately narrow controlled-fixture downgrade check, retain the
- * actual active_plugins option and provide only the two plugin API calls that
- * the fixture itself uses. Supported-runtime requests still boot WordPress.
+/* The controlled fixture keeps a narrow API facade for its isolated guard contract.
+ * The real GigPress low-floor check uses the normal WordPress bootstrap below.
  */
-if (in_array($purpose, array('fixture-low', 'fixture-recover', 'real-low'), true)) {
-    $isRealPlugin = $purpose === 'real-low';
-    $plugin = $isRealPlugin ? 'gigpress/gigpress.php' : 'php-floor-plugin.php';
-    $notice = $isRealPlugin
-        ? 'GigPress requires PHP 8.3 or newer. This site is running an incompatible PHP version.'
-        : 'PHP 8.3 or newer is required for the controlled compatibility fixture.';
-    $fixturePath = $isRealPlugin
-        ? '/var/www/html/wp-content/plugins/gigpress/gigpress.php'
-        : '/var/www/html/wp-content/plugins/php-floor-plugin.php';
+if (in_array($purpose, array('fixture-low', 'fixture-recover'), true)) {
+    $plugin = 'php-floor-plugin.php';
+    $notice = 'PHP 8.3 or newer is required for the controlled compatibility fixture.';
+    $fixturePath = '/var/www/html/wp-content/plugins/php-floor-plugin.php';
     $db = mysqli_connect(
         getenv('WORDPRESS_DB_HOST') ?: 'db',
         getenv('WORDPRESS_DB_USER') ?: 'wordpress',
@@ -67,21 +58,6 @@ if (in_array($purpose, array('fixture-low', 'fixture-recover', 'real-low'), true
             $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Controlled fixture lost active state in the isolated database', 'file' => __FILE__, 'line' => __LINE__);
         }
     }
-    $realDataSnapshot = array();
-    if ($isRealPlugin && $db) {
-        $realDataSnapshot = array('options' => array(), 'table_rows' => array());
-        $options = mysqli_query($db, "SELECT option_name, option_value FROM wp_options WHERE option_name LIKE 'gigpress\\_%' ORDER BY option_name");
-        while ($options && ($optionRow = mysqli_fetch_assoc($options))) {
-            $realDataSnapshot['options'][] = $optionRow;
-        }
-        $tables = mysqli_query($db, "SHOW TABLES LIKE 'wp_gigpress\\_%'");
-        while ($tables && ($tableRow = mysqli_fetch_row($tables))) {
-            $table = $tableRow[0];
-            $count = mysqli_query($db, "SELECT COUNT(*) FROM `{$table}`");
-            $realDataSnapshot['table_rows'][$table] = $count ? (int) mysqli_fetch_row($count)[0] : null;
-        }
-    }
-
     $compatHooks = array();
     $compatCanManagePlugins = true;
     function add_action($hook, $callback) {
@@ -109,9 +85,7 @@ if (in_array($purpose, array('fixture-low', 'fixture-recover', 'real-low'), true
     } else {
         require $fixturePath;
     }
-    $normalSurface = $isRealPlugin
-        ? function_exists('gigpress_admin_menu') || function_exists('gigpress_shows') || function_exists('gigpress_ical')
-        : function_exists('php_floor_fixture_normal_surface');
+    $normalSurface = function_exists('php_floor_fixture_normal_surface');
     $first = '';
     $second = '';
     $unauthorized = '';
@@ -159,16 +133,6 @@ if (in_array($purpose, array('fixture-low', 'fixture-recover', 'real-low'), true
     if (!$ok) {
         $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Controlled fixture runtime-floor contract failed', 'file' => __FILE__, 'line' => __LINE__);
     }
-    $realPluginRuntime = $isRealPlugin ? array(
-        'status' => $ok ? 'PASS' : 'FAIL',
-        'active_state' => array('active_plugins' => $activePlugins, 'network_active_plugins' => array()),
-        'data_snapshot' => $realDataSnapshot,
-        'normal_surface' => $normalSurface,
-        'normal_hooks' => $normalHooks,
-        'loaded_modules' => $loadedModules,
-        'first_notice' => $first,
-        'second_notice' => $second,
-    ) : null;
     $result = array(
         'status' => $pluginErrors ? 'FAIL' : 'PASS',
         'wordpress_version' => 'diagnostic-bootstrap-bypassed',
@@ -180,13 +144,12 @@ if (in_array($purpose, array('fixture-low', 'fixture-recover', 'real-low'), true
         'purpose' => $purpose,
         'csv_roundtrip' => null,
         'fixture_runtime' => $fixtureRuntime,
-        'real_plugin_runtime' => $realPluginRuntime,
     );
     echo json_encode($result, JSON_UNESCAPED_SLASHES) . PHP_EOL;
     exit($result['status'] === 'PASS' ? 0 : 1);
 }
 
-if ($purpose !== 'real-recover') {
+if (!in_array($purpose, array('real-recover', 'real-low-live'), true)) {
     define('WP_INSTALLING', true);
 }
 require_once '/var/www/html/wp-load.php';
@@ -202,7 +165,8 @@ $admin = get_user_by('login', 'compat-admin');
 wp_set_current_user($admin->ID);
 $fixturePurpose = in_array($purpose, array('fixture-activate', 'fixture-low', 'fixture-recover'), true);
 $plugin = $fixturePurpose ? 'php-floor-plugin.php' : 'gigpress/gigpress.php';
-$skipGigPressActivation = $purpose === 'diagnose-menu' && (getenv('COMPAT_SKIP_GIGPRESS_ACTIVATION') ?: '') === '1';
+$skipGigPressActivation = $purpose === 'real-low-live'
+    || ($purpose === 'diagnose-menu' && (getenv('COMPAT_SKIP_GIGPRESS_ACTIVATION') ?: '') === '1');
 if (($purpose === 'fixture-activate' || !$fixturePurpose) && !$skipGigPressActivation) {
     $activation = activate_plugin($plugin, '', false, false);
     if (is_wp_error($activation)) {
@@ -269,7 +233,7 @@ $real_plugin_inventory = array(
     'modules' => array('admin/db.php', 'output/gigpress_shows.php', 'output/ical.php'),
 );
 $realPluginRuntime = null;
-if (in_array($purpose, array('real-activate', 'real-recover'), true)) {
+if (in_array($purpose, array('real-activate', 'real-recover', 'real-low-live'), true)) {
     $capture_notices = function () {
         ob_start();
         do_action('admin_notices');
@@ -284,21 +248,61 @@ if (in_array($purpose, array('real-activate', 'real-recover'), true)) {
     }
     $normalSurface = function_exists('gigpress_admin_menu') && function_exists('gigpress_shows') && function_exists('gigpress_ical');
     $normalHooks = has_action('admin_menu', 'gigpress_admin_menu') && has_action('init', 'add_gigpress_feeds');
-    $notices = $capture_notices();
-    $ok = is_plugin_active($plugin)
-        && $normalSurface
-        && $normalHooks
-        && strpos($notices, 'GigPress requires PHP 8.3 or newer.') === false;
+    $lowRuntime = $purpose === 'real-low-live';
+    $notice = 'GigPress requires PHP 8.3 or newer. This site is running an incompatible PHP version.';
+    if ($lowRuntime) {
+        $firstNotice = $capture_notices();
+        $secondNotice = $capture_notices();
+        $subscriber = get_user_by('login', 'compat-subscriber');
+        if (!$subscriber) {
+            $subscriberId = wp_create_user('compat-subscriber', wp_generate_password(), 'compat-subscriber@example.test');
+            $subscriber = is_wp_error($subscriberId) ? false : get_user_by('id', $subscriberId);
+        }
+        if ($subscriber) {
+            wp_set_current_user($subscriber->ID);
+        }
+        $unauthorizedNotice = $capture_notices();
+        wp_set_current_user(0);
+        $publicNotice = $capture_notices();
+        wp_set_current_user($admin->ID);
+        $loadedModules = array();
+        foreach (get_included_files() as $includedFile) {
+            foreach ($real_plugin_inventory['modules'] as $module) {
+                if (substr(str_replace('\\', '/', $includedFile), -strlen($module)) === $module) {
+                    $loadedModules[] = $module;
+                }
+            }
+        }
+        $noticeChecks = substr_count($firstNotice, $notice) === 1
+            && substr_count($secondNotice, $notice) === 1
+            && strpos($unauthorizedNotice, $notice) === false
+            && strpos($publicNotice, $notice) === false;
+        $ok = is_plugin_active($plugin)
+            && !$normalSurface
+            && !$normalHooks
+            && !$loadedModules
+            && $noticeChecks;
+    } else {
+        $notices = $capture_notices();
+        $ok = is_plugin_active($plugin)
+            && $normalSurface
+            && $normalHooks
+            && strpos($notices, $notice) === false;
+    }
     $realPluginRuntime = array(
         'status' => $ok ? 'PASS' : 'FAIL',
         'active_state' => array('active_plugins' => $activePlugins, 'network_active_plugins' => array()),
         'data_snapshot' => array('options' => $options, 'table_rows' => $tableRows),
         'normal_surface' => $normalSurface,
         'normal_hooks' => (bool) $normalHooks,
-        'notice_present' => strpos($notices, 'GigPress requires PHP 8.3 or newer.') !== false,
+        'modules_loaded' => isset($loadedModules) ? $loadedModules : array(),
+        'notice_present' => $lowRuntime ? substr_count($firstNotice, $notice) === 1 : strpos($notices, $notice) !== false,
+        'notice_repeat_count' => $lowRuntime ? substr_count($secondNotice, $notice) : null,
+        'unauthorized_notice' => $lowRuntime ? strpos($unauthorizedNotice, $notice) !== false : null,
+        'public_notice' => $lowRuntime ? strpos($publicNotice, $notice) !== false : null,
     );
     if (!$ok) {
-        $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Real GigPress supported-runtime contract failed', 'file' => __FILE__, 'line' => __LINE__);
+        $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Real GigPress runtime contract failed', 'file' => __FILE__, 'line' => __LINE__);
     }
 }
 $menuTrace = null;
