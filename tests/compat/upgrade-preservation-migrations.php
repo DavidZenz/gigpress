@@ -10,6 +10,7 @@ function gigpress_upgrade_preservation_snapshot() {
     $data = array('prefix' => $wpdb->prefix, 'settings' => get_option('gigpress_settings'));
     foreach (array('shows' => 'show_id', 'artists' => 'artist_id', 'venues' => 'venue_id', 'tours' => 'tour_id') as $kind => $id) {
         $data[$kind] = $wpdb->get_results('SELECT * FROM ' . $wpdb->prefix . 'gigpress_' . $kind . ' ORDER BY ' . $id, ARRAY_A);
+		$data['schema'][$kind] = array_map(function ($column) { return $column['Field']; }, (array) $wpdb->get_results('SHOW COLUMNS FROM ' . $wpdb->prefix . 'gigpress_' . $kind, ARRAY_A));
     }
 	$data['linked_posts'] = array();
 	foreach ($data['shows'] as $show) {
@@ -21,9 +22,65 @@ function gigpress_upgrade_preservation_snapshot() {
     return $data;
 }
 
-function gigpress_upgrade_preservation_manifest_matches($fixture, $snapshot) {
+function gigpress_upgrade_preservation_expected_value($kind, $field, $value, $row) {
+	if ($kind === 'shows' && $field === 'show_expire' && ($row['show_multi'] ?? null) === null) return $row['show_date'];
+	if ($kind === 'shows' && $field === 'show_time' && ($value === '' || $value === '00:00:00')) return '00:00:01';
+	if (($kind === 'shows' && $field === 'show_status') || ($kind === 'tours' && $field === 'tour_status')) return $value === '' ? 'active' : $value;
+	if ($kind === 'venues' && $field === 'venue_city' && preg_match('/,[ ]?([A-Z]{2})$/u', $value)) return preg_replace('/,[ ]?[A-Z]{2}$/u', '', $value);
+	if ($kind === 'venues' && $field === 'venue_state' && $value === '' && preg_match('/,[ ]?([A-Z]{2})$/u', $row['venue_city'] ?? '', $matches)) return $matches[1];
+	return $value;
+}
+
+function gigpress_upgrade_preservation_rows_match($source, $snapshot) {
+	$ids = array('shows' => 'show_id', 'artists' => 'artist_id', 'venues' => 'venue_id', 'tours' => 'tour_id');
+	foreach ($ids as $kind => $id) {
+		$actual = array();
+		foreach ($snapshot[$kind] as $row) $actual[(int) $row[$id]] = $row;
+		foreach ($source[$kind] as $row) {
+			$key = (int) $row[$id];
+			if (!isset($actual[$key])) return false;
+			foreach ($row as $field => $value) {
+				if ($kind === 'shows' && in_array($field, array('show_artist_id', 'show_venue_id'), true)) continue;
+				$expected = gigpress_upgrade_preservation_expected_value($kind, $field, $value, $row);
+				if (!array_key_exists($field, $actual[$key]) || (string) $actual[$key][$field] !== (string) $expected) return false;
+			}
+		}
+	}
+	return true;
+}
+
+function gigpress_upgrade_preservation_relationships_match($source, $snapshot) {
+	$artists = array(); $venues = array(); $tours = array(); $defaultArtists = array();
+	foreach ($snapshot['artists'] as $row) $artists[(int) $row['artist_id']] = $row;
+	foreach ($snapshot['venues'] as $row) $venues[(int) $row['venue_id']] = $row;
+	foreach ($snapshot['tours'] as $row) $tours[(int) $row['tour_id']] = $row;
+	$shows = array(); foreach ($snapshot['shows'] as $row) $shows[(int) $row['show_id']] = $row;
+	foreach ($source['shows'] as $sourceShow) {
+		$show = $shows[(int) $sourceShow['show_id']] ?? null;
+		if (!$show || !isset($artists[(int) $show['show_artist_id']], $venues[(int) $show['show_venue_id']])) return false;
+		if ((int) $sourceShow['show_tour_id'] > 0 && ((int) $show['show_tour_id'] !== (int) $sourceShow['show_tour_id'] || !isset($tours[(int) $show['show_tour_id']]))) return false;
+		if ((int) $sourceShow['show_artist_id'] > 0 && (int) $show['show_artist_id'] !== (int) $sourceShow['show_artist_id']) return false;
+		if ((int) $sourceShow['show_artist_id'] === 0) $defaultArtists[] = (int) $show['show_artist_id'];
+		if ((int) $sourceShow['show_venue_id'] > 0 && (int) $show['show_venue_id'] !== (int) $sourceShow['show_venue_id']) return false;
+		if ((int) $sourceShow['show_venue_id'] === 0) {
+			$venue = $venues[(int) $show['show_venue_id']];
+			if ($venue['venue_name'] !== $sourceShow['show_venue'] || $venue['venue_address'] !== $sourceShow['show_address'] || $venue['venue_city'] !== gigpress_upgrade_preservation_expected_value('venues', 'venue_city', $sourceShow['show_locale'], array('venue_city' => $sourceShow['show_locale'])) || $venue['venue_country'] !== $sourceShow['show_country'] || $venue['venue_phone'] !== $sourceShow['show_venue_phone'] || $venue['venue_url'] !== $sourceShow['show_venue_url']) return false;
+		}
+	}
+	return !$defaultArtists || count(array_unique($defaultArtists)) === 1;
+}
+
+function gigpress_upgrade_preservation_manifest_matches($fixture, $snapshot, $source = null) {
     $expected = $fixture['expected'];
     $ids = function ($rows, $key) { return array_map('intval', array_column($rows, $key)); };
+    $currentSchema = upgrade_preservation_current_schema();
+	$schemaMatches = true;
+	foreach ($currentSchema as $kind => $columns) {
+		$actualColumns = $snapshot['schema'][$kind] ?? array();
+		$expectedColumns = array_keys($columns);
+		sort($actualColumns); sort($expectedColumns);
+		$schemaMatches = $schemaMatches && $actualColumns === $expectedColumns;
+	}
     $checks = array(
         'prefix' => $snapshot['prefix'] === $fixture['prefix'],
         'version' => ($snapshot['settings']['db_version'] ?? null) === $expected['version'],
@@ -35,7 +92,15 @@ function gigpress_upgrade_preservation_manifest_matches($fixture, $snapshot) {
         'venue_city' => ($snapshot['venues'][0]['venue_city'] ?? null) === $expected['venue_city'],
         'venue_state' => ($snapshot['venues'][0]['venue_state'] ?? null) === $expected['venue_state'],
         'journal_removed' => !get_option('gigpress_upgrade_state', false),
+		'schema' => $schemaMatches,
     );
+	if ($source !== null) {
+		$checks['source_values'] = gigpress_upgrade_preservation_rows_match($source, $snapshot);
+		$checks['relationships'] = gigpress_upgrade_preservation_relationships_match($source, $snapshot);
+		$checks['linked_posts'] = $source['linked_posts'] === $snapshot['linked_posts'];
+	}
+	foreach ($snapshot['artists'] as $artist) $checks['artist_alpha_' . $artist['artist_id']] = $artist['artist_alpha'] === preg_replace('/^the\s+/ui', '', strtolower($artist['artist_name']));
+	foreach ($snapshot['venues'] as $venue) $checks['venue_state_' . $venue['venue_id']] = $venue['venue_state'] === gigpress_upgrade_preservation_expected_value('venues', 'venue_state', $venue['venue_state'], $venue);
     foreach ((array) ($expected['settings'] ?? array()) as $key => $value) $checks['setting_' . $key] = array_key_exists($key, $snapshot['settings']) && $snapshot['settings'][$key] === $value;
     return array($checks, !in_array(false, $checks, true));
 }
@@ -77,10 +142,11 @@ function gigpress_upgrade_preservation_run_versions($versions) {
         $fixture = gigpress_upgrade_preservation_fixture($version);
         $seeded = is_array($fixture) && upgrade_preservation_seed($fixture);
         $passes = $passes && $seeded;
+		$source = $seeded ? gigpress_upgrade_preservation_snapshot() : null;
         unset($GLOBALS['gigpress_db_bootstrap_result']);
         $ready = gigpress_db_bootstrap();
         $first = gigpress_upgrade_preservation_snapshot();
-        list($checks, $matches) = gigpress_upgrade_preservation_manifest_matches($fixture, $first);
+        list($checks, $matches) = gigpress_upgrade_preservation_manifest_matches($fixture, $first, $source);
         unset($GLOBALS['gigpress_db_bootstrap_result']);
         $repeat = gigpress_db_bootstrap();
         $second = gigpress_upgrade_preservation_snapshot();
@@ -97,6 +163,7 @@ function gigpress_upgrade_preservation_run_versions($versions) {
 		$retries = true; $retryFailures = array();
 		foreach ($failurePoints as $point) {
 			$retries = $retries && upgrade_preservation_seed($fixture);
+			$retrySource = $retries ? gigpress_upgrade_preservation_snapshot() : null;
 			$upgradeFailurePoint = $point;
 			unset($GLOBALS['gigpress_db_bootstrap_result']);
 			$blocked = gigpress_db_bootstrap();
@@ -107,7 +174,7 @@ function gigpress_upgrade_preservation_run_versions($versions) {
 			unset($GLOBALS['gigpress_db_bootstrap_result']);
 			$retry = gigpress_db_bootstrap();
 			$afterRetry = gigpress_upgrade_preservation_snapshot();
-			list($retryChecks, $retryMatches) = gigpress_upgrade_preservation_manifest_matches($fixture, $afterRetry);
+			list($retryChecks, $retryMatches) = gigpress_upgrade_preservation_manifest_matches($fixture, $afterRetry, $retrySource);
 			$pointPass = $blocked['status'] === 'blocked' && $markerSafe && $journalPresent && $retry['status'] === 'ready' && $retryMatches;
 			if (!$pointPass) $retryFailures[$point] = array('blocked' => $blocked, 'marker_safe' => $markerSafe, 'journal_present' => $journalPresent, 'retry' => $retry, 'manifest' => $retryChecks);
 			$retries = $retries && $pointPass;
@@ -131,7 +198,7 @@ function gigpress_upgrade_preservation_run_current() {
 	unset($GLOBALS['gigpress_db_bootstrap_result']);
 	$second = gigpress_db_bootstrap();
 	$repeat = gigpress_upgrade_preservation_snapshot();
-	list($checks, $matches) = gigpress_upgrade_preservation_manifest_matches($fixture, $after);
+	list($checks, $matches) = gigpress_upgrade_preservation_manifest_matches($fixture, $after, $before);
 	$ok = $first['status'] === 'ready' && $first['code'] === 'current' && $second['code'] === 'current' && $before === $after && $after === $repeat && $matches && !get_option('gigpress_upgrade_state', false);
 	return array('status' => $ok ? 'PASS' : 'FAIL', 'checks' => $checks, 'unchanged' => $before === $after, 'repeat' => $after === $repeat, 'journal_absent' => !get_option('gigpress_upgrade_state', false));
 }
@@ -142,13 +209,14 @@ function gigpress_upgrade_preservation_run_settings_repeat() {
 	foreach (array('1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6') as $version) {
 		$fixture = gigpress_upgrade_preservation_fixture($version);
 		$seeded = is_array($fixture) && upgrade_preservation_seed($fixture);
+		$source = $seeded ? gigpress_upgrade_preservation_snapshot() : null;
 		unset($GLOBALS['gigpress_db_bootstrap_result']);
 		$first = gigpress_db_bootstrap();
 		$after = gigpress_upgrade_preservation_snapshot();
 		unset($GLOBALS['gigpress_db_bootstrap_result']);
 		$second = gigpress_db_bootstrap();
 		$repeat = gigpress_upgrade_preservation_snapshot();
-		list($checks, $matches) = gigpress_upgrade_preservation_manifest_matches($fixture, $after);
+		list($checks, $matches) = gigpress_upgrade_preservation_manifest_matches($fixture, $after, $source);
 		$stable = $after === $repeat;
 		$passes = $passes && $seeded && $first['status'] === 'ready' && $second['status'] === 'ready' && $matches && $stable;
 		$fixtures[$version] = array('checks' => $checks, 'repeat' => $stable);
