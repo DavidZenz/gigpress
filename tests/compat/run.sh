@@ -452,8 +452,8 @@ run_matrix() {
     [[ -n "$conflict_position" ]] || conflict_position=before
     [[ "$conflict_position" == before || "$conflict_position" == after ]] || fail "matrix conflict coverage requires a before or after position"
   fi
-  [[ "$scenario" == activation-menu || "$scenario" == admin-menu || "$scenario" == csv-roundtrip || "$scenario" == full-workflows || "$scenario" == upgrade-preservation ]] || fail "unsupported matrix scenario: $scenario"
-  if [[ "$scenario" == upgrade-preservation ]]; then
+  [[ "$scenario" == activation-menu || "$scenario" == admin-menu || "$scenario" == csv-roundtrip || "$scenario" == full-workflows || "$scenario" == upgrade-preservation || "$scenario" == administration-workflows ]] || fail "unsupported matrix scenario: $scenario"
+  if [[ "$scenario" == upgrade-preservation || "$scenario" == administration-workflows ]]; then
     [[ -n "$upgrade_case" ]] || upgrade_case=all
   else
     [[ -z "$upgrade_case" || "$upgrade_case" == tracer-1.4 ]] || fail "--case is only supported by upgrade-preservation"
@@ -477,7 +477,7 @@ run_matrix() {
     done
     [[ -n "$wp_version" ]] || fail "matrix has no pinned WordPress patch for line $line"
     local -a cell_args=(cell --wp "$wp_version" --php "$branch" --scenario "$scenario")
-    [[ "$scenario" != upgrade-preservation ]] || cell_args+=(--case "$upgrade_case")
+    [[ "$scenario" != upgrade-preservation && "$scenario" != administration-workflows ]] || cell_args+=(--case "$upgrade_case")
     if [[ -n "$conflict_fixture" ]]; then
       cell_args+=(--conflict-fixture "$conflict_fixture" --conflict-mode "$conflict_mode" --conflict-position "$conflict_position")
     fi
@@ -787,6 +787,7 @@ require_value --wp "$WP_VERSION"; require_value --php "$PHP_VERSION"
 case "$SCENARIO" in
   activation-menu|admin-menu|csv-roundtrip|full-workflows) [[ "$UPGRADE_CASE" == tracer-1.4 ]] || fail "--case is only supported by upgrade-preservation" ;;
   upgrade-preservation) [[ "$UPGRADE_CASE" =~ ^(tracer-1\.4|safety-1\.4|metadata-classification|versions-1\.0-1\.2|versions-1\.3-1\.5|current-1\.6|settings-repeat|show-lifecycle|optional-request-fields|entity-guards|tour-undo|all)$ ]] || fail "unsupported upgrade-preservation case: $UPGRADE_CASE" ;;
+  administration-workflows) [[ "$UPGRADE_CASE" =~ ^(entry-create|entry-recovery|entry-controls|settings-save|settings-sections|list-single|list-navigation|list-bulk|all)$ ]] || fail "unsupported administration-workflows case: $UPGRADE_CASE" ;;
   *) fail "unsupported cell scenario: $SCENARIO" ;;
 esac
 [[ "$SCENARIO" != upgrade-preservation ]] || TABLE_PREFIX='compat_legacy_'
@@ -834,8 +835,8 @@ probe_status=$?
 set -e
 if [[ "$probe_status" -ne 0 ]]; then
   printf '%s\n' "$output" >&2
-  if [[ "$SCENARIO" == upgrade-preservation ]]; then
-    printf 'not ok 1 - upgrade-preservation.%s\n' "$UPGRADE_CASE" >&2
+  if [[ "$SCENARIO" == upgrade-preservation || "$SCENARIO" == administration-workflows ]]; then
+    printf 'not ok 1 - %s.%s\n' "$SCENARIO" "$UPGRADE_CASE" >&2
     printf '# tests 1\n# pass 0\n# fail 1\n' >&2
   fi
   fail "probe failed"
@@ -851,6 +852,22 @@ elif [[ "$SCENARIO" == admin-menu ]]; then
   printf '%s\n' "$output" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.menu_warnings | length == 0) and (.plugin_errors | length == 0) and ((.menu_slugs | length) == (.menu_slugs | unique | length)) and ((.menu_slugs | index("edit-comments.php")) as $comments | (.menu_slugs | index("separator-gp")) as $separator | (.menu_slugs | index("gigpress.php")) as $gigpress | ($comments != null and $separator == ($comments + 1) and $gigpress == ($separator + 1)))' >/dev/null || fail "admin-menu cell did not preserve warning-free preferred GigPress placement"
 elif [[ "$SCENARIO" == full-workflows ]]; then
   printf '%s\n' "$result" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.plugin_errors | length == 0) and .full_workflows.status == "PASS" and .full_workflows.admin_create_edit_read and .full_workflows.public_shortcode and .full_workflows.rss and .full_workflows.ical and .full_workflows.csv_import_export and .full_workflows.duplicate_preserved' >/dev/null || fail "full workflow cell did not satisfy the compatibility contract"
+elif [[ "$SCENARIO" == administration-workflows ]]; then
+  administration_contract='
+    def valid_case:
+      .status == "PASS" and (.checks | type == "object" and length > 0) and
+      .assertion_count > 0 and (.assertion_count == (.checks | length)) and
+      ([.checks[] | . == true] | all) and .warning_count == 0 and .fatal_count == 0 and .plugin_error_count == 0;
+    .status == "PASS" and .plugin_active == true and .fatal == null and
+    (.plugin_errors | length == 0) and (.menu_warnings | length == 0) and
+    (.administration_workflows as $a | $a.case == $case and
+      if $case == "all" then
+        ["entry-create","entry-recovery","entry-controls","settings-save","settings-sections","list-single","list-navigation","list-bulk"] as $required |
+        ($a.required_cases | sort) == ($required | sort) and
+        ($a.cases | length) == 8 and ($a.cases | map(.case) | unique | length) == 8 and
+        ($a.cases | map(.case) | sort) == ($required | sort) and ([$a.cases[] | valid_case] | all)
+      else ($a | valid_case) end)'
+  printf '%s\n' "$result" | rtk proxy jq -e --arg case "$UPGRADE_CASE" "$administration_contract" >/dev/null || fail "administration workflow cell did not satisfy the nonempty case contract"
 elif [[ "$SCENARIO" == upgrade-preservation ]]; then
   if [[ "$UPGRADE_CASE" == all ]]; then
     upgrade_contract='.status == "PASS" and .plugin_active == true and (.plugin_errors | length == 0) and .fatal == null and (.menu_warnings | length == 0) and .upgrade_preservation.status == "PASS" and .upgrade_preservation.case == "all" and (.upgrade_preservation.required_cases | length == 11) and (.upgrade_preservation.cases | length == 11) and ((.upgrade_preservation.cases | map(.case) | unique | length) == 11) and ([.upgrade_preservation.cases[] | .status == "PASS" and .ready == true and .plugin_active == true and .warning_count == 0 and .fatal_count == 0 and .plugin_error_count == 0] | all)'

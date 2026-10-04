@@ -35,6 +35,43 @@ register_shutdown_function(function () use (&$pluginErrors, &$fatal) {
 $purpose = getenv('COMPAT_PURPOSE') ?: 'activation-menu';
 $upgradeCase = getenv('COMPAT_UPGRADE_CASE') ?: 'tracer-1.4';
 $upgradePreservation = null;
+$administrationWorkflows = null;
+$administrationRequiredCases = array('entry-create', 'entry-recovery', 'entry-controls', 'settings-save', 'settings-sections', 'list-single', 'list-navigation', 'list-bulk');
+
+function gigpress_administration_case($case) {
+    global $pluginErrors, $menuWarnings;
+    $family = strpos($case, 'entry-') === 0 ? 'entry' : (strpos($case, 'settings-') === 0 ? 'settings' : 'list');
+    $module = WP_PLUGIN_DIR . '/gigpress/tests/compat/administration-' . $family . '.php';
+    $callback = 'gigpress_administration_' . $family . '_case';
+    $record = array('case' => $case, 'checks' => array());
+    if (is_readable($module)) {
+        require_once $module;
+        if (function_exists($callback)) $record = call_user_func($callback, $case);
+    }
+    $checks = is_array($record['checks'] ?? null) ? $record['checks'] : array();
+    $ok = ($record['case'] ?? null) === $case && count($checks) > 0
+        && !array_filter($checks, function ($value) { return $value !== true; })
+        && !$pluginErrors && !$menuWarnings;
+    return array_merge($record, array('case' => $case, 'status' => $ok ? 'PASS' : 'FAIL', 'checks' => $checks,
+        'assertion_count' => count($checks), 'warning_count' => count($menuWarnings), 'fatal_count' => 0,
+        'plugin_error_count' => count($pluginErrors)));
+}
+
+function gigpress_administration_all($required) {
+    $cases = array();
+    foreach ($required as $case) {
+        $output = array();
+        $exit = 1;
+        exec('COMPAT_UPGRADE_CASE=' . escapeshellarg($case) . ' ' . escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__FILE__) . ' 2>&1', $output, $exit);
+        $result = json_decode(end($output), true);
+        $record = $result['administration_workflows'] ?? array('case' => $case, 'status' => 'FAIL', 'checks' => array(), 'assertion_count' => 0);
+        if ($exit !== 0 || ($result['status'] ?? '') !== 'PASS') $record['status'] = 'FAIL';
+        $cases[] = $record;
+    }
+    $passed = count($required) === count(array_unique($required)) && count($cases) === count($required)
+        && !array_filter($cases, function ($case) { return $case['status'] !== 'PASS'; });
+    return array('case' => 'all', 'status' => $passed ? 'PASS' : 'FAIL', 'required_cases' => $required, 'cases' => $cases);
+}
 
 /* The controlled fixture keeps a narrow API facade for its isolated guard contract.
  * The real GigPress low-floor check uses the normal WordPress bootstrap below.
@@ -591,6 +628,11 @@ if (($purpose === 'diagnose-menu' && (getenv('COMPAT_CONFLICT_MODE') ?: '') === 
     }
 }
 require ABSPATH . 'wp-admin/menu.php';
+if ($purpose === 'administration-workflows') {
+    $administrationWorkflows = $upgradeCase === 'all' ? gigpress_administration_all($administrationRequiredCases)
+        : (in_array($upgradeCase, $administrationRequiredCases, true) ? gigpress_administration_case($upgradeCase)
+        : array('case' => $upgradeCase, 'status' => 'FAIL', 'checks' => array(), 'assertion_count' => 0));
+}
 global $menu;
 $menuSlugs = array();
 foreach ((array) $menu as $item) {
@@ -812,7 +854,7 @@ if (in_array((getenv('COMPAT_PURPOSE') ?: 'activation-menu'), array('csv-roundtr
     }
 }
 $result = array(
-    'status' => $pluginErrors ? 'FAIL' : 'PASS',
+    'status' => $pluginErrors || ($purpose === 'administration-workflows' && ($administrationWorkflows['status'] ?? '') !== 'PASS') ? 'FAIL' : 'PASS',
     'wordpress_version' => get_bloginfo('version'),
     'php_version' => PHP_VERSION,
     'plugin_active' => is_plugin_active($plugin),
@@ -825,6 +867,7 @@ $result = array(
     'csv_roundtrip' => $csvRoundTrip,
     'full_workflows' => $fullWorkflows,
     'upgrade_preservation' => $upgradePreservation,
+    'administration_workflows' => $administrationWorkflows,
     'fixture_runtime' => $fixtureRuntime,
     'real_plugin_runtime' => $realPluginRuntime,
     'real_plugin_inventory' => $real_plugin_inventory,
