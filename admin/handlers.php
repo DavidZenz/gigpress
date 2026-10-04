@@ -764,6 +764,9 @@ function gigpress_delete_artist() {
 // HANDLER: UNDO DELETING SOMETHING
 // ======================
 
+function gigpress_tour_restore_should_fail($point) {
+	return (bool) apply_filters('gigpress_tour_restore_failure_point', false, $point);
+}
 
 function gigpress_undo($type) {
 
@@ -807,39 +810,63 @@ function gigpress_undo($type) {
 		$restore_map = get_option('gigpress_tour_restore_map', array());
 		$restore_map = is_array($restore_map) ? $restore_map : array();
 		$owned_shows = isset($restore_map[$tour_id]) && is_array($restore_map[$tour_id]) ? $restore_map[$tour_id] : array();
+		$pending_shows = $owned_shows;
 		$restored = 0;
 		$skipped = 0;
+
+		// Restore the tour before touching its detached shows. A failed tour update
+		// leaves the complete ownership record available for a safe retry.
+		$where = array('tour_id' => $tour_id);
+		$undo = gigpress_tour_restore_should_fail('before_tour_restore') ? false : $wpdb->update(GIGPRESS_TOURS, array('tour_status' => 'active'), $where, array('%s'), array('%d'));
+		unset($where);
+		$tour_restored = $undo !== false && $wpdb->get_var($wpdb->prepare('SELECT tour_status FROM ' . GIGPRESS_TOURS . ' WHERE tour_id = %d', $tour_id)) === 'active';
+		if (!$tour_restored) { ?>
+			<div id="message" class="error fade"><p><?php _e("We ran into some trouble restoring the tour. The affected shows remain queued for retry.", "gigpress"); ?></p></div>
+		<?php return false;
+		}
+
 		foreach ($owned_shows as $show_id => $source_tour_id) {
 			$show_id = absint($show_id);
 			if ($show_id <= 0 || (int) $source_tour_id !== $tour_id) {
 				$skipped++;
 				continue;
 			}
-			$restore = $wpdb->update(
+			$restore = gigpress_tour_restore_should_fail('before_show_restore') ? false : $wpdb->update(
 				GIGPRESS_SHOWS,
 				array('show_tour_id' => $tour_id, 'show_tour_restore' => 0),
 				array('show_id' => $show_id, 'show_tour_id' => 0, 'show_tour_restore' => 1),
 				array('%d', '%d'),
 				array('%d', '%d', '%d')
 			);
-			if ($restore) $restored++;
-			else $skipped++;
+			$current = $wpdb->get_row($wpdb->prepare('SELECT show_tour_id, show_tour_restore FROM ' . GIGPRESS_SHOWS . ' WHERE show_id = %d', $show_id), ARRAY_A);
+			if ($restore !== false && $current && (int) $current['show_tour_id'] === $tour_id && (int) $current['show_tour_restore'] === 0) {
+				unset($pending_shows[$show_id]);
+				$restored++;
+			} elseif (!$current || (int) $current['show_tour_id'] !== 0 || (int) $current['show_tour_restore'] !== 1) {
+				// Deleted and deliberately reassigned rows can no longer be restored by this undo.
+				unset($pending_shows[$show_id]);
+				$skipped++;
+			} else {
+				// The row remains detached, so keep its recovery mapping for another attempt.
+				$skipped++;
+			}
 		}
-		if (isset($restore_map[$tour_id])) {
-			unset($restore_map[$tour_id]);
-			if ($restore_map) update_option('gigpress_tour_restore_map', $restore_map);
-			else delete_option('gigpress_tour_restore_map');
+		if ($pending_shows) $restore_map[$tour_id] = $pending_shows;
+		else unset($restore_map[$tour_id]);
+		if ($restore_map) {
+			update_option('gigpress_tour_restore_map', $restore_map);
+			$map_stored = get_option('gigpress_tour_restore_map', array());
+		} else {
+			delete_option('gigpress_tour_restore_map');
+			$map_stored = get_option('gigpress_tour_restore_map', false);
+		}
+		if (($restore_map && (!is_array($map_stored) || $map_stored !== $restore_map)) || (!$restore_map && $map_stored !== false)) { ?>
+			<div id="message" class="error fade"><p><?php _e("The tour was restored, but its show recovery map could not be updated safely. Please retry.", "gigpress"); ?></p></div>
+		<?php return false;
 		}
 
-		// Restore the tour
-		$where = array('tour_id' => $tour_id);
-		$undo = $wpdb->update(GIGPRESS_TOURS, array('tour_status' => 'active'), $where, array('%s'), array('%d'));
-		unset($where);
-		
-		if($undo != FALSE) { ?>
+		if($tour_restored) { ?>
 			<div id="message" class="updated fade"><p><?php _e("Tour successfully restored from the database.", "gigpress"); echo ' ' . sprintf(__('%d show(s) restored; %d skipped.', 'gigpress'), $restored, $skipped); ?></p></div>
-		<?php } elseif($undo === FALSE) { ?>
-			<div id="message" class="error fade"><p><?php _e("We ran into some trouble restoring the tour. Sorry.", "gigpress"); ?></p></div>
 		<?php }
 	}
 }

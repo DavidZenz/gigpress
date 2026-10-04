@@ -207,6 +207,11 @@ $upgradePreservationRequiredCases = array(
     'tour-undo',
 );
 
+$tourRestoreFailurePoint = null;
+add_filter('gigpress_tour_restore_failure_point', function ($fail, $point) use (&$tourRestoreFailurePoint) {
+    return $fail || $tourRestoreFailurePoint === $point;
+}, 10, 2);
+
 function gigpress_upgrade_preservation_reset_case_state() {
     $_GET = array();
     $_POST = array();
