@@ -61,7 +61,99 @@ function gigpress_administration_list_case($case) {
     $checks = array();
     if ($case === 'list-single') $checks = gigpress_administration_list_single();
     if ($case === 'list-navigation') $checks = gigpress_administration_list_navigation();
+    if ($case === 'list-bulk') $checks = gigpress_administration_list_bulk();
     return array('case' => $case, 'checks' => $checks);
+}
+
+function gigpress_administration_list_bulk() {
+    global $wpdb;
+    $fixture = gigpress_administration_list_seed(8); $state = $fixture['state'];
+    list($a, $b, $already, $stale, $failed, $zero, $unselected, $gone) = $fixture['ids'];
+    $checks = array(); $before = gigpress_administration_list_snapshot();
+    foreach (array('empty' => array(), 'scalar' => $a, 'nested' => array(array($a)), 'negative' => array($a, -1),
+        'zero' => array($a, 0), 'text' => array($a, 'bad'), 'float' => array($a, 1.5), 'boolean' => array($a, true),
+        'whitespace' => array($a, ' 2'), 'leading_zero' => array($a, '02'), 'oversized' => array($a, '9999999999999999999'),
+        'keyed' => array('identity' => $a)) as $kind => $selection) {
+        $response = gigpress_administration_list_preview($selection, $state);
+        $checks['invalid_selection_no_changes_' . $kind] = $before === gigpress_administration_list_snapshot();
+        $checks['invalid_selection_text_' . $kind] = strpos($response['html'], 'Select shows') !== false && ($response['outcome']['status'] ?? '') === 'blocked';
+    }
+    foreach (array('nested' => array($a), 'negative' => -1, 'zero' => 0, 'float' => 1.5, 'boolean' => true, 'text' => 'bad') as $kind => $single) {
+        $response = gigpress_administration_list_preview(array($b), $state, $single);
+        $checks['malformed_clicked_row_' . $kind] = $before === gigpress_administration_list_snapshot() && ($response['outcome']['status'] ?? '') === 'blocked';
+    }
+    $wpdb->update(GIGPRESS_SHOWS, array('show_status' => 'deleted'), array('show_id' => $already));
+    $missing = 999999;
+    $selection = array($a, $b, $already, $stale, $failed, $zero, $gone, $missing);
+    $preview = gigpress_administration_list_preview(array_merge(array($a, $a), array_slice($selection, 1)), $state);
+    $checks['explicit_ids_deduplicated'] = ($preview['outcome']['ids'] ?? null) === $selection;
+    $checks['selected_count_not_filtered_count'] = strpos($preview['html'], '8 selected show') !== false && strpos($preview['html'], '#' . $unselected . ' ') === false;
+    foreach ($selection as $id) $checks['preview_identity_' . $id] = strpos($preview['html'], '#' . $id) !== false;
+    $confirm = gigpress_administration_list_confirmation($preview, $selection, $state);
+    // A show is edited and another removed between review and confirmation.
+    $wpdb->update(GIGPRESS_SHOWS, array('show_notes' => 'Changed after review'), array('show_id' => $stale));
+    $wpdb->delete(GIGPRESS_SHOWS, array('show_id' => $gone));
+    $baseline = gigpress_administration_list_snapshot();
+    $filter = function ($sql) use ($failed, $zero) {
+        if (!preg_match('/^UPDATE\s+`?' . preg_quote(GIGPRESS_SHOWS, '/') . '`?\s/i', $sql)) return $sql;
+        if (preg_match('/`show_id`\s*=\s*' . $failed . '\b/', $sql)) return 'SELECT * FROM gigpress_intentionally_missing_list_table';
+        if (preg_match('/`show_id`\s*=\s*' . $zero . '\b/', $sql)) return str_replace('`show_id` = ' . $zero, '`show_id` = -1', $sql);
+        return $sql;
+    };
+    $suppressed = $wpdb->suppress_errors(true); add_filter('query', $filter);
+    try { $result = gigpress_administration_list_request($confirm); }
+    finally { remove_filter('query', $filter); $wpdb->suppress_errors($suppressed); }
+    $expected = $baseline;
+    foreach ($expected['shows'] as &$row) if (in_array((int) $row['show_id'], array($a, $b), true)) $row['show_status'] = 'deleted';
+    unset($row);
+    $checks['only_two_verified_status_transitions'] = gigpress_administration_list_snapshot() === $expected;
+    $checks['truthful_changed_ids'] = ($result['outcome']['changed_ids'] ?? null) === array($a, $b);
+    $checks['truthful_count_text'] = strpos($result['html'], '2 shows moved to trash; 6 could not be changed') !== false;
+    $rows = $result['outcome']['results'] ?? array();
+    $checks['each_unique_selection_once'] = array_column($rows, 'show_id') === $selection;
+    $expectedResults = array($a => 'changed', $b => 'changed', $already => 'already_trashed', $stale => 'stale', $failed => 'failed', $zero => 'stale', $gone => 'missing', $missing => 'missing');
+    foreach ($rows as $row) {
+        $id = $row['show_id'];
+        $checks['result_kind_' . $id] = $row['result'] === $expectedResults[$id];
+        $checks['result_reason_identity_' . $id] = !empty($row['reason']) && strpos($row['identity'], '#' . $id) !== false && strpos($result['html'], esc_html($row['reason'])) !== false;
+        $checks['result_actionable_link_' . $id] = !empty($row['url']) && strpos($result['html'], esc_url($row['url'])) !== false;
+        if (!empty($row['url'])) {
+            parse_str((string) parse_url($row['url'], PHP_URL_QUERY), $args);
+            foreach ($state as $key => $value) $checks['result_' . $id . '_retains_' . $key] = isset($args[$key]) && (string) $args[$key] === (string) $value;
+            $checks['missing_uses_list_' . $id] = $row['result'] !== 'missing' || (($args['page'] ?? '') === 'gigpress-shows' && !isset($args['show_id']));
+        }
+    }
+    $links = gigpress_administration_list_document($result['html']); $undo = null;
+    foreach ($links->query('//a[@href]') as $node) {
+        parse_str((string) parse_url($node->getAttribute('href'), PHP_URL_QUERY), $args);
+        if (($args['gpaction'] ?? '') === 'undo') $undo = $args;
+    }
+    $checks['undo_exact_successes'] = ($undo['show_id'] ?? '') === $a . ',' . $b;
+    foreach ($state as $key => $value) $checks['undo_retains_' . $key] = isset($undo[$key]) && (string) $undo[$key] === (string) $value;
+    gigpress_administration_list_request($confirm);
+    $checks['bulk_replay_no_changes'] = gigpress_administration_list_snapshot() === $expected;
+    if ($undo) {
+        $_SERVER['REQUEST_METHOD'] = 'GET'; $_GET = $undo; $_POST = array(); $_REQUEST = $undo;
+        ob_start(); gigpress_undo('show'); $restoreHtml = ob_get_clean();
+        $restored = $baseline;
+        $checks['undo_only_successes_snapshot'] = gigpress_administration_list_snapshot() === $restored;
+        ob_start(); gigpress_undo('show'); $repeatHtml = ob_get_clean();
+        $checks['already_restored_undo_no_changes'] = gigpress_administration_list_snapshot() === $restored;
+        $checks['already_restored_undo_truthful_text'] = strpos($repeatHtml, '0 shows restored') !== false;
+    }
+    // Delete the sole row on page two, keeping all the other list choices.
+    $last = gigpress_administration_list_seed(11);
+    $lastState = array_merge($last['state'], array('sort' => 'asc', 'gp-page' => 2));
+    $lastId = $last['ids'][10];
+    $lastPreview = gigpress_administration_list_preview(array($lastId), $lastState);
+    $lastPost = gigpress_administration_list_confirmation($lastPreview, array($lastId), $lastState);
+    $lastResult = gigpress_administration_list_request($lastPost, $lastState, true);
+    $checks['after_last_page_trash_clamped'] = ($lastResult['outcome']['state']['gp-page'] ?? 0) === 1 && ($lastResult['outcome']['pagination']['offset'] ?? -1) === 0;
+    $checks['last_page_return_notice_clamped'] = strpos(html_entity_decode($lastResult['html'], ENT_QUOTES, 'UTF-8'), 'gp-page=2&gpaction=undo') === false;
+    foreach ($lastState as $key => $value) if ($key !== 'gp-page') $checks['last_page_retains_' . $key] = ($lastResult['outcome']['state'][$key] ?? null) === $value;
+    $checks['last_page_unselected_equal_rows_remain'] = gigpress_administration_list_row_ids($lastResult['html']) === array_slice($last['ids'], 0, 10);
+    $checks['no_header_selection_ids'] = gigpress_administration_list_document($lastResult['html'])->query('//thead//input[@name] | //tfoot//input[@name]')->length === 0;
+    return $checks;
 }
 
 function gigpress_administration_list_document($html) {
