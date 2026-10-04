@@ -77,6 +77,18 @@ done
 
 MODE=${1:-}; shift || true
 
+# The ownership contract is runnable before transport implementation (TDD RED).
+if [[ "$MODE" == browser-contract-test ]]; then
+  test_output=$(bash "$COMPAT_DIR/run.sh" browser-fixture --action status --session /tmp/foreign-gigpress-session.json 2>&1) && test_exit=0 || test_exit=$?
+  if [[ "$test_exit" -ne 0 && "$test_output" == *'not an owned private browser session'* ]]; then
+    printf 'ok 1 - browser-session.foreign_metadata_rejected\n# tests 1\n# pass 1\n# fail 0\n'
+  else
+    printf 'not ok 1 - browser-session.foreign_metadata_rejected\n# expected: not an owned private browser session\n# actual: %s\n# tests 1\n# pass 0\n# fail 1\n' "$test_output"
+    exit 1
+  fi
+  exit 0
+fi
+
 run_lint() {
   local branches='' files='' all_tracked=false
   while [[ $# -gt 0 ]]; do
