@@ -10,6 +10,47 @@ mkdir -p "$RESULT_DIR"
 fail() { printf 'compat runner: %s\n' "$*" >&2; exit 2; }
 require_value() { [[ -n "${2:-}" ]] || fail "missing value for $1"; }
 
+metadata_value() {
+  local file=$1 field=$2
+  awk -v field="$field" '
+    $0 ~ "^" field ":[[:space:]]*" {
+      value = $0
+      sub("^[^:]*:[[:space:]]*", "", value)
+      print value
+      exit
+    }
+  ' "$file"
+}
+
+run_metadata() {
+  local expected_wp='' expected_php='' tested_up_to_file=''
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --expect-wp-min) expected_wp=${2:-}; shift 2 ;;
+      --expect-php-min) expected_php=${2:-}; shift 2 ;;
+      --allow-tested-up-to-from) tested_up_to_file=${2:-}; shift 2 ;;
+      *) fail "unknown metadata option $1" ;;
+    esac
+  done
+  require_value --expect-wp-min "$expected_wp"
+  require_value --expect-php-min "$expected_php"
+  require_value --allow-tested-up-to-from "$tested_up_to_file"
+  [[ "$tested_up_to_file" == 'readme.txt' && -f "$ROOT/$tested_up_to_file" ]] || fail "tested-up-to metadata must come from repository readme.txt"
+
+  local header="$ROOT/gigpress.php" readme="$ROOT/$tested_up_to_file"
+  local header_wp header_php readme_wp readme_php tested_up_to
+  header_wp=$(metadata_value "$header" 'Requires at least')
+  header_php=$(metadata_value "$header" 'Requires PHP')
+  readme_wp=$(metadata_value "$readme" 'Requires at least')
+  readme_php=$(metadata_value "$readme" 'Requires PHP')
+  tested_up_to=$(metadata_value "$readme" 'Tested up to')
+  [[ "$header_wp" == "$expected_wp" && "$readme_wp" == "$expected_wp" ]] || fail "WordPress minimum metadata does not match $expected_wp"
+  [[ "$header_php" == "$expected_php" && "$readme_php" == "$expected_php" ]] || fail "PHP minimum metadata does not match $expected_php"
+  [[ "$tested_up_to" =~ ^[0-9]+[.][0-9]+$ ]] || fail "readme Tested up to must name a WordPress release line"
+  [[ "$header_php" != 8.2 && "$readme_php" != 8.2 ]] || fail "PHP 8.2 is diagnostic-only and cannot be declared supported"
+  printf '{"status":"PASS","wordpress_min":"%s","php_min":"%s","tested_up_to":"%s"}\n' "$header_wp" "$header_php" "$tested_up_to"
+}
+
 for forbidden in COMPOSE_FILE COMPOSE_PROJECT_NAME WORDPRESS_DB_HOST MYSQL_HOST DB_HOST DATABASE_URL COMPAT_VOLUME; do
   [[ -z "${!forbidden:-}" ]] || fail "external database or Compose override $forbidden is not allowed"
 done
@@ -264,6 +305,11 @@ run_diagnose_menu() {
   fi
 }
 
+if [[ "$MODE" == metadata ]]; then
+  run_metadata "$@"
+  exit 0
+fi
+
 if [[ "$MODE" == diagnose-menu ]]; then
   run_diagnose_menu "$@"
   exit 0
@@ -289,7 +335,7 @@ if [[ "$MODE" == matrix ]]; then
   exit 0
 fi
 
-[[ "$MODE" == cell ]] || fail "supported commands: cell, matrix, lint, self-test, runtime-floor"
+[[ "$MODE" == cell ]] || fail "supported commands: cell, matrix, lint, metadata, self-test, runtime-floor"
 WP_VERSION=''; PHP_VERSION=''; SCENARIO='activation-menu'
 while [[ $# -gt 0 ]]; do
   case "$1" in

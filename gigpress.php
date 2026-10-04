@@ -7,6 +7,8 @@ Version: 2.3.12
 Author: Derek Hogue
 Author URI: http://amphibian.info
 Text Domain: gigpress
+Requires at least: 7.0
+Requires PHP: 8.3
 
 Copyright 2007-2015 DEREK HOGUE
 
