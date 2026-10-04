@@ -238,116 +238,66 @@ function gigpress_error_checking($context) {
 }
 
 
-function gigpress_add_show() {
-
-	global $wpdb;
-	
-	$wpdb->show_errors();
-
-	check_admin_referer('gigpress-action');
-	if (!gigpress_require_database_ready()) return false;
-	
-	$errors = gigpress_error_checking('show');
-	
-	if($errors) {
-		echo('<div id="message" class="error fade">');
-		foreach($errors as $error)
-			echo("<p>".$error."</p>");
-		echo("</div>");
-		
-		return $errors;
-				
-	} else {
-	
-		// Looks like we're all here, so let's add to the DB
-		
-		$show = gigpress_prepare_show_fields();
-		$format = array('%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d');
-		$addshow = $wpdb->insert(GIGPRESS_SHOWS, $show, $format);
-		
-		// Was the query successful?
-		if($addshow != FALSE)
-		{
-			$gpo = get_option('gigpress_settings'); ?>
-			
-			<div id="message" class="updated fade">
-				<p><?php echo __("Your show  on", "gigpress") . ' ' . mysql2date($gpo['date_format_long'], $show['show_date']) . ' ' . __("was successfully added.", "gigpress");
-				echo(' <a href="' . admin_url('admin.php?page=gigpress/gigpress.php&amp;gpaction=copy&amp;show_id=' . $wpdb->insert_id) . '">' . __("Add a similar show", "gigpress"). '</a>');
-				if($show['show_related']) echo(' | <a href="' . admin_url('post.php?action=edit&amp;post=' . $show['show_related']) . '">' . __("Edit the related post", "gigpress"). '</a>');
-				?></p>
-		<?php
-			global $errors; if($errors) {
-				foreach($errors as $error) {
-					echo('<p><strong>' . $error . '</strong></p>');
-				}
-			}
-			unset($errors);
-		?>
-			</div>
-			
-	<?php } elseif($addshow === FALSE) { ?>
-	
-			<div id="message" class="error fade"><p><?php _e("Something ain't right - try again?", "gigpress"); ?></p></div>			
-	
-	<?php }
-		unset($_POST, $show, $format);
-	}
+/* Explicit outcomes keep successful saves distinct from recoverable failures. */
+function gigpress_show_calendar_date($value) {
+	if (!is_string($value) || !preg_match('/\A([0-9]{4})-([0-9]{2})-([0-9]{2})\z/', $value, $parts)) return false;
+	return checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]) ? $value : false;
 }
 
+function gigpress_show_save($mode) {
+	global $wpdb;
+	$raw = array();
+	foreach ($_POST as $key => $value) $raw[$key] = is_scalar($value) ? wp_unslash((string) $value) : '';
+	$outcome = array('status' => 'invalid', 'mode' => $mode, 'raw_state' => $raw, 'field_errors' => array(), 'system_errors' => array(), 'created_ids' => array());
+	$gpo = get_option('gigpress_settings');
+	if (!current_user_can($gpo['user_level'])) {
+		$outcome['status'] = 'blocked';
+		$outcome['system_errors'][] = __('You do not have permission to save shows. Ask a site administrator for access.', 'gigpress');
+		return $outcome;
+	}
+	check_admin_referer('gigpress-action');
+	if (!gigpress_require_database_ready()) {
+		$outcome['status'] = 'blocked';
+		$outcome['system_errors'][] = __('Show data is unavailable while its upgrade is paused. Keep these values and retry after your site administrator resolves the database condition.', 'gigpress');
+		return $outcome;
+	}
+	if (array_key_exists('show_date', $_POST)) {
+		$date = gigpress_show_calendar_date($raw['show_date']);
+		if ($date === false) {
+			$outcome['field_errors']['show_date'] = __('Enter a valid date in YYYY-MM-DD format.', 'gigpress');
+			return $outcome;
+		}
+		list($_POST['gp_yy'], $_POST['gp_mm'], $_POST['gp_dd']) = explode('-', $date);
+	}
+	$outcome['field_errors'] = gigpress_error_checking('show');
+	if ($outcome['field_errors']) return $outcome;
+	$show = gigpress_prepare_show_fields($mode === 'add' ? 'new' : 'edit');
+	$id = $mode === 'update' ? absint($_POST['show_id'] ?? 0) : 0;
+	$write = $mode === 'add' ? $wpdb->insert(GIGPRESS_SHOWS, $show)
+		: $wpdb->update(GIGPRESS_SHOWS, $show, array('show_id' => $id), null, array('%d'));
+	if ($mode === 'add') $id = (int) $wpdb->insert_id;
+	if ($write === false || $id === 0) {
+		$outcome['status'] = 'failed';
+		$outcome['system_errors'][] = __('The show could not be saved. Keep these values and try saving again.', 'gigpress');
+		return $outcome;
+	}
+	$outcome['status'] = 'saved';
+	$outcome['show_id'] = $id;
+	echo '<div id="message" class="notice notice-success" role="status"><p>' . esc_html($mode === 'add'
+		? __('Your show was successfully added. Add another show below.', 'gigpress')
+		: __('Your show was successfully updated.', 'gigpress')) . ' ';
+	echo '<a href="' . esc_url(admin_url('admin.php?page=gigpress/gigpress.php&gpaction=edit&show_id=' . $id)) . '">' . esc_html__('Edit saved show', 'gigpress') . '</a> | ';
+	echo '<a href="' . esc_url(admin_url('admin.php?page=gigpress-shows')) . '">' . esc_html__('View list', 'gigpress') . '</a></p></div>';
+	$_POST = array();
+	return $outcome;
+}
 
-// HANDLER: EDIT A SHOW
-// ====================
-
+function gigpress_add_show() {
+	return gigpress_show_save('add');
+}
 
 function gigpress_update_show() {
-
-	global $wpdb, $gpo;
-	$wpdb->show_errors();
-	
-	// Check the nonce
-	check_admin_referer('gigpress-action');
-	if (!gigpress_require_database_ready()) return false;
-			
-	$errors = gigpress_error_checking('show');
-	
-	if($errors) {
-		echo('<div id="message" class="error fade">');
-		foreach($errors as $error)
-			echo("<p>".$error."</p>");
-		echo("</div>");
-		// We have to know that we're editing still, as we lose our previous query string
-		$errors['editing'] = TRUE;
-		return $errors;
-		
-	} else {
-	
-		// Looks like we're all here, so let's update the DB
-		$show = gigpress_prepare_show_fields('edit');
-		$where = array('show_id' => $_POST['show_id']);
-		$format = array('%s', '%s', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d');
-		$where_format = array('%d');
-		$updateshow = $wpdb->update(GIGPRESS_SHOWS, $show, $where, $format, $where_format);
-		
-		// Was the query successful?
-		if($updateshow != FALSE)
-		{
-			$gpo = get_option('gigpress_settings');
-			?>	
-			<div id="message" class="updated fade"><p><?php echo __("Your show  on", "gigpress") . ' ' . mysql2date($gpo['date_format_long'], $show['show_date']) . ' ' . __("was successfully updated.", "gigpress"); if($show['show_related']) echo(' <a href="' . admin_url('post.php?action=edit&amp;post=' . $show['show_related']) . '">' . __("Edit the related post", "gigpress"). '.</a>'); ?></p>
-			<?php
-				global $errors; if($errors) {
-					foreach($errors as $error) {
-						echo('<p><strong>' . $error . '</strong></p>');
-					}
-				}
-				unset($errors);
-			?>
-			</div>
-		<?php } elseif($updateshow === FALSE) { ?>
-			<div id="message" class="error fade"><p><?php _e("Something ain't right - try again?", "gigpress"); ?></p></div>
-	<?php }
-	unset($_POST, $show, $where, $format, $where_format, $updateshow);
-	}
+	return gigpress_show_save('update');
 }
 
 

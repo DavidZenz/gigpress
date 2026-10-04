@@ -15,6 +15,9 @@ function gigpress_add() {
 		$result = gigpress_update_show();
 	}
 
+	if (isset($result) && ($result['status'] ?? '') === 'saved') unset($result);
+	else if (isset($result['field_errors'])) $result = $result['field_errors'];
+
 	$gpo = get_option('gigpress_settings');
 		
 	// If they're done with the welcome message, kill it
@@ -210,39 +213,13 @@ function gigpress_add() {
 			<table class="form-table gp-table" cellspacing="0">
 			<tbody>
 			  <tr>
-				<th scope="row"><label for="gp_mm"><?php _e("Date", "gigpress") ?>:<span class="gp-required">*</span></label></th>
+				<th scope="row"><label for="show_date"><?php _e("Date", "gigpress"); ?>:<span class="gp-required">*</span></label></th>
 					<td>
-					<?php if(isset($result['show_date'])) echo('<span class="gigpress-error">'); ?>				
-					<select name="gp_mm" id="gp_mm">
-					<?php foreach($gp_months as $month) : ?>
-						<option value="<?php echo $month; ?>"<?php if($mm == $month) : ?> selected="selected"<?php endif; ?>>
-							<?php echo $wp_locale->get_month($month); ?>
-						</option>
-					<?php endforeach; ?>
-					</select>
-					  <select name="gp_dd" id="gp_dd">
-					  	<?php for($i = 1; $i <= 31; $i++) {
-					  	$i = ($i < 10) ? '0' . $i : $i;
-					  	echo('<option value="' . $i . '"');
-					  	if($dd == $i) echo(' selected="selected"');
-					  	echo('>' . $i . '</option>');
-					  	} ?>
-					  </select>
-					  
-					  <select name="gp_yy" id="gp_yy">
-					  	<?php for($i = 1900; $i <= 2050; $i++) {
-					  	echo('<option value="' . $i . '"');
-					  	if($yy == $i) echo(' selected="selected"');
-					  	echo('>' . $i . '</option>');
-					  	} ?>
-					</select>
-					<?php if(isset($result['show_date'])) echo('</span>'); ?>
-				
-					&nbsp; <?php _e("at", "gigpress"); ?> &nbsp; 
-					
+					<input type="date" name="show_date" id="show_date" value="<?php echo esc_attr($yy . '-' . $mm . '-' . $dd); ?>" />
+					<label for="gp_hh"><?php _e("Time (optional)", "gigpress"); ?></label>
 					<?php if(!empty($gpo['alternate_clock'])) { ?>
 					<select name="gp_hh" id="gp_hh" class="twentyfour">
-						<option value="na"<?php if($hh == "na") echo(' selected="selected"'); ?>>--</option>
+						<option value="na"<?php if($hh == "na") echo(' selected="selected"'); ?>><?php _e('Not specified', 'gigpress'); ?></option>
 						<option value="00"<?php if($hh == "00") echo(' selected="selected"'); ?>>00</option>
 						<option value="01"<?php if($hh == "01") echo(' selected="selected"'); ?>>01</option>
 						<option value="02"<?php if($hh == "02") echo(' selected="selected"'); ?>>02</option>
@@ -271,7 +248,7 @@ function gigpress_add() {
 					<?php } else { ?>
 					<select name="gp_hh" id="gp_hh" class="twelve">
 						<optgroup label="<?php _e("None", "gigpress"); ?>">
-						  <option value="na"<?php if($hh == "na") echo(' selected="selected"'); ?>>--</option>
+						  <option value="na"<?php if($hh == "na") echo(' selected="selected"'); ?>><?php _e('Not specified', 'gigpress'); ?></option>
 						</optgroup>
 						<optgroup id="am" label="AM">
 						  <option value="00"<?php if($hh == "00") echo(' selected="selected"'); ?>>12</option>
@@ -304,7 +281,7 @@ function gigpress_add() {
 					</select>
 					<?php } ?>
 					<select name="gp_min" id="gp_min">
-						  	<option value="na"<?php if($min == "na") echo(' selected="selected"'); ?>>--</option>
+						<option value="na"<?php if($min == "na") echo(' selected="selected"'); ?>><?php _e('Not specified', 'gigpress'); ?></option>
 							<option value="00"<?php if($min == "00") echo(' selected="selected"'); ?>>00</option>
 							<option value="05"<?php if($min == "05") echo(' selected="selected"'); ?>>05</option>
 							<option value="10"<?php if($min == "10") echo(' selected="selected"'); ?>>10</option>

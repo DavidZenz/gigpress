@@ -34,7 +34,7 @@ function gigpress_administration_entry_case($case) {
         $checks['optional_time_sentinel'] = $row && $row['show_time'] === '00:00:01';
         $checks['unchanged_expiration'] = $row && $row['show_expire'] === $row['show_date'] && (int) $row['show_multi'] === 0;
         $checks['native_date_control'] = strpos($first['html'], 'type="date"') !== false && strpos($first['html'], 'name="show_date"') !== false;
-        $checks['saved_edit_link'] = $id > 0 && strpos($first['html'], 'gpaction=edit&amp;show_id=' . $id) !== false;
+        $checks['saved_edit_link'] = $id > 0 && strpos(html_entity_decode($first['html'], ENT_QUOTES, 'UTF-8'), 'gpaction=edit&show_id=' . $id) !== false;
         $checks['list_link'] = strpos($first['html'], 'View list') !== false && strpos($first['html'], 'page=gigpress-shows') !== false;
         $checks['fresh_add_mode'] = strpos($first['html'], 'name="gpaction" value="add"') !== false && strpos($first['html'], 'name="show_id"') === false;
         $second = gigpress_administration_entry_request(array_merge($request, array('show_notes' => 'Another entry')));
