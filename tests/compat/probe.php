@@ -166,6 +166,74 @@ if (!is_blog_installed()) {
 $admin = get_user_by('login', 'compat-admin');
 wp_set_current_user($admin->ID);
 $upgradeFixture = null;
+
+function upgrade_preservation_source_schema($version) {
+    $shows = array(
+        'show_id' => 'bigint(20) unsigned NOT NULL AUTO_INCREMENT',
+        'show_artist_id' => 'bigint(20) NOT NULL DEFAULT 0',
+        'show_venue_id' => 'bigint(20) NOT NULL DEFAULT 0',
+        'show_tour_id' => 'bigint(20) NOT NULL DEFAULT 0',
+        'show_date' => 'date NOT NULL',
+        'show_multi' => 'tinyint(1) NULL',
+        'show_time' => 'time NOT NULL',
+        'show_price' => 'varchar(255) NULL',
+        'show_tix_url' => 'varchar(255) NULL',
+        'show_tix_phone' => 'varchar(255) NULL',
+        'show_ages' => 'varchar(255) NULL',
+        'show_notes' => 'text NULL',
+        'show_related' => 'bigint(20) NOT NULL DEFAULT 0',
+        'show_tour_restore' => 'tinyint(1) NOT NULL DEFAULT 0',
+        'show_address' => 'varchar(255) NULL',
+        'show_locale' => 'varchar(255) NULL',
+        'show_country' => 'varchar(2) NULL',
+        'show_venue' => 'varchar(255) NULL',
+        'show_venue_url' => 'varchar(255) NULL',
+        'show_venue_phone' => 'varchar(255) NULL',
+    );
+    if ($version !== '1.0') $shows['show_expire'] = 'date NOT NULL DEFAULT \'0000-00-00\'';
+    if (in_array($version, array('1.2', '1.3', '1.4', '1.5', '1.6'), true)) $shows['show_status'] = 'varchar(32) NOT NULL DEFAULT \'\'';
+    if ($version === '1.6') $shows['show_external_url'] = 'varchar(255) NULL';
+
+    $artists = array(
+        'artist_id' => 'bigint(20) unsigned NOT NULL AUTO_INCREMENT',
+        'artist_name' => 'varchar(255) NOT NULL',
+    );
+    $venues = array(
+        'venue_id' => 'bigint(20) unsigned NOT NULL AUTO_INCREMENT',
+        'venue_name' => 'varchar(255) NOT NULL',
+        'venue_address' => 'varchar(255) NULL',
+        'venue_city' => 'varchar(255) NOT NULL',
+        'venue_country' => 'varchar(2) NOT NULL',
+        'venue_url' => 'varchar(255) NULL',
+        'venue_phone' => 'varchar(255) NULL',
+    );
+    $tours = array(
+        'tour_id' => 'bigint(20) unsigned NOT NULL AUTO_INCREMENT',
+        'tour_name' => 'varchar(255) NOT NULL',
+    );
+    if (in_array($version, array('1.2', '1.3', '1.4', '1.5', '1.6'), true)) $tours['tour_status'] = 'varchar(32) NOT NULL DEFAULT \'\'';
+    if ($version === '1.6') {
+        $artists['artist_alpha'] = 'varchar(255) NOT NULL';
+        $artists['artist_url'] = 'varchar(255) NULL';
+        $artists['artist_order'] = 'bigint(20) NOT NULL DEFAULT 0';
+        $venues['venue_state'] = 'varchar(255) NULL';
+        $venues['venue_postal_code'] = 'varchar(32) NULL';
+    }
+    return array('shows' => $shows, 'artists' => $artists, 'venues' => $venues, 'tours' => $tours);
+}
+
+function upgrade_preservation_current_schema() {
+    return upgrade_preservation_source_schema('1.6');
+}
+
+function upgrade_preservation_create_table($name, $columns, $primary) {
+    global $wpdb;
+    $definition = array();
+    foreach ($columns as $column => $type) $definition[] = $column . ' ' . $type;
+    $definition[] = 'PRIMARY KEY (' . $primary . ')';
+    return $wpdb->query('CREATE TABLE ' . $wpdb->prefix . 'gigpress_' . $name . ' (' . implode(', ', $definition) . ')') !== false;
+}
+
 function upgrade_preservation_seed($fixture) {
     global $wpdb, $pluginErrors;
     if (!is_array($fixture) || $wpdb->prefix !== $fixture['prefix']) return false;
@@ -174,19 +242,15 @@ function upgrade_preservation_seed($fixture) {
     }
     delete_option('gigpress_settings');
     delete_option('gigpress_upgrade_state');
-    $tables = array(
-        'shows' => 'show_id bigint(20) unsigned NOT NULL AUTO_INCREMENT, show_artist_id bigint(20) NOT NULL, show_venue_id bigint(20) NOT NULL, show_tour_id bigint(20) NOT NULL DEFAULT 0, show_date date NOT NULL, show_multi tinyint(1) NULL, show_time time NOT NULL, show_expire date NOT NULL, show_price varchar(255) NULL, show_tix_url varchar(255) NULL, show_tix_phone varchar(255) NULL, show_ages varchar(255) NULL, show_notes text NULL, show_related bigint(20) NOT NULL DEFAULT 0, show_status varchar(32) NOT NULL DEFAULT \'active\', show_external_url varchar(255) NULL, show_tour_restore tinyint(1) NOT NULL DEFAULT 0, show_address varchar(255) NULL, show_locale varchar(255) NULL, show_country varchar(2) NULL, show_venue varchar(255) NULL, show_venue_url varchar(255) NULL, show_venue_phone varchar(255) NULL, PRIMARY KEY (show_id)',
-        'artists' => 'artist_id bigint(20) unsigned NOT NULL AUTO_INCREMENT, artist_name varchar(255) NOT NULL, artist_alpha varchar(255) NOT NULL, artist_url varchar(255) NULL, artist_order bigint(20) NOT NULL DEFAULT 0, PRIMARY KEY (artist_id)',
-        'venues' => 'venue_id bigint(20) unsigned NOT NULL AUTO_INCREMENT, venue_name varchar(255) NOT NULL, venue_address varchar(255) NULL, venue_city varchar(255) NOT NULL, venue_state varchar(255) NULL, venue_postal_code varchar(32) NULL, venue_country varchar(2) NOT NULL, venue_url varchar(255) NULL, venue_phone varchar(255) NULL, PRIMARY KEY (venue_id)',
-        'tours' => 'tour_id bigint(20) unsigned NOT NULL AUTO_INCREMENT, tour_name varchar(255) NOT NULL, tour_status varchar(32) NOT NULL DEFAULT \'active\', PRIMARY KEY (tour_id)',
-    );
-    foreach ($tables as $name => $definition) {
-        if ($wpdb->query('CREATE TABLE ' . $wpdb->prefix . 'gigpress_' . $name . ' (' . $definition . ')') === false) return false;
+    $schema = upgrade_preservation_source_schema($fixture['settings']['db_version'] ?? '');
+    foreach (array('shows' => 'show_id', 'artists' => 'artist_id', 'venues' => 'venue_id', 'tours' => 'tour_id') as $name => $primary) {
+        if (!isset($schema[$name]) || !upgrade_preservation_create_table($name, $schema[$name], $primary)) return false;
     }
     $postId = wp_insert_post(array('post_title' => 'Reconstructed linked post', 'post_content' => 'Existing WordPress content remains unchanged.', 'post_status' => 'publish', 'post_type' => 'post'));
     foreach (array('artists', 'venues', 'tours', 'shows') as $kind) {
         foreach ($fixture[$kind] as $row) {
             if ($kind === 'shows' && $row['show_related'] === 0 && ($fixture['linked_show_id'] ?? 109) === $row['show_id']) $row['show_related'] = (int) $postId;
+            $row = array_intersect_key($row, array_flip(array_keys($schema[$kind])));
             if ($wpdb->insert($wpdb->prefix . 'gigpress_' . $kind, $row) === false) return false;
         }
     }
