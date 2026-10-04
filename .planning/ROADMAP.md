@@ -72,7 +72,7 @@ Plans:
 
 ### Phase 3: Administration Workflows
 
-**Goal**: Site owners can enter show dates and times, manage show lists, and find settings with clearer guidance.
+**Goal**: As a site owner, I want to enter show dates and times, manage show lists, and find settings with clearer guidance, so that I can complete routine show administration while preserving established behavior.
 **Mode:** mvp
 **Depends on**: Phase 2
 **Requirements**: ADMIN-01, ADMIN-02, ADMIN-03, UX-01
@@ -82,7 +82,17 @@ Plans:
   3. Site owners can find settings in clear groups with contextual help, while existing option keys, saved values, and setting meanings remain usable.
   4. Changed administration controls have associated labels and semantic table headings where applicable, work by keyboard, and provide text-based success and error feedback.
 
-**Plans**: TBD
+**Plans**: 4 plans in 3 waves
+**Wave 1**
+- [ ] 03-01-PLAN.md — Show entry, correction, and safe retry with administration harness support.
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 03-02-PLAN.md — Six settings sections and protected option saves.
+- [ ] 03-03-PLAN.md — Retained list navigation and confirmed selected trash actions.
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 03-04-PLAN.md — Disposable browser fixture and supported runtime evidence.
+
 **UI hint**: yes
 
 ### Phase 4: Public Publishing
@@ -121,6 +131,6 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Compatibility Baseline and Menu Diagnosis | 5/5 | Complete    | 2026-10-04 |
 | 2. Data and Upgrade Preservation | 4/4 | Complete    | 2026-10-04 |
-| 3. Administration Workflows | 0/TBD | Not started | - |
+| 3. Administration Workflows | 0/4 | Planned    |  |
 | 4. Public Publishing | 0/TBD | Not started | - |
 | 5. CSV Import/Export | 0/TBD | Not started | - |
