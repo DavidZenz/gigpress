@@ -195,11 +195,12 @@ function gigpress_venues() {
 			$i = 0;
 			foreach($venues as $venue) {
 			
-				if($n = $wpdb->get_var("SELECT count(*) FROM ". GIGPRESS_SHOWS ." WHERE show_venue_id = ". $venue->venue_id ." AND show_status != 'deleted'")) {
+				if($n = $wpdb->get_var($wpdb->prepare("SELECT count(*) FROM ". GIGPRESS_SHOWS ." WHERE show_venue_id = %d AND show_status != 'deleted'", $venue->venue_id))) {
 					$count = '<a href="' . admin_url('admin.php?page=gigpress-shows&amp;venue_id=' . $venue->venue_id) . '">' . $n . '</a>';
 				} else {
 					$count = 0;
 				}
+				$can_delete = !gigpress_entity_has_show_dependencies('show_venue_id', $venue->venue_id);
 				
 				$venuedata = gigpress_prepare($venue, 'venue');
 
@@ -217,7 +218,7 @@ function gigpress_venues() {
 					<td class="gp-centre"><?php echo $count; ?></td>
 					<td class="gp-centre">
 						<a href="<?php echo admin_url('admin.php?page=gigpress-venues&amp;gpaction=edit&amp;venue_id=' . $venue->venue_id . $url_args); ?>" class="edit"><?php _e("Edit", "gigpress"); ?></a>
-						<?php if(!$count) { ?> | <a href="<?php echo wp_nonce_url(admin_url('admin.php?page=gigpress-venues&amp;gpaction=delete&amp;venue_id='.$venue->venue_id . $url_args), 'gigpress-action'); ?>" class="delete"><?php _e("Delete", "gigpress"); ?></a><?php } ?>
+						<?php if($can_delete) { ?> | <a href="<?php echo wp_nonce_url(admin_url('admin.php?page=gigpress-venues&amp;gpaction=delete&amp;venue_id='.$venue->venue_id . $url_args), 'gigpress-action'); ?>" class="delete"><?php _e("Delete", "gigpress"); ?></a><?php } ?>
 					</td>
 				</tr>
 				<?php }

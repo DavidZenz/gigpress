@@ -134,11 +134,12 @@ function gigpress_artists() {
 			$i = 0;
 			foreach($artists as $artist) {
 			
-				if($n = $wpdb->get_var("SELECT count(*) FROM ". GIGPRESS_SHOWS ." WHERE show_artist_id = ". $artist->artist_id . " AND show_status != 'deleted'")) {
+				if($n = $wpdb->get_var($wpdb->prepare("SELECT count(*) FROM ". GIGPRESS_SHOWS ." WHERE show_artist_id = %d AND show_status != 'deleted'", $artist->artist_id))) {
 					$count = '<a href="' . admin_url('admin.php?page=gigpress-shows&amp;artist_id=' . $artist->artist_id) . '">' . $n . '</a>';
 				} else {
 					$count = 0;
 				}
+				$can_delete = !gigpress_entity_has_show_dependencies('show_artist_id', $artist->artist_id);
 
 				$i++;
 				$style = ($i % 2) ? '' : ' class="alternate"';
@@ -151,7 +152,7 @@ function gigpress_artists() {
 					<td class="gp-centre"><?php echo $count; ?></td>
 					<td class="gp-centre">
 						<a href="<?php echo admin_url('admin.php?page=gigpress-artists&amp;gpaction=edit&amp;artist_id='.$artist->artist_id . $url_args); ?>" class="edit"><?php _e("Edit", "gigpress"); ?></a>
-						<?php if(!$count) { ?> | <a href="<?php echo wp_nonce_url(admin_url('admin.php?page=gigpress-artists&amp;gpaction=delete&amp;artist_id='.$artist->artist_id . $url_args), 'gigpress-action'); ?>" class="delete"><?php _e("Delete", "gigpress"); ?></a><?php } ?>
+						<?php if($can_delete) { ?> | <a href="<?php echo wp_nonce_url(admin_url('admin.php?page=gigpress-artists&amp;gpaction=delete&amp;artist_id='.$artist->artist_id . $url_args), 'gigpress-action'); ?>" class="delete"><?php _e("Delete", "gigpress"); ?></a><?php } ?>
 					</td>
 				</tr>
 				<?php }

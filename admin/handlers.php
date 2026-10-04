@@ -10,6 +10,17 @@ function gigpress_require_database_ready() {
 	return true;
 }
 
+function gigpress_entity_has_show_dependencies($column, $id) {
+	global $wpdb;
+	if (!in_array($column, array('show_artist_id', 'show_venue_id'), true)) return false;
+	return (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . GIGPRESS_SHOWS . ' WHERE ' . $column . ' = %d', absint($id))) > 0;
+}
+
+function gigpress_block_dependent_entity_deletion($label) {
+	echo '<div id="message" class="error fade"><p>' . esc_html(sprintf(__('%s cannot be deleted because active or trashed shows still reference it.', 'gigpress'), $label)) . '</p></div>';
+	return false;
+}
+
 // HANDLER: ADD A SHOW
 // ===================
 
@@ -482,9 +493,12 @@ function gigpress_delete_venue() {
 	
 	// Check the nonce
 	check_admin_referer('gigpress-action');	
+	if (!gigpress_require_database_ready()) return false;
+	$venue_id = absint($_GET['venue_id']);
+	if (gigpress_entity_has_show_dependencies('show_venue_id', $venue_id)) return gigpress_block_dependent_entity_deletion(__('Venue', 'gigpress'));
 	
 	// Delete the venue
-	$trashvenue = $wpdb->query($wpdb->prepare("DELETE FROM ". GIGPRESS_VENUES ." WHERE venue_id = %d LIMIT 1", absint($_GET['venue_id'])));
+	$trashvenue = $wpdb->query($wpdb->prepare("DELETE FROM ". GIGPRESS_VENUES ." WHERE venue_id = %d LIMIT 1", $venue_id));
 	if($trashvenue != FALSE) {	?>	
 		<div id="message" class="updated fade"><p><?php _e("Venue successfully deleted.", "gigpress"); ?></p></div>	
 	<?php } elseif($trashvenue === FALSE) { ?>
@@ -717,9 +731,12 @@ function gigpress_delete_artist() {
 	
 	// Check the nonce
 	check_admin_referer('gigpress-action');	
+	if (!gigpress_require_database_ready()) return false;
+	$artist_id = absint($_GET['artist_id']);
+	if (gigpress_entity_has_show_dependencies('show_artist_id', $artist_id)) return gigpress_block_dependent_entity_deletion(__('Artist', 'gigpress'));
 	
 	// Delete the artist
-	$trashartist = $wpdb->query($wpdb->prepare("DELETE FROM ". GIGPRESS_ARTISTS ." WHERE artist_id = %d LIMIT 1", absint($_GET['artist_id'])));
+	$trashartist = $wpdb->query($wpdb->prepare("DELETE FROM ". GIGPRESS_ARTISTS ." WHERE artist_id = %d LIMIT 1", $artist_id));
 	if($trashartist != FALSE) {	?>	
 		<div id="message" class="updated fade"><p><?php _e("Artist successfully deleted.", "gigpress"); ?></p></div>	
 	<?php } elseif($trashartist === FALSE) { ?>
