@@ -642,7 +642,7 @@ require_value --wp "$WP_VERSION"; require_value --php "$PHP_VERSION"
 [[ "$PHP_VERSION" != 8.2 ]] || fail "PHP 8.2 is diagnostic-only and cannot be a supported cell"
 case "$SCENARIO" in
   activation-menu|admin-menu|csv-roundtrip|full-workflows) [[ "$UPGRADE_CASE" == tracer-1.4 ]] || fail "--case is only supported by upgrade-preservation" ;;
-  upgrade-preservation) [[ "$UPGRADE_CASE" =~ ^(tracer-1\.4|safety-1\.4|metadata-classification|versions-1\.0-1\.2|versions-1\.3-1\.5|current-1\.6|settings-repeat)$ ]] || fail "unsupported upgrade-preservation case: $UPGRADE_CASE" ;;
+  upgrade-preservation) [[ "$UPGRADE_CASE" =~ ^(tracer-1\.4|safety-1\.4|metadata-classification|versions-1\.0-1\.2|versions-1\.3-1\.5|current-1\.6|settings-repeat|show-lifecycle)$ ]] || fail "unsupported upgrade-preservation case: $UPGRADE_CASE" ;;
   *) fail "unsupported cell scenario: $SCENARIO" ;;
 esac
 [[ "$SCENARIO" != upgrade-preservation ]] || TABLE_PREFIX='compat_legacy_'

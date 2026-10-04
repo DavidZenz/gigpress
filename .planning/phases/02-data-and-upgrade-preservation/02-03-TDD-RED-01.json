@@ -1,0 +1,9 @@
+{
+  "command": "rtk bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario upgrade-preservation --case show-lifecycle",
+  "exitCode": 2,
+  "targetTest": "upgrade-preservation.show-lifecycle",
+  "targetFile": "tests/compat/upgrade-preservation-crud.php",
+  "expected": "The upgraded 1.4 fixture keeps show identity, content, relationships, selected bulk-action boundaries, and blocked-migration immutability through the real show handlers.",
+  "actual": "not ok 1 - upgrade-preservation.show-lifecycle; Post-upgrade show lifecycle did not preserve handler semantics.",
+  "output": "not ok 1 - upgrade-preservation.show-lifecycle\n# tests 1\n# pass 0\n# fail 1"
+}
