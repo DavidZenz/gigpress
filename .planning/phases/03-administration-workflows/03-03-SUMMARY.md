@@ -112,7 +112,7 @@ The transient, generated password and affected-row contracts follow the official
 
 All three RED records passed `gsd_run check tdd-red-evidence` as `RED_EVIDENCE_OK` before implementation. They were persisted at `/tmp/gigpress-03-03-01-red.json`, `/tmp/gigpress-03-03-02-red.json` and `/tmp/gigpress-03-03-03-red.json`; committed test/implementation pairs and this manifest preserve the durable history. The behavior predicate returned true. The phase-level MVP/TDD applicability was honored despite the global default being false. The committed single-show tracer passed again before expansion. Root pin, exact expected branch and protected-branch assertions passed for every commit, with hooks retained.
 
-## Verification
+## Validation Evidence
 
 All container cells use WordPress **7.1.2**, PHP **8.3.35**, official image `wordpress:php8.3-apache`, image ID `sha256:4abf7a450ee477dde967584f8174d7e03221d224c4971a0c38d84e7254426e64`.
 
@@ -125,7 +125,7 @@ All container cells use WordPress **7.1.2**, PHP **8.3.35**, official image `wor
 | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario upgrade-preservation --case show-lifecycle` | PASS including final real rendered confirmation nonce and full previous-row write predicates |
 | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario upgrade-preservation --case all` | PASS; unchanged exact eleven-case registry, zero warnings/fatals/plugin errors |
 | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario full-workflows` | PASS; existing admin create/edit/read, public shortcode, RSS, iCalendar, CSV and duplicate preservation |
-| `rtk proxy bash tests/compat/run.sh lint --php-branches 8.3 --files admin/shows.php,admin/handlers.php,tests/compat/administration-list.php,tests/compat/upgrade-preservation-crud.php` | PASS; all four owned PHP files |
+| rtk proxy bash tests/compat/run.sh lint --php-branches 8.3 --files admin/shows.php,admin/handlers.php,tests/compat/administration-list.php,tests/compat/upgrade-preservation-crud.php | PASS; all four owned PHP files |
 | `rtk proxy git diff --check` | PASS |
 
 The final aggregate retains prior entry **206** and settings **224** assertions plus list **460** assertions. List coverage includes exact status-only full snapshots; invalid/no-selection inputs; stale edits/removal/unsupported status; controlled false and zero writes; foreign/expired/replayed/canceled/mismatched requests; GET/direct/nonce/capability/readiness guards; Undo guards; same-valued unselected rows; narrow reset; two-user preferences; safe zero/single/out-of-range pages; stable three-page ascending/descending identities; and action-free pagination after Undo.
