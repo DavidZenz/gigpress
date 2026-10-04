@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 5
+open_count: 6
 waived_count: 0
 fixed_count: 2
-total_count: 7
-last_updated: 2026-10-04T20:52:37.481Z
+total_count: 8
+last_updated: 2026-10-04T21:07:11.104Z
 ---
 
 # Broken Windows Ledger
@@ -22,6 +22,7 @@ last_updated: 2026-10-04T20:52:37.481Z
 | 5 | 03 | deviation | tests/compat/probe.php |  | Resolved aggregate child-probe bootstrap under WP_INSTALLING by fresh real-plugin activation; verified delivered cases pass and absent cases fail closed. | fixed |  | 2026-10-04T20:52:24.971Z | 2026-10-04T20:52:37.284Z |
 | 6 | 03 | deviation | admin/new.php |  | Resolved renderer regression by restoring welcome dismissal with capability, nonce and readiness guards; four regression checks pass. | fixed |  | 2026-10-04T20:52:25.172Z | 2026-10-04T20:52:37.481Z |
 | 7 | 03 | unrun-verify | admin/new.php |  | Actual browser picker, incomplete typed date, focus and no-JS keyboard evidence belongs to Plan 03-04 and remains pending. | open |  | 2026-10-04T20:52:25.383Z |  |
+| 8 | 03 | unrun-verify | admin/settings.php |  | 03-04 must verify actual settings options.php HTTP save, invalid nonce and unauthorized denial, plus keyboard jump/focus behavior; 03-02 callback and markup checks do not establish these interactions. | open |  | 2026-10-04T21:07:11.104Z |  |
 
 ````json
 [
@@ -113,6 +114,19 @@ last_updated: 2026-10-04T20:52:37.481Z
     "status": "open",
     "reason": "",
     "recorded_at": "2026-10-04T20:52:25.383Z",
+    "resolved_at": null,
+    "milestone": null
+  },
+  {
+    "id": 8,
+    "kind": "unrun-verify",
+    "phase": "03",
+    "file": "admin/settings.php",
+    "line": null,
+    "description": "03-04 must verify actual settings options.php HTTP save, invalid nonce and unauthorized denial, plus keyboard jump/focus behavior; 03-02 callback and markup checks do not establish these interactions.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-10-04T21:07:11.104Z",
     "resolved_at": null,
     "milestone": null
   }
