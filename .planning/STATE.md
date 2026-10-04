@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 02
 current_phase_name: Data and Upgrade Preservation
-status: executing
-stopped_at: Completed 02-03-PLAN.md
-last_updated: "2026-10-04T13:57:19.438Z"
+status: verifying
+stopped_at: Completed 02-04-PLAN.md
+last_updated: "2026-10-04T14:37:29.455Z"
 last_activity: 2026-10-04
 last_activity_desc: Phase 02 execution started
-state_head: 7ba699c08e482e28e11beab1ebc374a14d06f824
+state_head: 3ee96f8311ad5f758c450b77047ad0edc1f1680e
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
   percent: 20
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 
 Phase: 02 (Data and Upgrade Preservation) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-04 — Phase 02 execution started
 
 Progress: ░░░░░░░░░░ [██░░░░░░░░] 20%
@@ -64,6 +64,7 @@ Progress: ░░░░░░░░░░ [██░░░░░░░░] 20%
 | Phase 02-data-and-upgrade-preservation P01 | 12min | 2 tasks | 7 files |
 | Phase 02-data-and-upgrade-preservation P02 | 33m | 3 tasks | 11 files |
 | Phase 02-data-and-upgrade-preservation P03 | 8m | 3 tasks | 6 files |
+| Phase 02 P04 | 25m | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,9 @@ Recent decisions affecting current work:
 - [Phase 02-data-and-upgrade-preservation]: Run coordinator readiness checks after nonce verification before each covered mutation.
 - [Phase 02-data-and-upgrade-preservation]: Count all show statuses for entity deletion while retaining active-only list counts.
 - [Phase 02-data-and-upgrade-preservation]: Use gigpress_tour_restore_map for exact pending undo ownership and retain the row marker only as a compatibility hint.
+- [Phase 02]: Run the aggregate registry in one disposable container cell while each required case receives a reset request state and fresh plugin activation.
+- [Phase 02]: Treat WordPress 7.0.6 and 7.1.2 with PHP 8.3, 8.4, and 8.5 as the supported evidence set; PHP 8.2 remains diagnostic-only.
+- [Phase 02]: Store a compact machine-readable evidence record inside the human-readable matrix report and validate it without rerunning containers.
 
 ### Pending Todos
 
@@ -104,6 +108,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-04T13:57:19.416Z
-Stopped at: Completed 02-03-PLAN.md
+Last session: 2026-10-04T14:37:29.431Z
+Stopped at: Completed 02-04-PLAN.md
 Resume file: None
