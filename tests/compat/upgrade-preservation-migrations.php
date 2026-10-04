@@ -54,8 +54,15 @@ function gigpress_upgrade_preservation_run_versions($versions) {
         unset($GLOBALS['gigpress_db_bootstrap_result']);
         $repeat = gigpress_db_bootstrap();
         $second = gigpress_upgrade_preservation_snapshot();
-        $failurePoints = array('after_schema');
-		foreach (array('1.0' => array('after_upgrade_110', 'after_upgrade_120', 'after_upgrade_130', 'after_upgrade_140', 'after_upgrade_160'), '1.1' => array('after_upgrade_120', 'after_upgrade_130', 'after_upgrade_140', 'after_upgrade_160'), '1.2' => array('after_upgrade_130', 'after_upgrade_140', 'after_upgrade_160'))[$version] as $point) $failurePoints[] = $point;
+		$failurePoints = array('after_schema');
+		$stepFailures = array(
+			'1.0' => array('after_upgrade_110', 'after_upgrade_120', 'after_upgrade_130', 'after_upgrade_140', 'after_upgrade_160'),
+			'1.1' => array('after_upgrade_120', 'after_upgrade_130', 'after_upgrade_140', 'after_upgrade_160'),
+			'1.2' => array('after_upgrade_130', 'after_upgrade_140', 'after_upgrade_160'),
+			'1.3' => array('before_artist_insert', 'after_artist_insert', 'before_artist_relationship', 'after_artist_relationship', 'before_venue_insert', 'after_venue_insert', 'before_venue_relationship', 'after_venue_relationship', 'after_upgrade_140', 'after_upgrade_160'),
+			'1.5' => array('after_upgrade_160'),
+		);
+		foreach ($stepFailures[$version] as $point) $failurePoints[] = $point;
 		$failurePoints[] = 'before_final_marker';
 		$retries = true; $retryFailures = array();
 		foreach ($failurePoints as $point) {

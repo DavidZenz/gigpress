@@ -194,7 +194,7 @@ function upgrade_preservation_seed($fixture) {
     return true;
 }
 if ($purpose === 'upgrade-preservation') {
-    $fixtureVersion = $upgradeCase === 'versions-1.0-1.2' ? '1.0' : '1.4';
+    $fixtureVersion = $upgradeCase === 'versions-1.0-1.2' ? '1.0' : ($upgradeCase === 'versions-1.3-1.5' ? '1.3' : '1.4');
     $fixturePath = '/var/www/html/wp-content/plugins/gigpress/tests/compat/fixtures/upgrade-preservation/' . $fixtureVersion . '.php';
     $upgradeFixture = is_readable($fixturePath) ? require $fixturePath : null;
     if (!is_array($upgradeFixture) || ($upgradeFixture['label'] ?? '') !== 'reconstructed-' . $fixtureVersion) {
@@ -226,7 +226,7 @@ if (($purpose === 'fixture-activate' || !$fixturePurpose) && !$skipGigPressActiv
 } elseif (!$skipGigPressActivation && !is_plugin_active($plugin)) {
     $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Controlled fixture lost active state', 'file' => __FILE__, 'line' => __LINE__);
 }
-if ($purpose === 'upgrade-preservation' && $upgradeCase !== 'versions-1.0-1.2') {
+if ($purpose === 'upgrade-preservation' && !in_array($upgradeCase, array('versions-1.0-1.2', 'versions-1.3-1.5'), true)) {
     $snapshot = function () use ($wpdb) {
         $data = array('prefix' => $wpdb->prefix, 'settings' => get_option('gigpress_settings'));
         foreach (array('shows' => 'show_id', 'artists' => 'artist_id', 'venues' => 'venue_id', 'tours' => 'tour_id') as $kind => $id) {
@@ -336,6 +336,11 @@ if ($purpose === 'upgrade-preservation' && $upgradeCase === 'versions-1.0-1.2') 
     require WP_PLUGIN_DIR . '/gigpress/tests/compat/upgrade-preservation-migrations.php';
     $upgradePreservation = gigpress_upgrade_preservation_run_versions(array('1.0', '1.1', '1.2'));
     if ($upgradePreservation['status'] !== 'PASS') $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Early-version migration matrix did not converge', 'file' => __FILE__, 'line' => __LINE__);
+}
+if ($purpose === 'upgrade-preservation' && $upgradeCase === 'versions-1.3-1.5') {
+    require WP_PLUGIN_DIR . '/gigpress/tests/compat/upgrade-preservation-migrations.php';
+    $upgradePreservation = gigpress_upgrade_preservation_run_versions(array('1.3', '1.5'));
+    if ($upgradePreservation['status'] !== 'PASS') $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Later-version migration matrix did not converge', 'file' => __FILE__, 'line' => __LINE__);
 }
 if (($purpose === 'diagnose-menu' && (getenv('COMPAT_CONFLICT_MODE') ?: '') === 'exact-key-late-add')
     || ($purpose === 'admin-menu' && (getenv('COMPAT_CONFLICT_MODE') ?: '') === 'order-only')) {
