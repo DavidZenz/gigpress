@@ -173,7 +173,7 @@ normalise_matrix() {
 }
 
 run_self_test() {
-  local one one_count unique_count ordered
+  local one one_count unique_count ordered lifecycle_summary
   one=$(normalise_matrix '7.1' '8.3') || fail "single-cell matrix was rejected"
   one_count=$(printf '%s\n' "$one" | wc -l | tr -d ' ')
   unique_count=$(normalise_matrix '7.1,7.0,7.1' '8.4,8.3,8.3' | wc -l | tr -d ' ')
@@ -181,6 +181,8 @@ run_self_test() {
   [[ "$one" == '7.1,8.3' && "$one_count" == 1 ]] || fail "single-cell matrix did not emit exactly one result"
   [[ "$unique_count" == 4 ]] || fail "matrix did not deduplicate exact pairs"
   [[ "$ordered" == '7.0,8.3 7.0,8.4 7.1,8.3 7.1,8.4 ' ]] || fail "matrix result ordering is not stable"
+  lifecycle_summary=$(printf '%s\n' '{"active":true,"data":[1]}' '{"active":true,"data":[1]}' | rtk jq -s '{active_preserved:(.[0].active == .[1].active),data_preserved:(.[0].data == .[1].data)}') || fail "runtime-floor result summary has invalid jq syntax"
+  printf '%s\n' "$lifecycle_summary" | rtk jq -e '.active_preserved and .data_preserved' >/dev/null || fail "runtime-floor result summary does not preserve comparison results"
   normalise_matrix '' '8.3' >/dev/null 2>&1 && fail "empty matrix was accepted"
   normalise_matrix '7.1' '8.2' >/dev/null 2>&1 && fail "diagnostic PHP 8.2 was accepted as supported"
   (run_matrix --php-branches 8.3) >/dev/null 2>&1 && fail "matrix accepted missing WordPress lines"
@@ -508,7 +510,7 @@ run_runtime_floor() {
       compose_env exec -T wordpress php -r 'exit(PHP_VERSION_ID >= 80300 ? 0 : 1);' || fail "real-plugin recovery did not return to a supported PHP runtime"
       recovered_state=$(run_real_plugin_phase real-recover)
       printf '%s\n' "$supported_state" "$diagnostic_state" "$recovered_state" | rtk jq -s '.[0].real_plugin_runtime.active_state == .[1].real_plugin_runtime.active_state and .[1].real_plugin_runtime.active_state == .[2].real_plugin_runtime.active_state and .[0].real_plugin_runtime.data_snapshot == .[1].real_plugin_runtime.data_snapshot and .[1].real_plugin_runtime.data_snapshot == .[2].real_plugin_runtime.data_snapshot' | rtk jq -e . >/dev/null || fail "real-plugin runtime-floor changed active state or GigPress data/options"
-      printf '%s\n' "$supported_state" "$diagnostic_state" "$recovered_state" | rtk jq -s --arg wp "$WP_VERSION" '{status:"PASS",wordpress:$wp,php_transition:[.[0].php_version,.[1].php_version,.[2].php_version],plugin_active_preserved:.[0].real_plugin_runtime.active_state == .[1].real_plugin_runtime.active_state and .[1].real_plugin_runtime.active_state == .[2].real_plugin_runtime.active_state,data_preserved:.[0].real_plugin_runtime.data_snapshot == .[1].real_plugin_runtime.data_snapshot and .[1].real_plugin_runtime.data_snapshot == .[2].real_plugin_runtime.data_snapshot,low_floor:.[1].real_plugin_runtime,recovery:.[2].real_plugin_runtime}'
+      printf '%s\n' "$supported_state" "$diagnostic_state" "$recovered_state" | rtk jq -s --arg wp "$WP_VERSION" '{status:"PASS",wordpress:$wp,php_transition:[.[0].php_version,.[1].php_version,.[2].php_version],plugin_active_preserved:(.[0].real_plugin_runtime.active_state == .[1].real_plugin_runtime.active_state and .[1].real_plugin_runtime.active_state == .[2].real_plugin_runtime.active_state),data_preserved:(.[0].real_plugin_runtime.data_snapshot == .[1].real_plugin_runtime.data_snapshot and .[1].real_plugin_runtime.data_snapshot == .[2].real_plugin_runtime.data_snapshot),low_floor:.[1].real_plugin_runtime,recovery:.[2].real_plugin_runtime}'
     fi
     cleanup_floor
   done
