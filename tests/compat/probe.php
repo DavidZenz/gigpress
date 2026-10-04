@@ -352,6 +352,15 @@ if ($purpose === 'upgrade-preservation' && in_array($upgradeCase, array('show-li
     $upgradePreservation = gigpress_upgrade_preservation_run_crud($upgradeCase);
     if ($upgradePreservation['status'] !== 'PASS') $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Post-upgrade show lifecycle did not preserve handler semantics', 'file' => __FILE__, 'line' => __LINE__);
 }
+if ($purpose === 'upgrade-preservation' && $upgradeCase === 'all') {
+    $upgradePreservation = array(
+        'status' => 'FAIL',
+        'case' => 'all',
+        'required_cases' => array('tracer-1.4', 'safety-1.4', 'metadata-classification', 'versions-1.0-1.2', 'versions-1.3-1.5', 'current-1.6', 'settings-repeat', 'show-lifecycle', 'entity-guards', 'tour-undo'),
+        'cases' => array(),
+    );
+    $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Aggregate upgrade preservation registry is not implemented', 'file' => __FILE__, 'line' => __LINE__);
+}
 if (($purpose === 'diagnose-menu' && (getenv('COMPAT_CONFLICT_MODE') ?: '') === 'exact-key-late-add')
     || ($purpose === 'admin-menu' && (getenv('COMPAT_CONFLICT_MODE') ?: '') === 'order-only')) {
     $fixtureActivation = activate_plugin('menu-conflict-plugin.php', '', false, false);

@@ -1,0 +1,9 @@
+{
+  "command": "rtk bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario upgrade-preservation --case all",
+  "exitCode": 2,
+  "targetTest": "upgrade-preservation.all",
+  "targetFile": "tests/compat/probe.php",
+  "expected": "The aggregate preservation cell executes each required migration, settings, lifecycle, dependency, and tour-undo case exactly once and fails closed when the registry is incomplete.",
+  "actual": "not ok 1 - upgrade-preservation.all; Aggregate upgrade preservation registry is not implemented.",
+  "output": "not ok 1 - upgrade-preservation.all\n# tests 1\n# pass 0\n# fail 1"
+}
