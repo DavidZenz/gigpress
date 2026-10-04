@@ -196,7 +196,9 @@ run_self_test() {
   grep -q "real_plugin_inventory" "$COMPAT_DIR/probe.php" || fail "real-plugin inventory contract is missing"
   grep -Fq "if (\$purpose !== 'real-recover')" "$COMPAT_DIR/probe.php" || fail "real-plugin recovery does not use the normal active-plugin bootstrap"
   grep -Fq "update_option('siteurl', 'http://gigpress-compat.test')" "$COMPAT_DIR/probe.php" || fail "fresh installs do not seed a stable site URL for later recovery probes"
-  printf '%s\n' '{"status":"PASS","self_test":"matrix ordering, diagnostic exclusion, distinct runtime targets, and supported recovery bootstrap"}'
+  cleanup_paths=$(grep -v 'cleanup_paths=' "$COMPAT_DIR/run.sh" | grep -Fc 'compose_env down --volumes --remove-orphans')
+  [[ "$cleanup_paths" == 3 ]] || fail "all disposable Compose targets must use the configured cleanup environment"
+  printf '%s\n' '{"status":"PASS","self_test":"matrix ordering, diagnostic exclusion, distinct runtime targets, supported recovery bootstrap, and Compose cleanup"}'
 }
 
 normalise_menu_cases() {
@@ -472,7 +474,7 @@ run_runtime_floor() {
     COMPOSE=(docker compose --project-name "$PROJECT" --file "$COMPAT_DIR/compose.yaml")
     CLEANUP_NEEDED=true
     cleanup_floor() {
-      env REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" PHP_VERSION="$PHP_VERSION" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true
+      compose_env down --volumes --remove-orphans >/dev/null 2>&1 || true
     }
     compose_env() {
       env -u COMPOSE_FILE -u COMPOSE_PROJECT_NAME -u WORDPRESS_DB_HOST -u MYSQL_HOST -u DB_HOST -u DATABASE_URL REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" WORDPRESS_IMAGE_VERSION="$WORDPRESS_IMAGE_VERSION" PHP_VERSION="$PHP_VERSION" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" "$@"
@@ -550,7 +552,7 @@ run_diagnose_menu() {
   CLEANUP_NEEDED=false
   cleanup() {
     local status=$?
-    [[ "$CLEANUP_NEEDED" == true ]] && env REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" PHP_VERSION="$PHP_VERSION" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true
+    [[ "$CLEANUP_NEEDED" == true ]] && compose_env down --volumes --remove-orphans >/dev/null 2>&1 || true
     exit "$status"
   }
   trap cleanup EXIT INT TERM
@@ -652,7 +654,7 @@ CLEANUP_NEEDED=false
 cleanup() {
   local status=$?
   if [[ "$CLEANUP_NEEDED" == true ]]; then
-    env REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" PHP_VERSION="$PHP_VERSION" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true
+    compose_env down --volumes --remove-orphans >/dev/null 2>&1 || true
   fi
   exit "$status"
 }
