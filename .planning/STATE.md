@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 03
 current_phase_name: Administration Workflows
 status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-10-04T21:09:05.809Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-10-04T21:28:10.305Z"
 last_activity: 2026-10-04
 last_activity_desc: Phase 03 execution started
-state_head: ac42ee9076c2272408bef93d1b5c60d690eba998
+state_head: c9a4457af5a92470edf39dbd969de0b588b2728f
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 40
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-04)
 ## Current Position
 
 Phase: 03 (Administration Workflows) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-10-04 — Phase 03 execution started
 
@@ -68,6 +68,7 @@ Progress: ░░░░░░░░░░ [████░░░░░░] 40%
 | Phase 02 P04 | 25m | 2 tasks | 4 files |
 | Phase 03 P01 | 21min | 3 tasks | 8 files |
 | Phase 03 P02 | 12min | 2 tasks | 4 files |
+| Phase 03 P03 | 16min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -96,6 +97,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Keep the eight-case administration registry fail-closed until each later-plan module supplies nonempty real assertions.
 - [Phase 03]: Protect stored metadata and unknown keys during settings form saves, while trusted programmatic partial updates merge into storage.
 - [Phase 03]: Represent uncommon current choices explicitly and preserve exact falsey checkbox types on unchanged settings saves.
+- [Phase 03]: Persist only scope and integer page size; entity filters, sort and page position remain request state.
+- [Phase 03]: Bind trash to the current owner, exact deduplicated ordered IDs and stored return state, consuming the expiring intent before writes.
+- [Phase 03]: Count only strict verified status transitions and scope Undo to changed IDs; recount and clamp return links after writes.
 
 ### Pending Todos
 
@@ -116,6 +120,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-04T21:09:05.784Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-10-04T21:28:10.277Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None
