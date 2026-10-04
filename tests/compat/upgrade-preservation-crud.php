@@ -44,6 +44,7 @@ function gigpress_upgrade_preservation_run_show_lifecycle() {
 	unset($GLOBALS['gigpress_db_bootstrap_result']);
 	$ok = $ok && gigpress_db_bootstrap()['status'] === 'ready';
 	require_once WP_PLUGIN_DIR . '/gigpress/admin/handlers.php';
+	$ok = $ok && gigpress_db_in(null) === '' && gigpress_db_out(null) === '';
 
 	$source = gigpress_upgrade_preservation_show_row(109);
 	$untouchedTrash = gigpress_upgrade_preservation_show_row(113);
