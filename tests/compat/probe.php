@@ -186,13 +186,17 @@ if (in_array($purpose, array('fixture-low', 'fixture-recover', 'real-low'), true
     exit($result['status'] === 'PASS' ? 0 : 1);
 }
 
-define('WP_INSTALLING', true);
+if ($purpose !== 'real-recover') {
+    define('WP_INSTALLING', true);
+}
 require_once '/var/www/html/wp-load.php';
 require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 require_once ABSPATH . 'wp-admin/includes/plugin.php';
 
 if (!is_blog_installed()) {
     wp_install('GigPress Compatibility', 'compat-admin', 'compat-admin@example.test', true, '', 'compat-password');
+    update_option('home', 'http://gigpress-compat.test');
+    update_option('siteurl', 'http://gigpress-compat.test');
 }
 $admin = get_user_by('login', 'compat-admin');
 wp_set_current_user($admin->ID);

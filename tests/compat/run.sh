@@ -194,7 +194,9 @@ run_self_test() {
   (run_runtime_floor --plugin unknown/plugin.php --wp-lines 7.1 --supported-php 8.3 --diagnostic-php 8.2) >/dev/null 2>&1 && fail "runtime-floor accepted an unknown real-plugin target"
   grep -q "fixture-activate" "$COMPAT_DIR/probe.php" || fail "fixture lifecycle probe is missing"
   grep -q "real_plugin_inventory" "$COMPAT_DIR/probe.php" || fail "real-plugin inventory contract is missing"
-  printf '%s\n' '{"status":"PASS","self_test":"matrix ordering, diagnostic exclusion, and distinct runtime targets"}'
+  grep -Fq "if (\$purpose !== 'real-recover')" "$COMPAT_DIR/probe.php" || fail "real-plugin recovery does not use the normal active-plugin bootstrap"
+  grep -Fq "update_option('siteurl', 'http://gigpress-compat.test')" "$COMPAT_DIR/probe.php" || fail "fresh installs do not seed a stable site URL for later recovery probes"
+  printf '%s\n' '{"status":"PASS","self_test":"matrix ordering, diagnostic exclusion, distinct runtime targets, and supported recovery bootstrap"}'
 }
 
 normalise_menu_cases() {
