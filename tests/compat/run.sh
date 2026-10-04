@@ -229,6 +229,11 @@ run_self_test() {
   [[ "$resolved_wp" == '7.0.6' ]] || fail "WordPress patch resolver did not choose the latest patch in the requested line"
   upstream_php=$(printf '%s\n' '<h3>Currently Supported Versions</h3>' '<table>' '<tr><td><a href="/downloads.php?version=8.2">8.2</a></td></tr>' '<tr><td><a href="/downloads.php?version=8.3">8.3</a></td></tr>' '<tr><td><a href="/downloads.php?version=8.4">8.4</a></td></tr>' '</table>' '<h3>Unsupported Branches</h3>' '<a href="/downloads.php?version=9.9">9.9</a>' | php_supported_branches_from_html '8.3') || fail "PHP support-page parser rejected valid official version data"
   [[ "$upstream_php" == '8.3,8.4' ]] || fail "PHP support-page parser included the below-minimum or unsupported branch"
+  resolved_matrix_wp=$( (
+    runtime_wp_version() { printf '%s.6' "$1"; }
+    resolve_matrix_wp_versions $'7.0,8.3\n7.0,8.4\n7.1,8.3\n7.1,8.4'
+  ) ) || fail "matrix WordPress resolver rejected valid cells"
+  [[ "$resolved_matrix_wp" == $'7.0,7.0.6\n7.1,7.1.6' ]] || fail "matrix did not pin one WordPress patch per release line"
   normalise_matrix '' '8.3' >/dev/null 2>&1 && fail "empty matrix was accepted"
   normalise_matrix '7.1' '8.2' >/dev/null 2>&1 && fail "diagnostic PHP 8.2 was accepted as supported"
   (run_matrix --php-branches 8.3) >/dev/null 2>&1 && fail "matrix accepted missing WordPress lines"
@@ -247,7 +252,7 @@ run_self_test() {
   grep -Fq 'menu_trace.menu_warnings | any(' "$COMPAT_DIR/run.sh" || fail "exact-key diagnostic does not require the WordPress warning"
   cleanup_paths=$(grep -v 'cleanup_paths=' "$COMPAT_DIR/run.sh" | grep -Fc 'compose_env down --volumes --remove-orphans')
   [[ "$cleanup_paths" == 3 ]] || fail "all disposable Compose targets must use the configured cleanup environment"
-  printf '%s\n' '{"status":"PASS","self_test":"matrix ordering, upstream WordPress patch resolution, PHP support-page parsing, diagnostic exclusion, recovery bootstrap, and Compose cleanup"}'
+  printf '%s\n' '{"status":"PASS","self_test":"matrix ordering, per-line WordPress patch pinning, upstream PHP support-page parsing, diagnostic exclusion, recovery bootstrap, and Compose cleanup"}'
 }
 
 normalise_menu_cases() {
@@ -453,11 +458,24 @@ run_matrix() {
   else
     [[ -z "$upgrade_case" || "$upgrade_case" == tracer-1.4 ]] || fail "--case is only supported by upgrade-preservation"
   fi
-  local line branch wp_version pairs matrix_failed=false
+  local line branch wp_version pairs resolved_wp_versions matrix_failed=false index
+  local -a matrix_wp_lines=() matrix_wp_versions=()
   pairs=$(normalise_matrix "$wp_lines" "$php_branches") || fail "invalid compatibility matrix"
   [[ -n "$pairs" ]] || fail "compatibility matrix is empty"
+  resolved_wp_versions=$(resolve_matrix_wp_versions "$pairs") || fail "could not resolve WordPress patches for matrix"
+  while IFS=, read -r line wp_version; do
+    matrix_wp_lines+=("$line")
+    matrix_wp_versions+=("$wp_version")
+  done <<< "$resolved_wp_versions"
   while IFS=, read -r line branch; do
-    wp_version=$(runtime_wp_version "$line")
+    wp_version=''
+    for ((index=0; index<${#matrix_wp_lines[@]}; index++)); do
+      if [[ "${matrix_wp_lines[$index]}" == "$line" ]]; then
+        wp_version=${matrix_wp_versions[$index]}
+        break
+      fi
+    done
+    [[ -n "$wp_version" ]] || fail "matrix has no pinned WordPress patch for line $line"
     local -a cell_args=(cell --wp "$wp_version" --php "$branch" --scenario "$scenario")
     [[ "$scenario" != upgrade-preservation ]] || cell_args+=(--case "$upgrade_case")
     if [[ -n "$conflict_fixture" ]]; then
@@ -508,6 +526,7 @@ run_preservation_evidence() {
     and ((.cells | length) == (2 * (.php_branches | length)))
     and ([.cells[] | .wordpress_line] | unique | sort == ["7.0", "7.1"])
     and (([.cells[] | [.wordpress_line, .php_branch] | join("/")] | unique | length) == (2 * (.php_branches | length)))
+    and (([.cells[] | [.wordpress_line, .wordpress_version] | join("/")] | unique | length) == 2)
     and ([.cells[] | .php_branch] | unique | sort_by(split(".") | map(tonumber)) == ($evidence.php_branches | sort_by(split(".") | map(tonumber))))
     and ([.cells[] |
       .status == "PASS"
@@ -517,7 +536,11 @@ run_preservation_evidence() {
       and .fatal_count == 0
       and .plugin_error_count == 0
       and .required_case_status == "PASS"
-      and (.image | test("^wordpress:php[0-9]+[.][0-9]+-apache$"))
+      and (.wordpress_version | test("^[0-9]+[.][0-9]+[.][0-9]+$"))
+      and ((.wordpress_version | split(".")[0:2] | join(".")) == .wordpress_line)
+      and (.php_version | test("^[0-9]+[.][0-9]+[.][0-9]+$"))
+      and ((.php_version | split(".")[0:2] | join(".")) == .php_branch)
+      and (.image == ("wordpress:php" + .php_branch + "-apache"))
       and (.image_id | test("^sha256:[0-9a-f]{64}$"))
     ] | all)
   ' >/dev/null || fail "preservation report does not contain complete passing supported evidence"
@@ -529,6 +552,16 @@ runtime_wp_version() {
     7.0|7.1) resolve_latest_wordpress_patch "$1" '8.3' ;;
     *) fail "unsupported WordPress line $1" ;;
   esac
+}
+
+resolve_matrix_wp_versions() {
+  local pairs=$1 line branch previous_line=''
+  while IFS=, read -r line branch; do
+    if [[ "$line" != "$previous_line" ]]; then
+      printf '%s,%s\n' "$line" "$(runtime_wp_version "$line")"
+      previous_line=$line
+    fi
+  done <<< "$pairs"
 }
 
 run_fixture_phase() {
