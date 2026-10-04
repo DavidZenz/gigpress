@@ -61,8 +61,65 @@ function gigpress_administration_entry_case($case) {
         $checks['notes_escaped_exactly'] = strpos($result['html'], esc_textarea($hostile) . '</textarea>') !== false && strpos($result['html'], '<script>') === false;
         $checks['radio_and_checked_state_retained'] = preg_match('/value="show" checked=[\'"]checked[\'"]/', $result['html']) === 1 && preg_match('/id="show_multi"[^>]*checked=[\'"]checked[\'"]/', $result['html']) === 1;
         if ($checks['invalid_date_editable']) $checks = array_merge($checks, gigpress_administration_entry_recovery_checks($request, $bad, $hostile));
+    } elseif ($case === 'entry-controls') {
+        $checks = gigpress_administration_entry_control_checks($request);
     }
     return array('case' => $case, 'checks' => $checks);
+}
+
+function gigpress_administration_entry_control_checks($request) {
+    global $wpdb;
+    $checks = array();
+    foreach (array('none' => array('na', 'na', '00:00:01'), 'midnight' => array('00', '00', '00:00:00'), 'uncommon' => array('13', '17', '13:17:00'), 'missing-minute' => array('13', null, '13:00:00')) as $kind => $time) {
+        $input = array_merge($request, array('gp_hh' => $time[0], 'gp_min' => $time[1]));
+        if ($time[1] === null) unset($input['gp_min']);
+        $outcome = gigpress_administration_entry_request($input)['outcome'];
+        $row = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . GIGPRESS_SHOWS . ' WHERE show_id = %d', $outcome['show_id'] ?? 0), ARRAY_A);
+        $checks['time_' . $kind] = $outcome['status'] === 'saved' && $row && $row['show_time'] === $time[2];
+        if ($kind === 'uncommon') {
+            $edit = array_merge($input, array('gpaction' => 'update', 'show_id' => $outcome['show_id']));
+            $checks['unchanged_minute_17'] = gigpress_administration_entry_request($edit)['outcome']['status'] === 'saved';
+            $html = gigpress_administration_entry_request(array(), true, array('gpaction' => 'edit', 'show_id' => $outcome['show_id']))['html'];
+            $checks['minute_17_visible_selected'] = preg_match('/value="17" selected=[\'"]selected[\'"]/', $html) === 1;
+        }
+    }
+    foreach (array('equal' => '2032-05-06', 'earlier' => '2032-05-05') as $kind => $end) {
+        $outcome = gigpress_administration_entry_request(array_merge($request, array('show_multi' => '1', 'show_end_date' => $end)))['outcome'];
+        $row = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . GIGPRESS_SHOWS . ' WHERE show_id = %d', $outcome['show_id'] ?? 0), ARRAY_A);
+        $checks['end_' . $kind . '_semantics'] = $outcome['status'] === 'saved' && $row && $row['show_expire'] === $end && (int) $row['show_multi'] === 1;
+    }
+    $settings = get_option('gigpress_settings');
+    foreach (array('12' => 0, '24' => 1) as $clock => $alternate) {
+        update_option('gigpress_settings', array_merge($settings, array('alternate_clock' => $alternate)));
+        $html = gigpress_administration_entry_request(array(), true)['html'];
+        $checks['hour_domain_' . $clock] = preg_match_all('/<option value="(?:[01][0-9]|2[0-3])"[^>]*>/', substr($html, strpos($html, '<select name="gp_hh"'), strpos($html, '</select>', strpos($html, '<select name="gp_hh"')) - strpos($html, '<select name="gp_hh"'))) === 24;
+        $checks['clock_labels_' . $clock] = $clock === 12 || $clock === '12' ? preg_match('/value="13"[^>]*>1 PM<\/option>/', $html) === 1 && preg_match('/value="00"[^>]*>12 AM<\/option>/', $html) === 1 : preg_match('/value="13"[^>]*>13<\/option>/', $html) === 1;
+    }
+    update_option('gigpress_settings', $settings);
+    $html = gigpress_administration_entry_request(array(), true)['html'];
+    $checks['locked_optional_time_label'] = strpos($html, 'Time (optional)') !== false && strpos($html, 'Not specified') !== false;
+    $checks['locked_end_date_label'] = strpos($html, 'End date — last day of the event') !== false;
+    $checks['existing_cutoff_help'] = strpos($html, 'existing daily cutoff') !== false;
+    $start = strpos($html, '<select name="gp_min"');
+    $minuteHtml = substr($html, $start, strpos($html, '</select>', $start) - $start);
+    $checks['all_minutes_available'] = preg_match_all('/<option value="[0-5][0-9]"/', $minuteHtml) === 60;
+    $checks['no_js_minutes_reachable'] = strpos($minuteHtml, 'disabled') === false;
+    $checks['no_js_end_and_creation_reachable'] = strpos($html, ' hidden') === false && strpos($html, 'style="display:') === false && strpos($html, 'id="show_end_date"') !== false && strpos($html, 'id="venue_name"') !== false;
+    preg_match_all('/<(?:input|select|textarea)\b[^>]*\bid="([^"]+)"[^>]*>/', $html, $controls, PREG_SET_ORDER);
+    foreach ($controls as $control) {
+        if (strpos($control[0], 'type="hidden"') !== false) continue;
+        $checks['label_' . $control[1]] = strpos($html, 'for="' . $control[1] . '"') !== false;
+    }
+    $rejected = gigpress_administration_entry_request(array_merge($request, array('show_date' => '', 'show_multi' => '1', 'show_end_date' => '', 'gp_hh' => 'bad', 'gp_min' => 'bad')), true)['html'];
+    preg_match_all('/href="#([^"]+)"/', $rejected, $links);
+    foreach ($links[1] as $target) $checks['summary_target_' . $target] = strpos($rejected, 'id="' . $target . '"') !== false && strpos($rejected, 'id="' . $target . '-error"') !== false;
+    preg_match_all('/aria-describedby="([^"]+)"/', $rejected, $descriptions);
+    foreach ($descriptions[1] as $ids) foreach (explode(' ', $ids) as $id) $checks['description_target_' . $id] = strpos($rejected, 'id="' . $id . '"') !== false;
+    $checks['invalid_fields_identified'] = substr_count($rejected, 'aria-invalid="true"') >= 4;
+    $script = file_get_contents(WP_PLUGIN_DIR . '/gigpress/scripts/gigpress-admin.js');
+    $checks['no_forced_blur_in_enhancement'] = strpos($script, '.blur(') === false;
+    $checks['minute_enablement_enhancement'] = strpos($script, "prop('disabled'") !== false;
+    return $checks;
 }
 
 function gigpress_administration_entry_snapshot() {
