@@ -103,6 +103,33 @@ function gigpress_upgrade_preservation_run_show_lifecycle() {
 	return array('status' => $ok ? 'PASS' : 'FAIL', 'case' => 'show-lifecycle', 'fixture' => 'reconstructed-1.4', 'manifest_matches' => $ok, 'repeat_matches' => $ok);
 }
 
+function gigpress_upgrade_preservation_run_optional_request_fields() {
+	global $wpdb, $pluginErrors;
+	$fixture = require WP_PLUGIN_DIR . '/gigpress/tests/compat/fixtures/upgrade-preservation/1.4.php';
+	$ok = is_array($fixture) && upgrade_preservation_seed($fixture);
+	unset($GLOBALS['gigpress_db_bootstrap_result']);
+	$ok = $ok && gigpress_db_bootstrap()['status'] === 'ready';
+	require_once WP_PLUGIN_DIR . '/gigpress/admin/handlers.php';
+	$warningCount = count($pluginErrors);
+	$request = array(
+		'gp_mm' => '05', 'gp_dd' => '06', 'gp_yy' => '2032', 'gp_hh' => 'na', 'gp_min' => 'na',
+		'show_artist_id' => 41, 'show_venue_id' => 'new', 'venue_name' => 'Sparse Request Hall',
+		'venue_city' => 'Vienna', 'venue_country' => 'AT', 'show_tour_id' => 29,
+		'show_related' => 0, 'show_status' => 'active',
+	);
+	gigpress_upgrade_preservation_request('gigpress_add_show', $request);
+	$show = gigpress_upgrade_preservation_show_row((int) $wpdb->insert_id);
+	$venue = $show ? $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . GIGPRESS_VENUES . ' WHERE venue_id = %d', $show['show_venue_id']), ARRAY_A) : null;
+	$warnings = array_slice($pluginErrors, $warningCount);
+	$showOptional = array('show_price', 'show_tix_url', 'show_tix_phone', 'show_external_url', 'show_ages', 'show_notes');
+	$venueOptional = array('venue_address', 'venue_state', 'venue_postal_code', 'venue_url', 'venue_phone');
+	foreach ($showOptional as $field) $ok = $ok && $show && array_key_exists($field, $show) && $show[$field] === '';
+	foreach ($venueOptional as $field) $ok = $ok && $venue && array_key_exists($field, $venue) && $venue[$field] === '';
+	$ok = $ok && !$warnings && $show && $venue && $venue['venue_name'] === 'Sparse Request Hall'
+		&& $venue['venue_city'] === 'Vienna' && $venue['venue_country'] === 'AT';
+	return array('status' => $ok ? 'PASS' : 'FAIL', 'case' => 'optional-request-fields', 'fixture' => 'reconstructed-1.4', 'manifest_matches' => $ok, 'repeat_matches' => $ok, 'warning_count' => count($warnings));
+}
+
 function gigpress_upgrade_preservation_run_entity_guards() {
 	global $wpdb;
 	$fixture = require WP_PLUGIN_DIR . '/gigpress/tests/compat/fixtures/upgrade-preservation/1.4.php';
@@ -247,6 +274,7 @@ function gigpress_upgrade_preservation_run_tour_undo() {
 
 function gigpress_upgrade_preservation_run_crud($case) {
 	if ($case === 'show-lifecycle') return gigpress_upgrade_preservation_run_show_lifecycle();
+	if ($case === 'optional-request-fields') return gigpress_upgrade_preservation_run_optional_request_fields();
 	if ($case === 'entity-guards') return gigpress_upgrade_preservation_run_entity_guards();
 	if ($case === 'tour-undo') return gigpress_upgrade_preservation_run_tour_undo();
 	return array('status' => 'FAIL', 'case' => $case, 'fixture' => 'reconstructed-1.4', 'manifest_matches' => false, 'repeat_matches' => false);

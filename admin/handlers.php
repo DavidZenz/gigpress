@@ -48,12 +48,12 @@ function gigpress_prepare_show_fields($context = 'new') {
 		$show['show_expire'] = sprintf("%02d", $_POST['exp_yy']) . '-' . sprintf("%02d", $_POST['exp_mm']) . '-' . sprintf("%02d", $_POST['exp_dd']);
 		$show['show_multi'] = 1;
 	}
-	$show['show_price'] = gigpress_db_in($_POST['show_price']);
-	$show['show_tix_url'] = gigpress_db_in($_POST['show_tix_url'], FALSE);
-	$show['show_tix_phone'] = gigpress_db_in($_POST['show_tix_phone']);
-	$show['show_external_url'] = gigpress_db_in($_POST['show_external_url'], FALSE);
-	$show['show_ages'] = gigpress_db_in($_POST['show_ages']);
-	$show['show_notes'] = gigpress_db_in($_POST['show_notes'], FALSE);
+	$show['show_price'] = gigpress_db_in($_POST['show_price'] ?? null);
+	$show['show_tix_url'] = gigpress_db_in($_POST['show_tix_url'] ?? null, FALSE);
+	$show['show_tix_phone'] = gigpress_db_in($_POST['show_tix_phone'] ?? null);
+	$show['show_external_url'] = gigpress_db_in($_POST['show_external_url'] ?? null, FALSE);
+	$show['show_ages'] = gigpress_db_in($_POST['show_ages'] ?? null);
+	$show['show_notes'] = gigpress_db_in($_POST['show_notes'] ?? null, FALSE);
 	$show['show_status'] = gigpress_db_in($_POST['show_status']);
 	
 	// Create a new artist
@@ -63,7 +63,7 @@ function gigpress_prepare_show_fields($context = 'new') {
 		$artist = array(
 			'artist_name' => gigpress_db_in($_POST['artist_name']),
 			'artist_alpha' => gigpress_db_in($alpha),
-			'artist_url' => gigpress_db_in($_POST['artist_url'], FALSE)
+			'artist_url' => gigpress_db_in($_POST['artist_url'] ?? null, FALSE)
 		);
 		$insert_artist = $wpdb->insert(GIGPRESS_ARTISTS, $artist);
 		
@@ -182,13 +182,13 @@ function gigpress_prepare_venue_fields() {
 
 	$venue = array(
 		'venue_name' => gigpress_db_in($_POST['venue_name']),
-		'venue_address' => gigpress_db_in($_POST['venue_address']),
+		'venue_address' => gigpress_db_in($_POST['venue_address'] ?? null),
 		'venue_city' => gigpress_db_in($_POST['venue_city']),		
-		'venue_state' => gigpress_db_in($_POST['venue_state']),		
-		'venue_postal_code' => gigpress_db_in($_POST['venue_postal_code']),		
+		'venue_state' => gigpress_db_in($_POST['venue_state'] ?? null),
+		'venue_postal_code' => gigpress_db_in($_POST['venue_postal_code'] ?? null),
 		'venue_country' => gigpress_db_in($_POST['venue_country']),
-		'venue_url' => gigpress_db_in($_POST['venue_url'], FALSE),
-		'venue_phone' => gigpress_db_in($_POST['venue_phone'])
+		'venue_url' => gigpress_db_in($_POST['venue_url'] ?? null, FALSE),
+		'venue_phone' => gigpress_db_in($_POST['venue_phone'] ?? null)
 	);
 	return $venue;
 
