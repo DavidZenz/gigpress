@@ -26,7 +26,7 @@ Modernize GigPress in compatibility-first slices. Establish the WordPress 7.0+ a
   3. Plugin metadata and readme declare WordPress 7.0 and PHP 8.3 minimums; the tested-up-to value names only a WordPress release that has passed compatibility checks.
   4. On an already-active site below PHP 8.3, GigPress remains active but loads no normal modules, hooks, functions, or workflows; only a persistent plugin-manager compatibility notice is registered, and normal behavior resumes automatically without that notice on PHP 8.3+.
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans executed
 
 Plans:
 **Wave 1**
@@ -40,7 +40,7 @@ Plans:
 - [x] 01-04-PLAN.md — Replace late menu mutation with pure ordering and standard-order fallback.
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 01-05-PLAN.md — Run the full compatibility matrix and publish evidence-backed metadata.
+- [x] 01-05-PLAN.md — Run the full compatibility matrix and publish evidence-backed metadata.
 
 **UI hint**: yes
 **Research flags**: Reproduce the reported WordPress 7.1.2/PHP 8.2 warning as diagnostic context, inspect the final menu arrays and active ordering callbacks, verify the active-but-inert below-floor guard, and run the supported WordPress/PHP matrix through OrbStack's Docker-compatible Compose runtime. PHP 8.2 is not a support target and host PHP is not required.
@@ -107,7 +107,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Compatibility Baseline and Menu Diagnosis | 4/5 | In Progress|  |
+| 1. Compatibility Baseline and Menu Diagnosis | 5/5 | In Progress|  |
 | 2. Data and Upgrade Preservation | 0/TBD | Not started | - |
 | 3. Administration Workflows | 0/TBD | Not started | - |
 | 4. Public Publishing | 0/TBD | Not started | - |

@@ -2,17 +2,17 @@
 gsd_state_version: "1.0"
 current_phase: 01
 current_phase_name: Compatibility Baseline and Menu Diagnosis
-status: executing
-stopped_at: Completed 01-04-PLAN.md
-last_updated: "2026-10-04T07:07:57.131Z"
+status: verifying
+stopped_at: Completed 01-05-PLAN.md
+last_updated: "2026-10-04T07:22:22.772Z"
 last_activity: 2026-10-03
 last_activity_desc: Phase 01 execution started
-state_head: deddd8713a4cca94fb4048e5ad6de4e99bfcce9b
+state_head: 4af75bd230f7350ca9eb5b29bda3c2c4386b68aa
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 5
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-10-03)
 
 Phase: 01 (Compatibility Baseline and Menu Diagnosis) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-10-03 — Phase 01 execution started
 
 Progress: ░░░░░░░░░░ [░░░░░░░░░░] 0%
@@ -60,6 +60,7 @@ Progress: ░░░░░░░░░░ [░░░░░░░░░░] 0%
 | Phase 01 P02 | 8min | 2 tasks | 5 files |
 | Phase 01 P03 | 14min | 2 tasks | 4 files |
 | Phase 01 P04 | 48min | 2 tasks | 6 files |
+| Phase 01 P05 | 90m | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,8 @@ Recent decisions affecting current work:
 - [Phase 01]: Declared WordPress 7.0 and PHP 8.3 floors in plugin and readme metadata.
 - [Phase 01]: Below PHP 8.3, GigPress remains active but registers only an escaped activate_plugins-scoped compatibility notice.
 - [Phase 01]: Register separator-gp during admin_menu and return standard order when menu ordering conflicts.
+- [Phase 01]: WordPress 7.0.6 is tested from the official archive on an official PHP/Apache runtime base because its exact Docker tag is unavailable.
+- [Phase 01]: Tested up to 7.1 is backed by every latest-patch WordPress 7.1/PHP 8.3-8.5 full-workflow cell.
 
 ### Pending Todos
 
@@ -101,6 +104,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-04T07:07:57.113Z
-Stopped at: Completed 01-04-PLAN.md
+Last session: 2026-10-04T07:22:22.754Z
+Stopped at: Completed 01-05-PLAN.md
 Resume file: None
