@@ -16,7 +16,7 @@ Requirements for the first compatibility and UX delivery. Each maps to a roadmap
 
 ### Existing Data and Behavior
 
-- [ ] **DATA-01**: Updating GigPress leaves existing show, artist, venue, and tour records, relationships, and saved settings usable without data loss.
+- [x] **DATA-01**: Updating GigPress leaves existing show, artist, venue, and tour records, relationships, and saved settings usable without data loss.
 - [ ] **DATA-02**: Site owners can continue to create, edit, copy, trash, and restore shows and manage their artist, venue, and tour relationships using GigPress’s existing data model.
 
 ### Public Publishing
@@ -67,7 +67,7 @@ Which phases cover which requirements.
 | COMP-02 | Phase 1 | Complete |
 | COMP-03 | Phase 1 | Complete |
 | COMP-04 | Phase 1 | Complete |
-| DATA-01 | Phase 2 | Pending |
+| DATA-01 | Phase 2 | Complete |
 | DATA-02 | Phase 2 | Pending |
 | ADMIN-01 | Phase 3 | Pending |
 | ADMIN-02 | Phase 3 | Pending |

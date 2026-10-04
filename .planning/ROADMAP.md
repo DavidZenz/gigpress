@@ -55,11 +55,11 @@ Plans:
   1. After updating GigPress, existing show, artist, venue, and tour records, their IDs and relationships, and saved settings remain present and usable without data loss.
   2. Site owners can create, edit, copy, trash, and restore shows and continue managing their artist, venue, and tour relationships using the existing data model.
 
-**Plans**: 4 plans
+**Plans**: 1/4 plans executed
 
 Plans:
 **Wave 1**
-- [ ] 02-01-PLAN.md — Establish a safe representative 1.4-to-1.6 upgrade with retry and failure gating
+- [x] 02-01-PLAN.md — Establish a safe representative 1.4-to-1.6 upgrade with retry and failure gating
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 02-02-PLAN.md — Preserve the remaining 1.0–1.5 upgrade paths and the 1.6 steady state
@@ -120,7 +120,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Compatibility Baseline and Menu Diagnosis | 5/5 | Complete    | 2026-10-04 |
-| 2. Data and Upgrade Preservation | 0/TBD | Not started | - |
+| 2. Data and Upgrade Preservation | 1/4 | In Progress|  |
 | 3. Administration Workflows | 0/TBD | Not started | - |
 | 4. Public Publishing | 0/TBD | Not started | - |
 | 5. CSV Import/Export | 0/TBD | Not started | - |
