@@ -347,7 +347,7 @@ if ($purpose === 'upgrade-preservation' && in_array($upgradeCase, array('current
     $upgradePreservation = $upgradeCase === 'current-1.6' ? gigpress_upgrade_preservation_run_current() : gigpress_upgrade_preservation_run_settings_repeat();
     if ($upgradePreservation['status'] !== 'PASS') $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Current-version preservation matrix did not converge', 'file' => __FILE__, 'line' => __LINE__);
 }
-if ($purpose === 'upgrade-preservation' && in_array($upgradeCase, array('show-lifecycle', 'entity-guards'), true)) {
+if ($purpose === 'upgrade-preservation' && in_array($upgradeCase, array('show-lifecycle', 'entity-guards', 'tour-undo'), true)) {
     require WP_PLUGIN_DIR . '/gigpress/tests/compat/upgrade-preservation-crud.php';
     $upgradePreservation = gigpress_upgrade_preservation_run_crud($upgradeCase);
     if ($upgradePreservation['status'] !== 'PASS') $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Post-upgrade show lifecycle did not preserve handler semantics', 'file' => __FILE__, 'line' => __LINE__);

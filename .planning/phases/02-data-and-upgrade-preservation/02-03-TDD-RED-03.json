@@ -1,0 +1,9 @@
+{
+  "command": "rtk bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario upgrade-preservation --case tour-undo",
+  "exitCode": 2,
+  "targetTest": "upgrade-preservation.tour-undo",
+  "targetFile": "tests/compat/upgrade-preservation-crud.php",
+  "expected": "Tour undo restores only the shows owned by the requested pending operation and preserves later reassignment or ambiguous legacy state.",
+  "actual": "not ok 1 - upgrade-preservation.tour-undo; Post-upgrade show lifecycle did not preserve handler semantics.",
+  "output": "not ok 1 - upgrade-preservation.tour-undo\n# tests 1\n# pass 0\n# fail 1"
+}

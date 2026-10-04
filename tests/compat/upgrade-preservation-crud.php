@@ -156,8 +156,54 @@ function gigpress_upgrade_preservation_run_entity_guards() {
 	return array('status' => $ok ? 'PASS' : 'FAIL', 'case' => 'entity-guards', 'fixture' => 'reconstructed-1.4', 'manifest_matches' => $ok, 'repeat_matches' => $ok);
 }
 
+function gigpress_upgrade_preservation_run_tour_undo() {
+	global $wpdb;
+	$fixture = require WP_PLUGIN_DIR . '/gigpress/tests/compat/fixtures/upgrade-preservation/1.4.php';
+	$ok = is_array($fixture) && upgrade_preservation_seed($fixture);
+	unset($GLOBALS['gigpress_db_bootstrap_result']);
+	$ok = $ok && gigpress_db_bootstrap()['status'] === 'ready';
+	require_once WP_PLUGIN_DIR . '/gigpress/admin/handlers.php';
+	$source = gigpress_upgrade_preservation_show_row(109);
+	$wpdb->insert(GIGPRESS_TOURS, array('tour_name' => 'Second pending tour', 'tour_status' => 'active'));
+	$secondTour = (int) $wpdb->insert_id;
+	$secondShow = $source;
+	unset($secondShow['show_id']);
+	$secondShow['show_tour_id'] = $secondTour;
+	$secondShow['show_notes'] = 'Second pending show';
+	$wpdb->insert(GIGPRESS_SHOWS, $secondShow);
+	$secondShowId = (int) $wpdb->insert_id;
+	$wpdb->insert(GIGPRESS_TOURS, array('tour_name' => 'Intervening reassignment', 'tour_status' => 'active'));
+	$interveningTour = (int) $wpdb->insert_id;
+
+	gigpress_upgrade_preservation_request('gigpress_delete_tour', array('tour_id' => 29));
+	$firstMap = get_option('gigpress_tour_restore_map', array());
+	$ok = $ok && isset($firstMap[29][109], $firstMap[29][113])
+		&& (int) gigpress_upgrade_preservation_show_row(109)['show_tour_id'] === 0
+		&& (int) gigpress_upgrade_preservation_show_row(113)['show_tour_id'] === 0;
+	gigpress_upgrade_preservation_request('gigpress_delete_tour', array('tour_id' => $secondTour));
+	$secondMap = get_option('gigpress_tour_restore_map', array());
+	$ok = $ok && isset($secondMap[29][109], $secondMap[$secondTour][$secondShowId]);
+
+	$wpdb->update(GIGPRESS_SHOWS, array('show_tour_id' => $interveningTour), array('show_id' => 109));
+	gigpress_upgrade_preservation_request(function () { gigpress_undo('tour'); }, array('tour_id' => 29));
+	$afterFirstUndo = get_option('gigpress_tour_restore_map', array());
+	$ok = $ok && (int) gigpress_upgrade_preservation_show_row(109)['show_tour_id'] === $interveningTour
+		&& (int) gigpress_upgrade_preservation_show_row(113)['show_tour_id'] === 29
+		&& !isset($afterFirstUndo[29]) && isset($afterFirstUndo[$secondTour][$secondShowId]);
+	gigpress_upgrade_preservation_request(function () { gigpress_undo('tour'); }, array('tour_id' => $secondTour));
+	$ok = $ok && (int) gigpress_upgrade_preservation_show_row($secondShowId)['show_tour_id'] === $secondTour
+		&& !get_option('gigpress_tour_restore_map', false);
+
+	$wpdb->update(GIGPRESS_SHOWS, array('show_tour_id' => 0, 'show_tour_restore' => 1), array('show_id' => 109));
+	gigpress_upgrade_preservation_request(function () { gigpress_undo('tour'); }, array('tour_id' => 29));
+	$ok = $ok && (int) gigpress_upgrade_preservation_show_row(109)['show_tour_id'] === 0;
+
+	return array('status' => $ok ? 'PASS' : 'FAIL', 'case' => 'tour-undo', 'fixture' => 'reconstructed-1.4', 'manifest_matches' => $ok, 'repeat_matches' => $ok);
+}
+
 function gigpress_upgrade_preservation_run_crud($case) {
 	if ($case === 'show-lifecycle') return gigpress_upgrade_preservation_run_show_lifecycle();
 	if ($case === 'entity-guards') return gigpress_upgrade_preservation_run_entity_guards();
+	if ($case === 'tour-undo') return gigpress_upgrade_preservation_run_tour_undo();
 	return array('status' => 'FAIL', 'case' => $case, 'fixture' => 'reconstructed-1.4', 'manifest_matches' => false, 'repeat_matches' => false);
 }
