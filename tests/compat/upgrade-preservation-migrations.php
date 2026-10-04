@@ -36,7 +36,7 @@ function gigpress_upgrade_preservation_manifest_matches($fixture, $snapshot) {
         'venue_state' => ($snapshot['venues'][0]['venue_state'] ?? null) === $expected['venue_state'],
         'journal_removed' => !get_option('gigpress_upgrade_state', false),
     );
-    foreach ($expected['settings'] as $key => $value) $checks['setting_' . $key] = array_key_exists($key, $snapshot['settings']) && $snapshot['settings'][$key] === $value;
+    foreach ((array) ($expected['settings'] ?? array()) as $key => $value) $checks['setting_' . $key] = array_key_exists($key, $snapshot['settings']) && $snapshot['settings'][$key] === $value;
     return array($checks, !in_array(false, $checks, true));
 }
 
@@ -86,4 +86,40 @@ function gigpress_upgrade_preservation_run_versions($versions) {
         $details[$version] = array('checks' => $checks, 'repeat' => $first === $second, 'retries' => $retries, 'retry_failures' => $retryFailures, 'seeded' => $seeded, 'actual_show_ids' => array_map('intval', array_column($first['shows'], 'show_id')));
     }
     return array('status' => $passes ? 'PASS' : 'FAIL', 'fixtures' => $details);
+}
+
+function gigpress_upgrade_preservation_run_current() {
+	global $upgrade_preservation_seed;
+	$fixture = gigpress_upgrade_preservation_fixture('1.6');
+	if (!is_array($fixture) || !upgrade_preservation_seed($fixture)) return array('status' => 'FAIL');
+	$before = gigpress_upgrade_preservation_snapshot();
+	unset($GLOBALS['gigpress_db_bootstrap_result']);
+	$first = gigpress_db_bootstrap();
+	$after = gigpress_upgrade_preservation_snapshot();
+	unset($GLOBALS['gigpress_db_bootstrap_result']);
+	$second = gigpress_db_bootstrap();
+	$repeat = gigpress_upgrade_preservation_snapshot();
+	list($checks, $matches) = gigpress_upgrade_preservation_manifest_matches($fixture, $after);
+	$ok = $first['status'] === 'ready' && $first['code'] === 'current' && $second['code'] === 'current' && $before === $after && $after === $repeat && $matches && !get_option('gigpress_upgrade_state', false);
+	return array('status' => $ok ? 'PASS' : 'FAIL', 'checks' => $checks, 'unchanged' => $before === $after, 'repeat' => $after === $repeat, 'journal_absent' => !get_option('gigpress_upgrade_state', false));
+}
+
+function gigpress_upgrade_preservation_run_settings_repeat() {
+	global $upgrade_preservation_seed;
+	$passes = true; $fixtures = array();
+	foreach (array('1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6') as $version) {
+		$fixture = gigpress_upgrade_preservation_fixture($version);
+		$seeded = is_array($fixture) && upgrade_preservation_seed($fixture);
+		unset($GLOBALS['gigpress_db_bootstrap_result']);
+		$first = gigpress_db_bootstrap();
+		$after = gigpress_upgrade_preservation_snapshot();
+		unset($GLOBALS['gigpress_db_bootstrap_result']);
+		$second = gigpress_db_bootstrap();
+		$repeat = gigpress_upgrade_preservation_snapshot();
+		list($checks, $matches) = gigpress_upgrade_preservation_manifest_matches($fixture, $after);
+		$stable = $after === $repeat;
+		$passes = $passes && $seeded && $first['status'] === 'ready' && $second['status'] === 'ready' && $matches && $stable;
+		$fixtures[$version] = array('checks' => $checks, 'repeat' => $stable);
+	}
+	return array('status' => $passes ? 'PASS' : 'FAIL', 'fixtures' => $fixtures);
 }
