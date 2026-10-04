@@ -132,6 +132,26 @@ wait_for_database() {
   fail "disposable MariaDB application account did not become ready"
 }
 
+wordpress_image_version() {
+  case "$1" in
+    # The current 7.0.6 release is archived by WordPress.org but no longer
+    # has a matching Official Image tag. Use the current official image only
+    # as the PHP/Apache base, then replace its core from the official archive.
+    7.0.6) printf '%s' '7.1.2' ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+install_archived_wordpress_core() {
+  [[ "$WP_VERSION" == '7.0.6' ]] || return 0
+  compose_env exec -T wordpress sh -ec '
+    archive=/tmp/wordpress-7.0.6.tar.gz
+    curl -fsSL https://wordpress.org/wordpress-7.0.6.tar.gz -o "$archive"
+    find /var/www/html -mindepth 1 -maxdepth 1 ! -name wp-content ! -name wp-config.php -exec rm -rf {} +
+    tar -xzf "$archive" --strip-components=1 --exclude="wordpress/wp-content" -C /var/www/html
+  '
+}
+
 normalise_matrix() {
   local wp_lines=$1 php_branches=$2
   [[ -n "$wp_lines" && -n "$php_branches" ]] || return 1
@@ -351,15 +371,18 @@ run_matrix() {
     [[ "$conflict_position" == before || "$conflict_position" == after ]] || fail "matrix conflict coverage requires a before or after position"
   fi
   [[ "$scenario" == activation-menu || "$scenario" == admin-menu || "$scenario" == csv-roundtrip || "$scenario" == full-workflows ]] || fail "unsupported matrix scenario: $scenario"
-  local pair line branch wp_version
+  local pair line branch wp_version matrix_failed=false
   while IFS=, read -r line branch; do
     wp_version=$(runtime_wp_version "$line")
     local -a cell_args=(cell --wp "$wp_version" --php "$branch" --scenario "$scenario")
     if [[ -n "$conflict_fixture" ]]; then
       cell_args+=(--conflict-fixture "$conflict_fixture" --conflict-mode "$conflict_mode" --conflict-position "$conflict_position")
     fi
-    bash "$COMPAT_DIR/run.sh" "${cell_args[@]}" </dev/null
-  done < <(normalise_matrix "$wp_lines" "$php_branches") || fail "matrix cell failed"
+    if ! bash "$COMPAT_DIR/run.sh" "${cell_args[@]}" </dev/null; then
+      matrix_failed=true
+    fi
+  done < <(normalise_matrix "$wp_lines" "$php_branches")
+  [[ "$matrix_failed" == false ]] || fail "matrix cell failed"
 }
 
 runtime_wp_version() {
@@ -416,6 +439,7 @@ run_runtime_floor() {
   IFS=',' read -r -a target_lines <<< "$wp_lines"
   for line in "${target_lines[@]}"; do
     WP_VERSION=$(runtime_wp_version "$line")
+    WORDPRESS_IMAGE_VERSION=$(wordpress_image_version "$WP_VERSION")
     PHP_VERSION=$supported_php
     PROJECT="gigpress_floor_${line//./}_${RANDOM}_$$_$(date +%s)"
     DB_PASSWORD="compat_${RANDOM}_${RANDOM}"
@@ -426,13 +450,14 @@ run_runtime_floor() {
       env REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" PHP_VERSION="$PHP_VERSION" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true
     }
     compose_env() {
-      env -u COMPOSE_FILE -u COMPOSE_PROJECT_NAME -u WORDPRESS_DB_HOST -u MYSQL_HOST -u DB_HOST -u DATABASE_URL REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" PHP_VERSION="$PHP_VERSION" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" "$@"
+      env -u COMPOSE_FILE -u COMPOSE_PROJECT_NAME -u WORDPRESS_DB_HOST -u MYSQL_HOST -u DB_HOST -u DATABASE_URL REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" WORDPRESS_IMAGE_VERSION="$WORDPRESS_IMAGE_VERSION" PHP_VERSION="$PHP_VERSION" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" "$@"
     }
     trap cleanup_floor EXIT INT TERM
     if ! compose_env pull --quiet wordpress db >/dev/null || ! compose_env up -d db >/dev/null; then cleanup_floor; fail "could not start isolated fixture database $line/PHP $supported_php"; fi
     wait_for_database
     if ! compose_env up -d wordpress >/dev/null; then cleanup_floor; fail "could not start isolated fixture WordPress $line/PHP $supported_php"; fi
     wait_for_wordpress
+    install_archived_wordpress_core
     if [[ "$target" == fixture ]]; then
       supported_state=$(run_fixture_phase fixture-activate)
     else
@@ -494,6 +519,7 @@ run_diagnose_menu() {
     git -C "$ROOT" log --all -S'separator-gigpress' --format=%H -- gigpress.php | rtk grep -q . && fail "repository history unexpectedly contains separator-gigpress in gigpress.php"
   fi
   PROJECT="gigpress_menu_diagnosis_${RANDOM}_$$_$(date +%s)"
+  WORDPRESS_IMAGE_VERSION="$WP_VERSION"
   DB_PASSWORD="compat_${RANDOM}_${RANDOM}"; DB_ROOT_PASSWORD="root_${RANDOM}_${RANDOM}"
   COMPOSE=(docker compose --project-name "$PROJECT" --file "$COMPAT_DIR/compose.yaml")
   CLEANUP_NEEDED=false
@@ -504,7 +530,7 @@ run_diagnose_menu() {
   }
   trap cleanup EXIT INT TERM
   compose_env() {
-    env -u COMPOSE_FILE -u COMPOSE_PROJECT_NAME -u WORDPRESS_DB_HOST -u MYSQL_HOST -u DB_HOST -u DATABASE_URL REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" PHP_VERSION="$PHP_VERSION" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" "$@"
+    env -u COMPOSE_FILE -u COMPOSE_PROJECT_NAME -u WORDPRESS_DB_HOST -u MYSQL_HOST -u DB_HOST -u DATABASE_URL REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" WORDPRESS_IMAGE_VERSION="$WORDPRESS_IMAGE_VERSION" PHP_VERSION="$PHP_VERSION" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" "$@"
   }
   CLEANUP_NEEDED=true
   compose_env pull wordpress db
@@ -593,6 +619,7 @@ if [[ -n "$CONFLICT_FIXTURE" || -n "$CONFLICT_MODE" ]]; then
 fi
 
 PROJECT="gigpress_compat_${RANDOM}_$$_$(date +%s)"
+WORDPRESS_IMAGE_VERSION=$(wordpress_image_version "$WP_VERSION")
 DB_PASSWORD="compat_${RANDOM}_${RANDOM}"
 DB_ROOT_PASSWORD="root_${RANDOM}_${RANDOM}"
 COMPOSE=(docker compose --project-name "$PROJECT" --file "$COMPAT_DIR/compose.yaml")
@@ -607,7 +634,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 compose_env() {
   env -u COMPOSE_FILE -u COMPOSE_PROJECT_NAME -u WORDPRESS_DB_HOST -u MYSQL_HOST -u DB_HOST -u DATABASE_URL \
-    REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" PHP_VERSION="$PHP_VERSION" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" "$@"
+    REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" WORDPRESS_IMAGE_VERSION="$WORDPRESS_IMAGE_VERSION" PHP_VERSION="$PHP_VERSION" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" "$@"
 }
 
 CLEANUP_NEEDED=true
@@ -620,14 +647,16 @@ for attempt in $(seq 1 45); do
 done
 wait_for_database
 wait_for_wordpress
+install_archived_wordpress_core
 if [[ "$CONFLICT_MODE" == order-only ]]; then
   compose_env exec -T wordpress sh -c 'cp /var/www/html/wp-content/plugins/gigpress/tests/compat/fixtures/menu-conflict-plugin.php /var/www/html/wp-content/plugins/menu-conflict-plugin.php'
 fi
 output=$(compose_env exec -T -e COMPAT_PURPOSE="$SCENARIO" -e COMPAT_CONFLICT_MODE="$CONFLICT_MODE" -e COMPAT_CONFLICT_POSITION="$CONFLICT_POSITION" wordpress php /compat/probe.php) || { printf '%s\n' "$output" >&2; fail "probe failed"; }
-image="wordpress:${WP_VERSION}-php${PHP_VERSION}-apache"
+image="wordpress:${WORDPRESS_IMAGE_VERSION}-php${PHP_VERSION}-apache"
 image_id=$(rtk docker image inspect --format '{{.Id}}' "$image")
 result=$(printf '%s\n' "$output" | rtk proxy jq -c --arg image "$image" --arg image_id "$image_id" --arg source_revision "$(rtk proxy git rev-parse HEAD)" '. + {image: $image, image_id: $image_id, source_revision: $source_revision}')
 printf '%s\n' "$result" | tee "$RESULT_DIR/${WP_VERSION}-php${PHP_VERSION}-${SCENARIO}.json"
+printf '%s\n' "$result" | rtk jq -e --arg wp "$WP_VERSION" '.wordpress_version == $wp' >/dev/null || fail "probe did not boot requested WordPress $WP_VERSION"
 if [[ "$SCENARIO" == admin-menu && "$CONFLICT_MODE" == order-only ]]; then
   printf '%s\n' "$output" | rtk jq -e '.status == "PASS" and .plugin_active == true and .menu_order_conflict == true and (.menu_warnings | length == 0) and (.plugin_errors | length == 0) and ((.menu_slugs | length) == (.menu_slugs | unique | length)) and ((.menu_slugs | index("edit-comments.php")) as $comments | (.menu_slugs | index("gigpress.php")) as $gigpress | ($comments != null and $gigpress != null and $gigpress > $comments) and ((.menu_slugs | index("separator-gp")) == null))' >/dev/null || fail "conflict cell did not preserve standard WordPress menu order"
 elif [[ "$SCENARIO" == admin-menu ]]; then
