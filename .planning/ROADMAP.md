@@ -7,7 +7,7 @@ Modernize GigPress in compatibility-first slices. Establish the WordPress 7.0+ a
 ## Phases
 
 - [x] **Phase 1: Compatibility Baseline and Menu Diagnosis** - Establish supported runtime metadata and warning-free core workflows. (completed 2026-10-04)
-- [ ] **Phase 2: Data and Upgrade Preservation** - Keep existing records, relationships, settings, and CRUD behavior usable through updates.
+- [x] **Phase 2: Data and Upgrade Preservation** - Keep existing records, relationships, settings, and CRUD behavior usable through updates. (completed 2026-10-04)
 - [ ] **Phase 3: Administration Workflows** - Improve show entry, show-list management, and settings while keeping established behavior.
 - [ ] **Phase 4: Public Publishing** - Make default show listings responsive and preserve public output and theme override contracts.
 - [ ] **Phase 5: CSV Import/Export** - Improve task clarity and outcome feedback while preserving CSV behavior and protecting mutations.
@@ -47,7 +47,7 @@ Plans:
 
 ### Phase 2: Data and Upgrade Preservation
 
-**Goal**: Site owners can update GigPress and keep their existing records, relationships, settings, and show-management behavior usable.
+**Goal**: As a site owner, I want to update GigPress while preserving existing records, relationships, settings, and show-management workflows, so that I can upgrade without data loss or disrupting routine show management.
 **Mode:** mvp
 **Depends on**: Phase 1
 **Requirements**: DATA-01, DATA-02
@@ -55,7 +55,7 @@ Plans:
   1. After updating GigPress, existing show, artist, venue, and tour records, their IDs and relationships, and saved settings remain present and usable without data loss.
   2. Site owners can create, edit, copy, trash, and restore shows and continue managing their artist, venue, and tour relationships using the existing data model.
 
-**Plans**: 4/4 plans executed
+**Plans**: 4/4 plans complete
 
 Plans:
 **Wave 1**
@@ -98,7 +98,7 @@ Plans:
 
 **Plans**: TBD
 **UI hint**: yes
-**Research flags**: Verify real theme override layouts and resolver order; check RSS XML and iCalendar output against representative and hostile values, including punctuation and newlines, without applying HTML escaping to machine-readable formats.
+**Research flags**: Verify real theme override layouts and resolver order; check RSS XML and iCalendar output against representative and hostile values, including punctuation and newlines, without applying HTML escaping to machine-readable formats. Exercise these surfaces on populated migrated Phase 02 fixtures; the Phase 02 full-workflow cells used fresh databases.
 
 ### Phase 5: CSV Import/Export
 
@@ -113,14 +113,14 @@ Plans:
 
 **Plans**: TBD
 **UI hint**: yes
-**Research flags**: Use representative CSV fixtures to verify duplicate/invalid rows, partial failures, row counts and reasons, spreadsheet safety, and import/export round trips while retaining current column and filter behavior.
+**Research flags**: Use representative CSV fixtures to verify duplicate/invalid rows, partial failures, row counts and reasons, spreadsheet safety, and import/export round trips while retaining current column and filter behavior. Run import/export on populated migrated Phase 02 fixtures to complete the deferred migration integration check.
 
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Compatibility Baseline and Menu Diagnosis | 5/5 | Complete    | 2026-10-04 |
-| 2. Data and Upgrade Preservation | 4/4 | In Progress|  |
+| 2. Data and Upgrade Preservation | 4/4 | Complete    | 2026-10-04 |
 | 3. Administration Workflows | 0/TBD | Not started | - |
 | 4. Public Publishing | 0/TBD | Not started | - |
 | 5. CSV Import/Export | 0/TBD | Not started | - |

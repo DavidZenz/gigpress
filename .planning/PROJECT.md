@@ -18,10 +18,12 @@ Site owners can manage show information and reliably publish it on their WordPre
 - ✓ Support WordPress 7.0 and the 7.1 release line with a stated minimum — Phase 1
 - ✓ Support PHP 8.3 and later with a stated minimum; PHP 8.2 remains diagnostic-only — Phase 1
 - ✓ Reproduce and trace the reported admin-menu warning with a controlled fixture, fix GigPress's equivalent menu-order conflict, and leave the unavailable live callback unclaimed — Phase 1
+- ✓ Preserve records, IDs, relationships, settings, and linked content through recognized database upgrades, interruption/retry, and repeat loads — Phase 2, reconstructed fixtures
+- ✓ Preserve post-upgrade show create/edit/copy/trash/restore, dependency-safe entity deletion, and ownership-safe tour undo — Phase 2
 
 ### Active
 
-- [ ] Preserve existing GigPress data and established administration, display, feed, and import/export behavior while updating compatibility.
+- [ ] Preserve established public display, feed, theme-override, and import/export contracts while improving publishing and CSV workflows.
 - [ ] Identify and deliver useful improvements to the add-show date/time workflow, show-list filtering and bulk actions, settings organization and help, responsive public show displays, and import/export layout and feedback.
 
 ### Out of Scope
@@ -37,6 +39,7 @@ Site owners can manage show information and reliably publish it on their WordPre
 - The user reported this warning on WordPress 7.1.2 with PHP 8.2: `Warning: Undefined array key "separator-gigpress" in wp-admin/includes/menu.php on line 339`. A controlled fixture now reproduces the exact core warning and identifies its fixture callback; the unavailable live site's callback remains unproven. PHP 8.2 is not part of the support target.
 - UX opportunities were identified by reading the existing source. The preferred and conflict-order admin menus were visually checked in disposable WordPress 7.1.2/PHP 8.3 cells; no live-site UI audit was performed.
 - A repository-owned OrbStack/Compose compatibility harness now covers supported PHP syntax, WordPress activation, menu ordering, data-preserving lifecycle transitions, and existing admin/public/feed/CSV workflows.
+- Phase 2 verifies populated reconstructed database versions 1.0–1.6 and post-upgrade CRUD across the supported matrix. No live backup was tested; public/CSV workflow cells use fresh databases, with migrated-fixture publishing and CSV integration assigned to Phases 4 and 5.
 
 ## Constraints
 
@@ -54,10 +57,14 @@ Site owners can manage show information and reliably publish it on their WordPre
 | Set the minimum WordPress version to 7.0. | User selected WordPress 7.0+ and 7.1+. | Implemented and verified in Phase 1 on WordPress 7.0.6 and 7.1.2. |
 | Treat the WordPress 7.1.2 / PHP 8.2 warning as an investigation clue, not a PHP 8.2 support commitment. | User clarified that PHP 8.2 is not a target. | Exact warning reproduced in a controlled fixture; the live callback identity is unproven. |
 | Include improvement work in all five identified UX areas, behind compatibility. | User selected priorities 1–5. | Sequenced after compatibility; data preservation is Phase 2, administration Phase 3, publishing Phase 4, and CSV Phase 5. |
+| Verify and journal each upgrade step, then write and read back the final completion marker. | Interrupted upgrades must resume without duplicating records or changing saved settings intent. | Verified across recognized source versions in Phase 2. |
+| Block unsafe metadata and gate all admin mutations on database readiness. | An unproven upgrade state must not accept writes or CSV upload side effects. | Verified bootstrap and handler guards in Phase 2. |
+| Count active and trashed dependencies before entity deletion and track tour undo ownership per show. | Deletion and undo must preserve relationships and intervening reassignment. | Verified against upgraded fixtures in Phase 2. |
+| Resolve upstream runtime targets and pin one WordPress patch per line for each matrix run. | Compatibility evidence must test consistent versions across PHP branches. | Six supported runtime cells pass in Phase 2; exact versions and image IDs are recorded. |
 
 ## Evolution
 
 After each phase, move completed and confirmed requirements from Active to Validated, move rejected requirements to Out of Scope with a reason, record new requirements and decisions, and update this project description if the product changes. Review all sections at each milestone.
 
 ---
-*Last updated: 2026-10-04 after Phase 1 compatibility verification.*
+*Last updated: 2026-10-04 after Phase 2 data and upgrade preservation verification.*
