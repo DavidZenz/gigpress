@@ -89,6 +89,7 @@ coverage:
 - Made artist and venue deletion unavailable whenever active or trashed shows reference the entity, at both the list view and handler boundary.
 - Replaced global tour restore-marker behavior with a per-tour show ownership map that preserves overlapping deletes and intervening reassignment.
 - Added disposable Compose probes that exercise the real WordPress handlers and preserve RED evidence for each behavior contract.
+- Closed additional mutation-boundary gaps found by the final security audit: venue, tour, and artist writes, CSV import, empty-trash, and legacy tour mapping now check readiness before side effects; the legacy mapping route also requires its nonce. Commit `61d60fd` adds regression coverage for the blocked paths.
 
 ## Task Commits
 
@@ -109,6 +110,8 @@ All commands passed in the OrbStack Compose harness on WordPress 7.1.2 and PHP 8
 
 The local host has no PHP executable, so the required container matrix is the PHP validation source for this plan.
 
+After the final security fix, the focused `show-lifecycle`, `entity-guards`, and `tour-undo` cases passed again on WordPress 7.1.2 / PHP 8.3. The lifecycle probe confirms all nine newly covered mutation routes preserve GigPress tables and options while readiness is blocked, reject forged nonce calls, and prevent CSV upload side effects. PHP 8.3 lint passed for the changed handlers and CRUD probe.
+
 ## Decisions Made
 
 - Reused the phase coordinator result rather than duplicating upgrade-state rules in each handler.
@@ -122,7 +125,7 @@ The local host has no PHP executable, so the required container matrix is the PH
 
 ## Deviations from Plan
 
-None - plan executed exactly as written.
+The final security audit found that the readiness guard originally covered the show, venue/artist deletion, and tour undo paths but missed additional dispatched mutation handlers. The phase scope was extended to cover those paths and add regression probes in commit `61d60fd`; this was a security-driven completion of the existing plan threat mitigation, not a new feature.
 
 ## Known Stubs
 
@@ -134,7 +137,7 @@ Plan 02-04 can consume the new three-case mutation probe alongside the preceding
 
 ## Self-Check: PASSED
 
-Verified the created mutation probe, all declared modified handlers and views, and commits \`e5528b2\`, \`44e45e7\`, \`30a3101\`, \`6b39262\`, \`97c7bef\`, and \`7ba699c\` in Git history.
+Verified the created mutation probe, all declared modified handlers and views, commits \`e5528b2\`, \`44e45e7\`, \`30a3101\`, \`6b39262\`, \`97c7bef\`, \`7ba699c\`, and the post-audit guard fix \`61d60fd\` in Git history.
 
 ---
 
