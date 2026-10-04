@@ -368,7 +368,7 @@ PHP
 }
 
 run_matrix() {
-  local wp_lines='' php_branches='' php_supported='' scenario='activation-menu' conflict_fixture='' conflict_mode='' conflict_position='' wp_patches='' php_min='' error_reporting=''
+  local wp_lines='' php_branches='' php_supported='' scenario='activation-menu' upgrade_case='' conflict_fixture='' conflict_mode='' conflict_position='' wp_patches='' php_min='' error_reporting=''
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --wp-lines) wp_lines=${2:-}; shift 2 ;;
@@ -378,6 +378,7 @@ run_matrix() {
       --php-min) php_min=${2:-}; shift 2 ;;
       --error-reporting) error_reporting=${2:-}; shift 2 ;;
       --scenario) scenario=${2:-}; shift 2 ;;
+      --case) upgrade_case=${2:-}; shift 2 ;;
       --conflict-fixture) conflict_fixture=${2:-}; shift 2 ;;
       --conflict-mode) conflict_mode=${2:-}; shift 2 ;;
       --conflict-position) conflict_position=${2:-}; shift 2 ;;
@@ -398,13 +399,19 @@ run_matrix() {
     [[ -n "$conflict_position" ]] || conflict_position=before
     [[ "$conflict_position" == before || "$conflict_position" == after ]] || fail "matrix conflict coverage requires a before or after position"
   fi
-  [[ "$scenario" == activation-menu || "$scenario" == admin-menu || "$scenario" == csv-roundtrip || "$scenario" == full-workflows ]] || fail "unsupported matrix scenario: $scenario"
+  [[ "$scenario" == activation-menu || "$scenario" == admin-menu || "$scenario" == csv-roundtrip || "$scenario" == full-workflows || "$scenario" == upgrade-preservation ]] || fail "unsupported matrix scenario: $scenario"
+  if [[ "$scenario" == upgrade-preservation ]]; then
+    [[ -n "$upgrade_case" ]] || upgrade_case=all
+  else
+    [[ -z "$upgrade_case" || "$upgrade_case" == tracer-1.4 ]] || fail "--case is only supported by upgrade-preservation"
+  fi
   local line branch wp_version pairs matrix_failed=false
   pairs=$(normalise_matrix "$wp_lines" "$php_branches") || fail "invalid compatibility matrix"
   [[ -n "$pairs" ]] || fail "compatibility matrix is empty"
   while IFS=, read -r line branch; do
     wp_version=$(runtime_wp_version "$line")
     local -a cell_args=(cell --wp "$wp_version" --php "$branch" --scenario "$scenario")
+    [[ "$scenario" != upgrade-preservation ]] || cell_args+=(--case "$upgrade_case")
     if [[ -n "$conflict_fixture" ]]; then
       cell_args+=(--conflict-fixture "$conflict_fixture" --conflict-mode "$conflict_mode" --conflict-position "$conflict_position")
     fi
@@ -413,6 +420,53 @@ run_matrix() {
     fi
   done <<< "$pairs"
   [[ "$matrix_failed" == false ]] || fail "matrix cell failed"
+}
+
+run_preservation_evidence() {
+  local report='' wp_lines='' php_min=''
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --report) report=${2:-}; shift 2 ;;
+      --wp-lines) wp_lines=${2:-}; shift 2 ;;
+      --php-min) php_min=${2:-}; shift 2 ;;
+      *) fail "unknown preservation-evidence option $1" ;;
+    esac
+  done
+  [[ "$report" == .planning/phases/02-data-and-upgrade-preservation/02-PRESERVATION-MATRIX.md && -f "$ROOT/$report" ]] || fail "preservation evidence report is required"
+  [[ "$wp_lines" == '7.0,7.1' ]] || fail "preservation evidence requires WordPress lines 7.0,7.1"
+  [[ "$php_min" == '8.3' ]] || fail "preservation evidence requires PHP 8.3 minimum"
+  rtk grep -Fq 'reconstructed from repository evidence' "$ROOT/$report" || fail "preservation report omits reconstructed-fixture caveat"
+  rtk grep -Fq 'No live backup or live site was tested' "$ROOT/$report" || fail "preservation report overclaims live-site evidence"
+  local evidence
+  evidence=$(rtk sed -n 's/^<!-- preservation-evidence: \(.*\) -->$/\1/p' "$ROOT/$report")
+  [[ $(printf '%s\n' "$evidence" | wc -l | tr -d ' ') == 1 ]] || fail "preservation report must contain exactly one machine evidence record"
+  printf '%s\n' "$evidence" | rtk jq -e '
+    .schema == "gigpress-preservation-evidence/v1"
+    and .support_boundary.php_min == "8.3"
+    and (.support_boundary.diagnostic_only_php | index("8.2"))
+    and (.wordpress_lines | sort == ["7.0", "7.1"])
+    and (.php_branches | sort == ["8.3", "8.4", "8.5"])
+    and ([.commands[] | contains("matrix --scenario upgrade-preservation --case all --wp-lines 7.0,7.1 --wp-patches latest --php-supported upstream --php-min 8.3 --error-reporting E_ALL")] | any)
+    and ([.commands[] | contains("matrix --scenario full-workflows --wp-lines 7.0,7.1 --wp-patches latest --php-supported upstream --php-min 8.3 --error-reporting E_ALL")] | any)
+    and (.fixtures | sort == ["1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6"])
+    and (.requirements.DATA-01.status == "PASS")
+    and (.requirements.DATA-02.status == "PASS")
+    and (.cells | length == 6)
+    and ([.cells[] | .wordpress_line] | unique | sort == ["7.0", "7.1"])
+    and ([.cells[] | .php_branch] | unique | sort == ["8.3", "8.4", "8.5"])
+    and ([.cells[] |
+      .status == "PASS"
+      and .upgrade_preservation.status == "PASS"
+      and .full_workflows.status == "PASS"
+      and .warning_count == 0
+      and .fatal_count == 0
+      and .plugin_error_count == 0
+      and (.upgrade_preservation.required_cases | sort == ["current-1.6", "entity-guards", "metadata-classification", "safety-1.4", "settings-repeat", "show-lifecycle", "tour-undo", "tracer-1.4", "versions-1.0-1.2", "versions-1.3-1.5"])
+      and (.upgrade_preservation.cases | length == 10)
+      and ([.upgrade_preservation.cases[] | .status == "PASS" and .ready == true and .plugin_active == true and .warning_count == 0 and .fatal_count == 0 and .plugin_error_count == 0] | all)
+    ] | all)
+  ' >/dev/null || fail "preservation report does not contain complete passing supported evidence"
+  printf '{"status":"PASS","report":"%s","wordpress_lines":"%s","php_min":"%s"}\n' "$report" "$wp_lines" "$php_min"
 }
 
 runtime_wp_version() {
@@ -617,12 +671,17 @@ if [[ "$MODE" == menu-contract ]]; then
   exit 0
 fi
 
+if [[ "$MODE" == preservation-evidence ]]; then
+  run_preservation_evidence "$@"
+  exit 0
+fi
+
 if [[ "$MODE" == matrix ]]; then
   run_matrix "$@"
   exit 0
 fi
 
-[[ "$MODE" == cell ]] || fail "supported commands: cell, matrix, lint, metadata, self-test, runtime-floor, menu-contract"
+[[ "$MODE" == cell ]] || fail "supported commands: cell, matrix, lint, metadata, self-test, runtime-floor, menu-contract, preservation-evidence"
 WP_VERSION=''; PHP_VERSION=''; SCENARIO='activation-menu'; UPGRADE_CASE='tracer-1.4'; TABLE_PREFIX='wp_'; CONFLICT_FIXTURE=''; CONFLICT_MODE=''; CONFLICT_POSITION=''
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -709,7 +768,9 @@ elif [[ "$SCENARIO" == admin-menu ]]; then
 elif [[ "$SCENARIO" == full-workflows ]]; then
   printf '%s\n' "$result" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.plugin_errors | length == 0) and .full_workflows.status == "PASS" and .full_workflows.admin_create_edit_read and .full_workflows.public_shortcode and .full_workflows.rss and .full_workflows.ical and .full_workflows.csv_import_export and .full_workflows.duplicate_preserved' >/dev/null || fail "full workflow cell did not satisfy the compatibility contract"
 elif [[ "$SCENARIO" == upgrade-preservation ]]; then
-  if [[ "$UPGRADE_CASE" == current-1.6 ]]; then
+  if [[ "$UPGRADE_CASE" == all ]]; then
+    upgrade_contract='.status == "PASS" and .plugin_active == true and (.plugin_errors | length == 0) and .fatal == null and (.menu_warnings | length == 0) and .upgrade_preservation.status == "PASS" and .upgrade_preservation.case == "all" and (.upgrade_preservation.required_cases | length == 10) and (.upgrade_preservation.cases | length == 10) and ((.upgrade_preservation.cases | map(.case) | unique | length) == 10) and ([.upgrade_preservation.cases[] | .status == "PASS" and .ready == true and .plugin_active == true and .warning_count == 0 and .fatal_count == 0 and .plugin_error_count == 0] | all)'
+  elif [[ "$UPGRADE_CASE" == current-1.6 ]]; then
     upgrade_contract='.status == "PASS" and .plugin_active == true and (.plugin_errors | length == 0) and .upgrade_preservation.status == "PASS" and .upgrade_preservation.unchanged and .upgrade_preservation.repeat and .upgrade_preservation.journal_absent and (.upgrade_preservation.checks | all)'
   elif [[ "$UPGRADE_CASE" == versions-1.0-1.2 || "$UPGRADE_CASE" == versions-1.3-1.5 || "$UPGRADE_CASE" == settings-repeat ]]; then
     upgrade_contract='.status == "PASS" and .plugin_active == true and (.plugin_errors | length == 0) and .upgrade_preservation.status == "PASS" and ([.upgrade_preservation.fixtures[] | (.repeat and (.checks | all))] | all)'

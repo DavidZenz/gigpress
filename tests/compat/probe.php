@@ -193,6 +193,131 @@ function upgrade_preservation_seed($fixture) {
     update_option('gigpress_settings', $fixture['settings']);
     return true;
 }
+
+$upgradePreservationRequiredCases = array(
+    'tracer-1.4',
+    'safety-1.4',
+    'metadata-classification',
+    'versions-1.0-1.2',
+    'versions-1.3-1.5',
+    'current-1.6',
+    'settings-repeat',
+    'show-lifecycle',
+    'entity-guards',
+    'tour-undo',
+);
+
+function gigpress_upgrade_preservation_reset_case_state() {
+    $_GET = array();
+    $_POST = array();
+    $_REQUEST = array();
+    $_FILES = array();
+    unset($GLOBALS['gigpress_db_bootstrap_result'], $GLOBALS['upgradeFailurePoint']);
+}
+
+function gigpress_upgrade_preservation_run_all($requiredCases) {
+    $migrationModule = WP_PLUGIN_DIR . '/gigpress/tests/compat/upgrade-preservation-migrations.php';
+    $crudModule = WP_PLUGIN_DIR . '/gigpress/tests/compat/upgrade-preservation-crud.php';
+    $moduleErrors = array();
+    foreach (array($migrationModule, $crudModule) as $module) {
+        if (!is_readable($module)) $moduleErrors[] = $module;
+    }
+    if (count($requiredCases) !== count(array_unique($requiredCases)) || $moduleErrors) {
+        return array(
+            'status' => 'FAIL',
+            'case' => 'all',
+            'required_cases' => $requiredCases,
+            'cases' => array(),
+            'module_errors' => $moduleErrors,
+            'reason' => $moduleErrors ? 'required support module is unavailable' : 'required case registry contains duplicate IDs',
+        );
+    }
+
+    $originalCase = getenv('COMPAT_UPGRADE_CASE');
+    $caseEvidence = array();
+    foreach ($requiredCases as $case) {
+        gigpress_upgrade_preservation_reset_case_state();
+        putenv('COMPAT_UPGRADE_CASE=' . $case);
+        $output = array();
+        $exitCode = 1;
+        exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg(__FILE__) . ' 2>&1', $output, $exitCode);
+        $record = json_decode(end($output), true);
+        $preservation = is_array($record) && isset($record['upgrade_preservation']) && is_array($record['upgrade_preservation']) ? $record['upgrade_preservation'] : array();
+        $warnings = is_array($record) && isset($record['menu_warnings']) && is_array($record['menu_warnings']) ? $record['menu_warnings'] : array();
+        $errors = is_array($record) && isset($record['plugin_errors']) && is_array($record['plugin_errors']) ? $record['plugin_errors'] : array();
+        $fixture = $preservation['fixture'] ?? null;
+        $caseMatches = ($preservation['case'] ?? null) === $case;
+        if (in_array($case, array('versions-1.0-1.2', 'versions-1.3-1.5', 'settings-repeat'), true)) {
+            $fixtures = isset($preservation['fixtures']) && is_array($preservation['fixtures']) ? $preservation['fixtures'] : array();
+            $caseMatches = !empty($fixtures) && !array_filter($fixtures, function ($detail) {
+                return empty($detail['repeat']) || empty($detail['checks']) || in_array(false, $detail['checks'], true);
+            });
+            $fixture = $fixtures ? 'reconstructed-' . implode(',', array_keys($fixtures)) : null;
+        } elseif ($case === 'current-1.6') {
+            $caseMatches = !empty($preservation['unchanged']) && !empty($preservation['repeat']) && !empty($preservation['journal_absent']) && !empty($preservation['checks']) && !in_array(false, $preservation['checks'], true);
+            $fixture = 'reconstructed-1.6';
+        }
+        $ready = $exitCode === 0
+            && is_array($record)
+            && ($record['status'] ?? 'FAIL') === 'PASS'
+            && ($record['plugin_active'] ?? false) === true
+            && ($preservation['status'] ?? 'FAIL') === 'PASS'
+            && $caseMatches
+            && !$warnings
+            && !$errors
+            && empty($record['fatal']);
+        $caseEvidence[] = array(
+            'case' => $case,
+            'status' => $ready ? 'PASS' : 'FAIL',
+            'fixture' => $fixture,
+            'ready' => $ready,
+            'plugin_active' => (bool) ($record['plugin_active'] ?? false),
+            'warning_count' => count($warnings),
+            'fatal_count' => empty($record['fatal']) ? 0 : 1,
+            'plugin_error_count' => count($errors),
+            'failure_detail' => $ready ? null : (is_array($record) ? ($record['fatal']['message'] ?? ($errors[0]['message'] ?? 'child result did not satisfy the preservation contract')) : implode("\n", $output)),
+        );
+    }
+    if ($originalCase === false) putenv('COMPAT_UPGRADE_CASE');
+    else putenv('COMPAT_UPGRADE_CASE=' . $originalCase);
+    $passed = !array_filter($caseEvidence, function ($evidence) { return $evidence['status'] !== 'PASS'; });
+    return array(
+        'status' => $passed ? 'PASS' : 'FAIL',
+        'case' => 'all',
+        'required_cases' => $requiredCases,
+        'cases' => $caseEvidence,
+        'plugin_active' => $passed,
+        'ready' => $passed,
+    );
+}
+
+if ($purpose === 'upgrade-preservation' && $upgradeCase === 'all') {
+    $upgradePreservation = gigpress_upgrade_preservation_run_all($upgradePreservationRequiredCases);
+    if ($upgradePreservation['status'] !== 'PASS') {
+        $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Aggregate upgrade preservation registry did not satisfy every required case', 'file' => __FILE__, 'line' => __LINE__);
+    }
+    $result = array(
+        'status' => $pluginErrors ? 'FAIL' : 'PASS',
+        'wordpress_version' => get_bloginfo('version'),
+        'php_version' => PHP_VERSION,
+        'plugin_active' => $upgradePreservation['plugin_active'],
+        'menu_slugs' => array(),
+        'menu_warnings' => array(),
+        'menu_order_conflict' => false,
+        'plugin_errors' => $pluginErrors,
+        'fatal' => $fatal,
+        'purpose' => $purpose,
+        'csv_roundtrip' => null,
+        'full_workflows' => null,
+        'upgrade_preservation' => $upgradePreservation,
+        'fixture_runtime' => null,
+        'real_plugin_runtime' => null,
+        'real_plugin_inventory' => array(),
+        'menu_trace' => null,
+    );
+    echo json_encode($result, JSON_UNESCAPED_SLASHES) . PHP_EOL;
+    exit($result['status'] === 'PASS' ? 0 : 1);
+}
 if ($purpose === 'upgrade-preservation') {
     $fixtureVersion = $upgradeCase === 'versions-1.0-1.2' ? '1.0' : ($upgradeCase === 'versions-1.3-1.5' ? '1.3' : (in_array($upgradeCase, array('current-1.6', 'settings-repeat'), true) ? '1.6' : '1.4'));
     $fixturePath = '/var/www/html/wp-content/plugins/gigpress/tests/compat/fixtures/upgrade-preservation/' . $fixtureVersion . '.php';
@@ -217,6 +342,9 @@ $fixturePurpose = in_array($purpose, array('fixture-activate', 'fixture-low', 'f
 $plugin = $fixturePurpose ? 'php-floor-plugin.php' : 'gigpress/gigpress.php';
 $skipGigPressActivation = $purpose === 'real-low-live'
     || ($purpose === 'diagnose-menu' && (getenv('COMPAT_SKIP_GIGPRESS_ACTIVATION') ?: '') === '1');
+if ($purpose === 'upgrade-preservation' && !$skipGigPressActivation) {
+    deactivate_plugins($plugin, false, false);
+}
 if (($purpose === 'fixture-activate' || !$fixturePurpose) && !$skipGigPressActivation) {
     $activation = activate_plugin($plugin, '', false, false);
     if (is_wp_error($activation)) {
@@ -351,15 +479,6 @@ if ($purpose === 'upgrade-preservation' && in_array($upgradeCase, array('show-li
     require WP_PLUGIN_DIR . '/gigpress/tests/compat/upgrade-preservation-crud.php';
     $upgradePreservation = gigpress_upgrade_preservation_run_crud($upgradeCase);
     if ($upgradePreservation['status'] !== 'PASS') $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Post-upgrade show lifecycle did not preserve handler semantics', 'file' => __FILE__, 'line' => __LINE__);
-}
-if ($purpose === 'upgrade-preservation' && $upgradeCase === 'all') {
-    $upgradePreservation = array(
-        'status' => 'FAIL',
-        'case' => 'all',
-        'required_cases' => array('tracer-1.4', 'safety-1.4', 'metadata-classification', 'versions-1.0-1.2', 'versions-1.3-1.5', 'current-1.6', 'settings-repeat', 'show-lifecycle', 'entity-guards', 'tour-undo'),
-        'cases' => array(),
-    );
-    $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Aggregate upgrade preservation registry is not implemented', 'file' => __FILE__, 'line' => __LINE__);
 }
 if (($purpose === 'diagnose-menu' && (getenv('COMPAT_CONFLICT_MODE') ?: '') === 'exact-key-late-add')
     || ($purpose === 'admin-menu' && (getenv('COMPAT_CONFLICT_MODE') ?: '') === 'order-only')) {
