@@ -23,4 +23,7 @@ Complete Task 2 real settings/guards HTTP and actual browser evidence (or honest
 - Replacement executor also became unresponsive and was interrupted under the approved recovery.
 - Direct bounded HTTP all smoke passed: WordPress 7.1.2, PHP 8.3.35, exact entry/settings/guards cases, 48 named assertions, zero PHP/HTTP errors, 21-second fixture duration.
 - The preserved expansion required no further product changes; real options.php saves and nonce/capability/intent negatives passed.
-- Browser observations and supported matrix are still outstanding.
+- Recovered HTTP expansion committed as def9b51; final rerun at edf959e passed all 48 checks in 17 seconds with zero errors and cleanup PASS.
+- Actual browser observations and honest required human checks are recorded in 03-BROWSER.md (e7e70ce). The owned session and temporary browser tab were removed.
+- Browser discovery reproduced a stale successful corrected-edit form. RED ef92b95 and GREEN 63f0ace established and fixed four display failures; all 73 entry-control assertions passed and the actual browser retest passed.
+- Narrow executor finish_03_04_matrix owns only Task 3 evidence build/validator/lint/report closeout; parent owns final SUMMARY/tracking and phase gates. Its RED 230276a and GREEN edf959e are committed. Completion is reconciled from its terminal report before final plan closeout.

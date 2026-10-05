@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "phase": "03",
+  "plan": "03-04",
+  "status": "complete",
+  "project_root": "/Users/davidzenz/gigpress",
+  "branch": "codex/phase-01-04-menu",
+  "isolation": "none",
+  "plan_head_before": "9c4ef69b66f2f1f237ac38489ab6da9639a34026",
+  "plan_head_after": "b210224",
+  "actuals": {"tokens":18513,"diff_characters":74052,"tasks":3,"commits":8},
+  "tasks": [
+    {"id":"03-04-01","red_commit":"c9d3163","green_commit":"1d51131","http_assertions":10},
+    {"id":"03-04-02","red_commit":"2488ca4","green_commit":"def9b51","http_assertions":48,"browser_status":"human_needed"},
+    {"id":"03-04-03","red_commit":"230276a","green_commit":"edf959e","matrix_scenario_cells":18,"supported_runtime_cells":6,"administration_assertions":5376,"self_test_assertions":21}
+  ],
+  "deviations": [{"id":"corrected-edit-rendering","red_commit":"ef92b95","green_commit":"63f0ace","red_failed_checks":4,"green_case_checks":73,"browser_retest":"PASS"}],
+  "http_final": {"source_revision":"edf959e75c7f74f692a6f57cb33749648b3d0f06","wordpress":"7.1.2","php":"8.3.35","assertion_count":48,"status":"PASS","elapsed_seconds":17,"errors":[],"cleanup":"PASS"},
+  "matrix": {"report":"03-ADMIN-MATRIX.md","source_revision":"edf959e75c7f74f692a6f57cb33749648b3d0f06","status":"PASS","build_seconds":541,"validator_seconds":0.21,"self_test_seconds":2.89,"warnings":0,"fatals":0,"plugin_errors":0,"preservation_cases_per_cell":11,"php_lint_checks":33},
+  "aborted_redundant_retry": {"exit_code":137,"claimed_pass":false,"equivalent_pinned_preservation_cell":"PASS"},
+  "browser_report":"03-BROWSER.md",
+  "owned_browser_cleanup":"PASS",
+  "global_requirements_pending":["ADMIN-01","ADMIN-02","ADMIN-03","UX-01"]
+}
