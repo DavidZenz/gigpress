@@ -77,6 +77,44 @@ done
 
 MODE=${1:-}; shift || true
 
+# Exercise the actual cleanup body with a controlled backend; this is a harness unit check.
+if [[ "$MODE" == browser-cleanup-contract-test ]]; then
+  python3 - "$COMPAT_DIR/run.sh" <<'PYTEST'
+import pathlib, re, subprocess, sys, tempfile
+source = pathlib.Path(sys.argv[1]).read_text()
+body = re.search(r'^  browser_cleanup\(\) \{\n.*?^  \}', source, re.M | re.S).group(0)
+cases = [('compose_failure', 1, 0, '', 0, True), ('inventory_failure', 0, 1, '', 0, True),
+         ('leftover_resource', 0, 0, 'owned-resource', 0, True), ('clean_success', 0, 0, '', 0, False),
+         ('operation_failure_cleaned', 0, 0, '', 7, False)]
+failed = 0
+for index, (name, down, inventory, leftover, initial, retained) in enumerate(cases, 1):
+    with tempfile.TemporaryDirectory(prefix='gigpress-cleanup-contract-') as root:
+        directory = pathlib.Path(root) / 'gigpress-browser-unit'
+        directory.mkdir(mode=0o700)
+        (directory / 'session.json').write_text('{}')
+        script = """BROWSER_DIR=$1; PROJECT=gigpress_browser_unit; BROWSER_RETAIN=false
+compose_env() { echo synthetic-cleanup-log; return "$2"; }
+docker() { printf '%s' "$3"; return "$4"; }
+"""
+        # Functions receive their own arguments, so put controlled outcomes in distinct globals.
+        script = """BROWSER_DIR=$1; PROJECT=gigpress_browser_unit; BROWSER_RETAIN=false
+DOWN_RESULT=$2; INVENTORY_RESULT=$3; LEFTOVER=$4; INITIAL_RESULT=$5
+compose_env() { echo synthetic-cleanup-log; return "$DOWN_RESULT"; }
+docker() { printf '%s' "$LEFTOVER"; return "$INVENTORY_RESULT"; }
+""" + body + '\ntrap browser_cleanup EXIT\nexit "$INITIAL_RESULT"\n'
+        result = subprocess.run(['bash', '-c', script, 'cleanup-test', str(directory), str(down), str(inventory), leftover, str(initial)], capture_output=True, text=True)
+        exists = directory.exists()
+        ok = exists == retained and (result.returncode != 0 if retained else result.returncode == initial)
+        if retained:
+            ok = ok and (directory / 'session.json').is_file() and (directory / 'cleanup.log').is_file()
+        failed += not ok
+        print(('ok' if ok else 'not ok') + ' %s - browser-cleanup.%s' % (index, name))
+print('# tests %s\n# pass %s\n# fail %s' % (len(cases), len(cases)-failed, failed))
+sys.exit(bool(failed))
+PYTEST
+  exit $?
+fi
+
 # Public evidence contract: an absent report can never establish a passing matrix.
 if [[ "$MODE" == administration-contract-test ]]; then
   contract_dir=$(mktemp -d "${TMPDIR:-/tmp}/gigpress-admin-contract.XXXXXX"); chmod 700 "$contract_dir"
