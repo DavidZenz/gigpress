@@ -170,6 +170,42 @@ function gigpress_administration_entry_input_matches($html, $field, $value) {
     return $attribute[1] === esc_attr($value) && html_entity_decode($attribute[1], ENT_QUOTES, 'UTF-8') === $value;
 }
 
+function gigpress_administration_entry_required_checks($request) {
+    global $wpdb;
+    $checks = array();
+    $existing = gigpress_administration_entry_request($request)['outcome'];
+    $new = array_merge($request, array('show_artist_id' => 'new', 'show_venue_id' => 'new', 'show_tour_id' => 'new', 'show_related' => 'new',
+        'artist_name' => ' <b>Normalized artist</b> ', 'venue_name' => ' <b>Normalized venue</b> ',
+        'venue_city' => ' <b>Normalized city</b> ', 'tour_name' => ' <b>Normalized tour</b> ', 'show_related_title' => 'Required-field post'));
+    foreach (array('add', 'update') as $mode) {
+        $input = array_merge($new, array('gpaction' => $mode));
+        if ($mode === 'update') $input['show_id'] = (string) $existing['show_id'];
+        foreach (array('artist_name', 'venue_name', 'venue_city', 'tour_name') as $field) {
+            foreach (array('tags' => '<b></b>', 'percent' => '%41', 'whitespace' => " \t ") as $kind => $value) {
+                $before = gigpress_administration_entry_snapshot();
+                $result = gigpress_administration_entry_request(array_merge($input, array($field => $value)), true);
+                $prefix = 'required_' . $mode . '_' . $field . '_' . $kind;
+                $checks[$prefix . '_invalid'] = $result['outcome']['status'] === 'invalid' && isset($result['outcome']['field_errors'][$field]);
+                $checks[$prefix . '_no_writes'] = $before === gigpress_administration_entry_snapshot();
+                $checks[$prefix . '_raw'] = ($result['outcome']['raw_state'][$field] ?? null) === $value;
+                $checks[$prefix . '_control'] = gigpress_administration_entry_input_matches($result['html'], $field, $value)
+                    && strpos($result['html'], 'href="#' . $field . '"') !== false && strpos($result['html'], 'id="' . $field . '-error"') !== false;
+            }
+        }
+        $saved = gigpress_administration_entry_request($input)['outcome'];
+        $checks['normalized_' . $mode . '_saved'] = $saved['status'] === 'saved';
+        $row = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . GIGPRESS_SHOWS . ' WHERE show_id = %d', $saved['show_id'] ?? 0), ARRAY_A);
+        foreach (array('artist' => array(GIGPRESS_ARTISTS, 'artist_id', 'artist_name'),
+            'venue' => array(GIGPRESS_VENUES, 'venue_id', 'venue_name'), 'tour' => array(GIGPRESS_TOURS, 'tour_id', 'tour_name')) as $kind => $spec) {
+            $entity = $row ? $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . $spec[0] . ' WHERE ' . $spec[1] . ' = %d', $row['show_' . $kind . '_id']), ARRAY_A) : null;
+            $checks['normalized_' . $mode . '_' . $kind . '_name'] = $entity && $entity[$spec[2]] === 'Normalized ' . $kind;
+            if ($kind === 'venue') $checks['normalized_' . $mode . '_venue_city'] = $entity && $entity['venue_city'] === 'Normalized city';
+            if ($kind === 'artist') $checks['normalized_' . $mode . '_artist_alpha'] = $entity && $entity['artist_alpha'] === 'normalized artist';
+        }
+    }
+    return $checks;
+}
+
 function gigpress_administration_entry_recovery_checks($request, $bad, $hostile) {
     global $wpdb;
     $checks = array();
@@ -276,5 +312,5 @@ function gigpress_administration_entry_recovery_checks($request, $bad, $hostile)
             $checks['retry_' . $kind . '_reuses_' . $entity] = count($beforeRetry[$plural]) === count($afterRetry[$plural]) && (int) ($saved['raw_state'][array('artist' => 'show_artist_id', 'venue' => 'show_venue_id', 'tour' => 'show_tour_id', 'post' => 'show_related')[$entity]] ?? 0) === $createdId;
         }
     }
-    return $checks;
+    return array_merge($checks, gigpress_administration_entry_required_checks($request));
 }
