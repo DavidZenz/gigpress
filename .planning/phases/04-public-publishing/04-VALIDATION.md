@@ -30,26 +30,40 @@ Both public commands require implementation before use. `PUBLIC_SESSION` is priv
 
 ## Per-Task Verification Map
 
-Provisional slice map; the planner must replace slice labels with exact plan/task IDs, dependencies and threat references.
+Exact plan/task map. Every NEW command is created by the same task or an earlier dependency before it is used.
 
-| Slice | Requirement | Secure behavior | Test type | Planned evidence | Exists | Status |
+| Plan / task | Requirement | Threat refs | Automated evidence | Human/browser evidence | Command dependency | Status |
 |---|---|---|---|---|---|---|
-| Migrated publishing tracer | PUB-01, PUB-02 | Owned isolated fixture; exact expected IDs, unchanged snapshots | Integration | NEW tracer-1.4 and override marker cases | No — W0 | Pending |
-| Public destination encoding | PUB-01 | Inert hostile text/URLs; intact allowed rich notes | Integration/parser | NEW HTML/RSS/ICS/JSON-LD cases | No — W0 | Pending |
-| Bundled layout and links | PUB-02 | All details/actions available with readable status | Integration + browser | NEW layout cases plus measured 320px, keyboard/no-JS observation | No — W0 | Pending |
-| Contracts and full matrix | PUB-01, PUB-02 | Nonempty evidence, exact case/runtime/source identity, preserved data | Matrix + validator | NEW pinned public matrix and fail-closed evidence validation | No — W0 | Pending |
+| 04-01-01 migrated 1.4 tracer | PUB-01, PUB-02 | T-04-01, T-04-02, T-04-03 | NEW `cell --scenario public-publishing --case tracer-1.4`; inherited `upgrade-preservation --case all` | None | Creates public scenario/registry and tracer before invocation | Pending — W0 |
+| 04-01-02 recognized versions/current state | PUB-01 | T-04-02, T-04-03 | `cell --scenario public-publishing --case migrated-contracts` | None | Uses 04-01-01 registry/dispatch | Pending — W0 |
+| 04-02-01 bundled main/compact layout | PUB-01, PUB-02 | T-04-04, T-04-05 | `layout-main`, `layout-compact` public cells | Deferred to final-source 04-05-02 | Uses 04-01 public scenario; creates layout module/cases | Pending — W0 |
+| 04-02-02 override isolation/adoption | PUB-02 | T-04-04 | `override-priority` public cell | Deferred to final-source 04-05-02 | Uses 04-01 public scenario and 04-02-01 ownership marker | Pending — W0 |
+| 04-03-01 main HTML/JSON-LD | PUB-01 | T-04-07, T-04-08, T-04-09 | `html-json` public cell with DOM/JSON parsing | None | Uses 04-01 scenario; creates html module/case | Pending — W0 |
+| 04-03-02 related/widget destinations | PUB-01 | T-04-07, T-04-08, T-04-09 | Expanded `html-json` public cell | None | Uses 04-03-01 module/case | Pending — W0 |
+| 04-03-03 bundled partial destinations | PUB-01, PUB-02 | T-04-07, T-04-09 | Expanded `html-json` public cell | None | Uses 04-03-01 module/case and 04-02 layout contract | Pending — W0 |
+| 04-04-01 RSS | PUB-01 | T-04-10, T-04-11 | `rss-contract` public cell with independent XML parser | None | Uses 04-01 registry; creates feed module/RSS case | Pending — W0 |
+| 04-04-02 iCalendar and empty feeds | PUB-01 | T-04-10, T-04-11 | `ical-contract`, `empty-contracts` public cells with independent property/XML parsers | Final calendar-client item is required by blocking Task 04-05-02 | Uses 04-04-01 feed module | Pending — W0 |
+| 04-04-03 supported matrix/evidence seal | PUB-01, PUB-02 | T-04-01, T-04-02, T-04-12 | NEW public matrix plus `public-evidence` build/validate/self-test and inherited preservation aggregate | Human evidence remains explicitly incomplete until blocking Task 04-05-02; no 04-BROWSER.md input is required at this stage | Creates `public-evidence` actions before invocation; all nine cases created by prior tasks; Plan 04-05 must refresh this report after its fingerprinted edits | Pending — W0 |
+| 04-05-01 final-source public fixture | PUB-01, PUB-02 | T-04-13, T-04-14 | After all fixture-source edits: exact supported `matrix --case all`, `public-evidence build`, `validate`, `self-test`, then NEW `public-fixture --action start --case all` against the rebuilt fingerprint | Prepares retained fixture only; no acceptance inferred | Runs after 04-04 and all nine modules; refreshes 04-PUBLIC-MATRIX.md after modifying fingerprinted runner/bootstrap/Compose files, then starts fixture only on matching identity | Pending — W0 |
+| 04-05-02 blocking final human acceptance | PUB-01, PUB-02 | T-04-14 | None; automated source/HTTP evidence is supporting context only | Required exact 320px/wide/readability/bounds, computed inheritance, complete/mixed overrides, keyboard, actual disabled-browser-JS and calendar-client approval | `checkpoint:human-verify gate=blocking-human`; unavailable evidence blocks phase acceptance | Pending — blocking human |
+| 04-05-03 final recheck/cleanup/validation | PUB-01, PUB-02 | T-04-13, T-04-14 | `public-fixture check --case all` then owned `stop` | Consumes explicit 04-05-02 approval only | Runs after human approval against unchanged final source | Pending — W0 |
 
 ## Wave 0 Requirements
 
-- [ ] NEW public-publishing scenario/case modules and runner/probe allow-list registration.
-- [ ] Reuse recognized Phase02 legacy fixtures, migrate real populated data, and compare independent preservation snapshots; supplemental adversarial fixtures remain separate.
-- [ ] NEW retained public fixture operations and source/runtime ownership checks; preserve safe cleanup.
-- [ ] NEW complete and mixed child/parent/content overrides with variable/hook assertions.
-- [ ] NEW independent format parsers/assertions and malformed request/value cases.
-- [ ] NEW public browser pages/procedure and evidence validator, including missing/duplicate/failing-result rejection.
-- [ ] No new test framework is required. Docker engine access remains an execution prerequisite; research's sandbox-denied read is not evidence that OrbStack is unavailable.
+- [ ] 04-01-01 creates the exact nine-case `public-publishing` registry, lazy selected-case dispatch and `tracer-1.4`; missing selected modules and empty/unknown selected cases fail without requiring later modules.
+- [ ] 04-01-02 creates `migrated-contracts` for every recognized Phase 02 source/current state, same-runtime public reads and independent unchanged snapshots; supplemental data remains separate.
+- [ ] 04-02-01/02 create `layout-main`, `layout-compact`, `override-priority`, bundled-only marker isolation and complete/mixed child/parent/wp-content fixtures.
+- [ ] 04-03-01 creates `html-json`; 04-03-02/03 expand it across main/widget/related/partials with DOM/JSON exact-value checks.
+- [ ] 04-04-01/02 create independent RSS/XML and iCalendar property parsers for `rss-contract`, `ical-contract`, `empty-contracts`.
+- [ ] 04-04-03 creates the exact pinned matrix and `public-evidence` build/validate/self-test, including named missing/duplicate/unknown/empty/failed/stale/source/runtime corruptions.
+- [ ] 04-05-01 creates the owned loopback `public-fixture` lifecycle, then after every fingerprinted fixture-source edit reruns the exact supported matrix plus `public-evidence` build/validate/self-test and starts the retained fixture only when its identity matches the refreshed 04-PUBLIC-MATRIX.md.
+- [ ] 04-05-02 blocks phase acceptance until every final-source browser/calendar-client observation is explicitly human-approved; unavailable evidence is a blocker.
+- [ ] 04-05-03 rechecks the unchanged approved source, verifies cleanup and updates compliance status from actual evidence only.
+- [ ] No new test framework/package is required. Docker engine access remains an execution precondition; a denied research socket read is not evidence that OrbStack is unavailable.
 
 ## Manual-Only Verifications
+
+All rows below are owned by blocking-human Task 04-05-02 after every fingerprinted production or fixture-source change and after Task 04-05-01 refreshes automated evidence. A missing observer or calendar client blocks phase acceptance; it is not an accepted pending state. Any later fingerprinted fix invalidates both matrix and browser evidence and requires Tasks 04-05-01 and 04-05-02 again.
 
 | Behavior | Requirement | Why manual/browser evidence | Instructions |
 |---|---|---|---|
