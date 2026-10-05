@@ -1376,7 +1376,7 @@ run_public_fixture() {
       .schema == "gigpress-public-session/v1" and .root == $root and .uid == $uid
       and (.project | test("^gigpress_public_[0-9]+_[0-9]+_[0-9]+$"))
       and (.owner | test("^[0-9a-f]{64}$")) and (.db_password | test("^[0-9a-f]{64}$")) and (.db_root_password | test("^[0-9a-f]{64}$"))
-      and .wp == "7.1.2" and .php == "8.3" and (.php_version | test("^8[.]3[.]\d+$"))
+      and .wp == "7.1.2" and .php == "8.3" and (.php_version | test("^8[.]3[.][0-9]+$"))
       and (.url | test("^http://127[.]0[.]0[.]1:[0-9]+$")) and (.source_revision | test("^[0-9a-f]{40}$"))
       and (.source_fingerprint | test("^[0-9a-f]{64}$")) and (.image_id | test("^sha256:[0-9a-f]{64}$"))
       and (.db_image_id | test("^sha256:[0-9a-f]{64}$"))
@@ -1412,7 +1412,7 @@ run_public_fixture() {
     report_wp=$(printf '%s' "$matrix_json" | jq -er '.resolution.wordpress_versions["7.1"]')
     report_php=$(printf '%s' "$matrix_json" | jq -er '.resolution.php_versions["8.3"]')
     expected_image_id=$(printf '%s' "$matrix_json" | jq -er '.resolution.images["8.3"]')
-    [[ "$report_wp" == "$WP_VERSION" && "$report_php" =~ ^8[.]3[.]\d+$ ]] || fail "public matrix does not pin the requested fixture runtime"
+    [[ "$report_wp" == "$WP_VERSION" && "$report_php" =~ ^8[.]3[.][0-9]+$ ]] || fail "public matrix does not pin the requested fixture runtime"
     image_id=$(docker image inspect --format '{{.Id}}' wordpress:php8.3-apache 2>/dev/null) || fail "pinned public WordPress image is unavailable"
     [[ "$image_id" == "$expected_image_id" ]] || fail "public fixture image differs from the rebuilt evidence"
     umask 077
