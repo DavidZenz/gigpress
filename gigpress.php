@@ -250,19 +250,19 @@ function gigpress_prepare($show, $scope = 'public') {
 	$showdata['address'] = (!empty($show->venue_address)) ? '<a href="' . esc_url($showdata['address_url']) . '" class="gigpress-address"' . gigpress_target($showdata['address_url']) . '>' . gigpress_public_text_fragment($show->venue_address) . '</a>' : '';
 	$showdata['city'] = (!empty($show->show_related) && !empty($gpo['relatedlink_city']) && $scope == 'public') ? '<a href="' . esc_url(gigpress_related_link($show->show_related, "url")) . '">' . gigpress_public_text_fragment($show->venue_city) . '</a>' : gigpress_public_text_fragment($show->venue_city);
 	$showdata['city_plain'] = wptexturize($show->venue_city);	
-	$showdata['state'] = (!empty($show->venue_state)) ? $show->venue_state : '';
+	$showdata['state'] = (!empty($show->venue_state)) ? gigpress_public_text_fragment($show->venue_state) : '';
 	$showdata['postal_code'] = (!empty($show->venue_postal_code)) ? $show->venue_postal_code : '';
 	$showdata['country'] = (!empty($gpo['country_view'])) ? gigpress_public_text_fragment($gp_countries[$show->venue_country]) : gigpress_public_text_fragment($show->venue_country);
 	$showdata['venue'] = (!empty($show->venue_url)) ? '<a href="' . esc_url($show->venue_url) . '"' . gigpress_target($show->venue_url) . '>' . gigpress_public_text_fragment($show->venue_name) . '</a>' : gigpress_public_text_fragment($show->venue_name);
 	$showdata['venue_id'] = $show->venue_id;
 	$showdata['venue_plain'] = wptexturize($show->venue_name);
-	$showdata['venue_phone'] = wptexturize($show->venue_phone);
+	$showdata['venue_phone'] = gigpress_public_text_fragment($show->venue_phone);
 	$showdata['venue_url'] = (!empty($show->venue_url)) ? esc_url($show->venue_url) : '';	
 
 	// Shield these fields when we're calling this function from the venues admin screen
 	if($scope != 'venue') {
 		$timeparts = explode(':', $show->show_time);
-		$showdata['admittance'] = (!empty($show->show_ages) && $show->show_ages != 'Not sure') ? wptexturize($show->show_ages) : '';
+		$showdata['admittance'] = (!empty($show->show_ages) && $show->show_ages != 'Not sure') ? gigpress_public_text_fragment($show->show_ages) : '';
 		$showdata['artist'] = (!empty($show->artist_url) && !empty($gpo['artist_link']) && $scope != 'admin') ? '<a href="' . esc_url($show->artist_url) . '"' . gigpress_target($show->artist_url) . '>' . gigpress_public_text_fragment($show->artist_name) . '</a>' : gigpress_public_text_fragment($show->artist_name);
 		$showdata['artist_plain'] = wptexturize($show->artist_name);
 		$showdata['artist_id'] = $show->artist_id;
@@ -288,22 +288,23 @@ function gigpress_prepare($show, $scope = 'public') {
 		} else {
 			$showdata['calendar_end'] = ($show->show_expire == $show->show_date) ? $showdata['calendar_start'] : str_replace(array('-',':',' '), array('','','T'), get_gmt_from_date($show->show_expire . ' ' . $show->show_time)) . 'Z';		
 		}
-		$showdata['date'] = ($show->show_related && !empty($gpo['relatedlink_date']) && $scope == 'public') ? '<a href="' . gigpress_related_link($show->show_related, "url") . '">' . mysql2date($gpo['date_format'], $show->show_date) . '</a>' : mysql2date($gpo['date_format'], $show->show_date);
+		$date_text = gigpress_public_text_fragment(mysql2date($gpo['date_format'], $show->show_date));
+		$showdata['date'] = ($show->show_related && !empty($gpo['relatedlink_date']) && $scope == 'public') ? '<a href="' . esc_url(gigpress_related_link($show->show_related, "url")) . '">' . $date_text . '</a>' : $date_text;
 		$showdata['date_long'] = mysql2date($gpo['date_format_long'], $show->show_date);		
 		$showdata['date_mysql'] = $show->show_date;		
-		$showdata['end_date'] = ($show->show_date != $show->show_expire) ? mysql2date($gpo['date_format'], $show->show_expire) : '';
+		$showdata['end_date'] = ($show->show_date != $show->show_expire) ? gigpress_public_text_fragment(mysql2date($gpo['date_format'], $show->show_expire)) : '';
 		$showdata['end_date_long'] = ($show->show_date != $show->show_expire) ? mysql2date($gpo['date_format_long'], $show->show_expire) : '';
 		$showdata['end_date_mysql'] = $show->show_expire;		
-		$showdata['external_link'] = (!empty($show->show_external_url)) ? '<a href="'.esc_url($show->show_external_url).'"'.gigpress_target($show->show_external_url).'>'.$gpo['external_link_label'].'</a>' : '';		
+		$showdata['external_link'] = (!empty($show->show_external_url)) ? '<a href="'.esc_url($show->show_external_url).'"'.gigpress_target($show->show_external_url).'>' . gigpress_public_text_fragment($gpo['external_link_label']) . '</a>' : '';
 		$showdata['external_url'] = (!empty($show->show_external_url)) ? esc_url($show->show_external_url) : '';		
-		$showdata['ical'] = '<a href="' . GIGPRESS_ICAL . '&amp;show_id=' . $show->show_id . '">' . __("Download iCal", "gigpress") . '</a>';
+		$showdata['ical'] = '<a href="' . esc_url(GIGPRESS_ICAL . '&show_id=' . (int) $show->show_id) . '">' . esc_html__("Download iCal", "gigpress") . '</a>';
 		$showdata['id'] = $show->show_id;
 		$showdata['iso_date'] = $show->show_date."T".$show->show_time;
 		$showdata['iso_end_date'] = $show->show_expire."T".$show->show_time;
 		$showdata['notes'] = wp_kses_post(wptexturize($show->show_notes));
-		$showdata['price'] = wptexturize($show->show_price);
+		$showdata['price'] = gigpress_public_text_fragment($show->show_price);
 		$showdata['related_id'] = (!empty($show->show_related)) ? $show->show_related : 0;
-		$showdata['related_url'] = (!empty($show->show_related)) ? gigpress_related_link($show->show_related, 'url') : '';
+		$showdata['related_url'] = (!empty($show->show_related)) ? esc_url_raw(gigpress_related_link($show->show_related, 'url')) : '';
 		$showdata['related_edit'] = (!empty($show->show_related)) ? gigpress_related_link($show->show_related, 'edit') : '';
 		$showdata['related_link'] = (!empty($show->show_related)) ? gigpress_related_link($show->show_related, 'view') : '';
 		$showdata['rss_date'] = mysql2date('D, d M Y', $show->show_date, false). " ". $show->show_time." " . gigpress_get_O_offset(get_option('gmt_offset'));
@@ -317,9 +318,9 @@ function gigpress_prepare($show, $scope = 'public') {
 			break;
 		}
 		$showdata['ticket_url'] = (!empty($show->show_tix_url)) ? esc_url($show->show_tix_url) : '';
-		$showdata['ticket_phone'] = wptexturize($show->show_tix_phone);
-		$showdata['time'] = ($timeparts[2] == '01') ? '' : date($gpo['time_format'], mktime($timeparts[0], $timeparts[1]));
-		$showdata['tour'] = wptexturize($show->tour_name);
+		$showdata['ticket_phone'] = gigpress_public_text_fragment($show->show_tix_phone);
+		$showdata['time'] = ($timeparts[2] == '01') ? '' : gigpress_public_text_fragment(date($gpo['time_format'], mktime($timeparts[0], $timeparts[1])));
+		$showdata['tour'] = gigpress_public_text_fragment($show->tour_name);
 		$showdata['tour_id'] = $show->tour_id;
 		if($showdata['related_url']) { $showdata['permalink'] = $showdata['related_url']; }
 			elseif($gpo['shows_page']) { $showdata['permalink'] = esc_url($gpo['shows_page']); }
@@ -385,11 +386,11 @@ function gigpress_related_link($postid, $format) {
 			break;
 		case 'edit':
 			$link = admin_url('post.php?action=edit&amp;post=' . $postid);
-			$output = '<a href="' . $link . '">' . $gpo['related'] . '</a>';
+			$output = '<a href="' . esc_url($link) . '">' . gigpress_public_text_fragment($gpo['related']) . '</a>';
 			break;
 		case 'view':
 			$link = get_permalink($postid);
-			$output = '<a href="' . $link . '">' . $gpo['related'] . '</a>';
+			$output = '<a href="' . esc_url($link) . '">' . gigpress_public_text_fragment($gpo['related']) . '</a>';
 			break;
 	}
 		

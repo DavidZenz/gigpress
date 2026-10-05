@@ -23,14 +23,14 @@
 <table class="gigpress-table <?php echo $scope; ?><?php if (!empty($gigpress_bundled_layout)) echo ' gigpress-layout-bundled'; ?>" cellspacing="0">
 	<tbody>
 		<tr class="gigpress-header">
-			<th scope="col" class="gigpress-date"><?php _e("Date", "gigpress"); ?></th>
+			<th scope="col" class="gigpress-date"><?php esc_html_e("Date", "gigpress"); ?></th>
 		<?php if( (!$artist && $group_artists == 'no') && $total_artists > 1) : ?>
-			<th scope="col" class="gigpress-artist"><?php echo wptexturize($gpo['artist_label']); ?></th>
+			<th scope="col" class="gigpress-artist"><?php echo gigpress_public_text_fragment($gpo['artist_label']); ?></th>
 		<?php endif; ?>
-			<th scope="col" class="gigpress-city"><?php _e("City", "gigpress"); ?></th>
-			<th scope="col" class="gigpress-venue"><?php _e("Venue", "gigpress"); ?></th>
+			<th scope="col" class="gigpress-city"><?php esc_html_e("City", "gigpress"); ?></th>
+			<th scope="col" class="gigpress-venue"><?php esc_html_e("Venue", "gigpress"); ?></th>
 		<?php if(!empty($gpo['display_country'])) : ?>
-			<th scope="col" class="gigpress-country"><?php _e("Country", "gigpress"); ?></th>
+			<th scope="col" class="gigpress-country"><?php esc_html_e("Country", "gigpress"); ?></th>
 		<?php endif; ?>
 		</tr>
 	</tbody>

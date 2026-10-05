@@ -9,4 +9,4 @@
 
 ?>
 
-<h3 class="gigpress-list-artist-heading"><?php echo $showdata['artist']; ?></h3>
+<h3 class="gigpress-list-artist-heading"><?php echo gigpress_public_text_fragment($showdata['artist']); ?></h3>
