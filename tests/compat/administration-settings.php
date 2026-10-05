@@ -112,6 +112,79 @@ function gigpress_administration_settings_sections($baseline) {
         }
         $seen[$id] = true;
     }
+    $checks = array_merge($checks, gigpress_administration_settings_legacy_controls($baseline));
+    $old_gpo = $GLOBALS['gpo'];
+    $GLOBALS['gpo'] = array_merge($baseline, array('disable_css' => 1, 'rss_head' => 1, 'rss_title' => '"><script>alert(99)</script>&'));
+    ob_start(); gigpress_head(); $feed_html = ob_get_clean();
+    $feed_dom = gigpress_administration_settings_dom($feed_html);
+    $feed_link = $feed_dom->query('//link[@type="application/rss+xml"]')->item(0);
+    $checks['feed_discovery_title_is_encoded_attribute'] = $feed_link && $feed_link->getAttribute('title') === $GLOBALS['gpo']['rss_title'] && $feed_dom->query('//script')->length === 0;
+    $GLOBALS['gpo'] = $old_gpo;
+    return $checks;
+}
+
+function gigpress_administration_settings_legacy_controls($baseline) {
+    $checks = array();
+    foreach (array('legacy' => array('shows_page' => '/shows/', 'rss_limit' => ' 25 '),
+        'native' => array('shows_page' => 'https://example.com/shows/', 'rss_limit' => '25')) as $kind => $values) {
+        $settings = array_merge($baseline, $values);
+        $xpath = gigpress_administration_settings_dom(gigpress_administration_settings_render($settings));
+        foreach ($values as $key => $value) {
+            $control = $xpath->query('//input[@name="gigpress_settings[' . $key . ']"]')->item(0);
+            $expected_type = $kind === 'legacy' ? 'text' : ($key === 'shows_page' ? 'url' : 'number');
+            $checks[$kind . '_exact_control_' . $key] = $control && $control->getAttribute('type') === $expected_type && $control->getAttribute('value') === $value;
+        }
+    }
+    return $checks;
+}
+
+function gigpress_administration_settings_order_checks($baseline) {
+    global $wpdb;
+    $checks = array();
+    if (!function_exists('gigpress_reorder_artist_rows')) return array('artist_order_guarded_operation_available' => false);
+    $checks['artist_order_guarded_operation_available'] = true;
+    $old_post = $_POST; $old_request = $_REQUEST; $old_method = $_SERVER['REQUEST_METHOD']; $old_user = get_current_user_id();
+    gigpress_administration_settings_form_context(false);
+    $configured = array_merge($baseline, array('user_level' => 'manage_options'));
+    update_option('gigpress_settings', $configured);
+    $ids = array();
+    foreach (array(70, 71, 72) as $order) {
+        $wpdb->insert(GIGPRESS_ARTISTS, array('artist_name' => 'Order guard ' . $order, 'artist_alpha' => 'order ' . $order, 'artist_url' => '', 'artist_order' => $order));
+        $ids[] = (int) $wpdb->insert_id;
+    }
+    $snapshot = function () use ($wpdb) { return $wpdb->get_results('SELECT * FROM ' . GIGPRESS_ARTISTS . ' ORDER BY artist_id', ARRAY_A); };
+    $before = $snapshot();
+    $subscriber = wp_insert_user(array('user_login' => 'order-guard-subscriber', 'user_pass' => 'synthetic-only', 'role' => 'subscriber'));
+    $invoke = function ($artist, $nonce, $method = 'POST') {
+        $_SERVER['REQUEST_METHOD'] = $method; $_POST = array('artist' => $artist, '_ajax_nonce' => $nonce); $_REQUEST = $_POST;
+        return gigpress_reorder_artist_rows();
+    };
+    wp_set_current_user((int) $subscriber);
+    $r = $invoke(array($ids[1], $ids[0]), wp_create_nonce('gigpress-reorder-artists'));
+    $checks['artist_order_subscriber_denied_snapshot'] = is_wp_error($r) && $snapshot() === $before;
+    wp_set_current_user($old_user);
+    foreach (array('invalid_nonce' => array(array($ids[1]), 'bad', 'POST'), 'get' => array(array($ids[1]), wp_create_nonce('gigpress-reorder-artists'), 'GET'),
+        'empty' => array(array(), wp_create_nonce('gigpress-reorder-artists'), 'POST'), 'nested' => array(array(array($ids[0])), wp_create_nonce('gigpress-reorder-artists'), 'POST'),
+        'missing' => array(array(999999999), wp_create_nonce('gigpress-reorder-artists'), 'POST')) as $kind => $args) {
+        $r = $invoke($args[0], $args[1], $args[2]);
+        $checks['artist_order_' . $kind . '_denied_snapshot'] = is_wp_error($r) && $snapshot() === $before;
+    }
+    gigpress_administration_settings_form_context(false);
+    update_option('gigpress_settings', array_merge($configured, array('db_version' => '999')));
+    $r = $invoke(array($ids[1]), wp_create_nonce('gigpress-reorder-artists'));
+    $checks['artist_order_readiness_denied_snapshot'] = is_wp_error($r) && $snapshot() === $before;
+    gigpress_administration_settings_form_context(false); update_option('gigpress_settings', $configured);
+    $r = $invoke(array($ids[1], $ids[0], $ids[1]), wp_create_nonce('gigpress-reorder-artists'));
+    $expected = $before;
+    foreach ($expected as &$row) {
+        if ((int) $row['artist_id'] === $ids[1]) $row['artist_order'] = '0';
+        if ((int) $row['artist_id'] === $ids[0]) $row['artist_order'] = '1';
+    } unset($row);
+    $checks['artist_order_subset_deduplicated_and_omitted_preserved'] = !is_wp_error($r) && $snapshot() === $expected;
+    $r = $invoke(array($ids[1], $ids[0]), wp_create_nonce('gigpress-reorder-artists'));
+    $checks['artist_order_unchanged_order_succeeds'] = !is_wp_error($r) && $snapshot() === $expected;
+    gigpress_administration_settings_form_context(false); update_option('gigpress_settings', $baseline);
+    wp_set_current_user($old_user); $_POST = $old_post; $_REQUEST = $old_request; $_SERVER['REQUEST_METHOD'] = $old_method;
     return $checks;
 }
 
@@ -211,5 +284,6 @@ function gigpress_administration_settings_case($case) {
     $expected = array_replace($expected, array('default_date' => '2032-05-06', 'default_time' => '00:00:01', 'default_ages' => 'Not sure',
         'default_artist' => $request['show_artist_id'], 'default_venue' => $request['show_venue_id'], 'default_tour' => 0));
     $checks['real_show_handler_sticky_defaults_and_unknown_baseline'] = ($created['outcome']['status'] ?? null) === 'saved' && get_option('gigpress_settings') === $expected;
+    $checks = array_merge($checks, gigpress_administration_settings_order_checks($expected));
     return array('case' => $case, 'checks' => $checks);
 }
