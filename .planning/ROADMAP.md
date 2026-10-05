@@ -112,6 +112,8 @@ Plans:
 
 ### Phase 5: CSV Import/Export
 
+Required inherited review fixes: [CSV review follow-ups](CSV-REVIEW-FOLLOWUPS.md) (CR-04, CR-05, CR-07).
+
 **Goal**: Site owners can understand import/export tasks and their results while CSV exchanges retain established behavior and unsafe mutations are rejected.
 **Mode:** mvp
 **Depends on**: Phases 2 and 3

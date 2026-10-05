@@ -51,3 +51,9 @@ The three descriptor-less product prohibitions and ADMIN-03 unclassified edge re
 ## Fixture cleanup
 
 Owned-session stop exited 0 with cleanup PASS, services_removed=true and volumes_removed=true. Only the verified owned project was removed. The agent-created browser tab was closed. No credentials or private session metadata are committed.
+
+## Post-review HTTP regression (2026-10-05)
+
+At source f3f1781 (the production fix was present during the preceding run), real HTTP all now passes 54 checks: entry 9, settings 19, guards 25, aggregate 1. New checks use the action nonce delivered on the actual Artists page, subscriber/invalid-nonce/GET denial snapshots and exact successful JSON subset read-back preserving omitted artists. Artists and Venues render their dependency guard normally. Runtime remains WordPress 7.1.2/PHP 8.3.35, zero PHP/HTTP errors, loopback-only, owned cleanup confirmed. The initial extra-guard run failed honestly with an Artists undefined helper fatal and insufficient artist fixture rows; both defects were corrected before the passing run. A final committed-source rerun is recorded in the review closeout.
+
+Original interactive observations remain tied to their recorded source. Post-review normalization and settings fallback behavior have real integration checks but no new interactive certification. Additional human check: start with shows_page=/shows/ and rss_limit=' 25 ', save an unrelated editable setting in a real browser, then reload and verify both legacy values remain exact and the form was not blocked. Verify authorized sortable feedback and an unchanged/repeated order in the same session.

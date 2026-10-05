@@ -61,3 +61,11 @@ This source-level security verdict does not certify pending genuine no-JS/full k
 - [x] status: verified at ASVS level 1.
 
 Approval: verified 2026-10-05. Phase acceptance remains governed by goal verification and pending browser checks.
+
+## Post-review source supplement
+
+Parent verification at source f3f1781: the original independent 21-row audit above is preserved as historical authored-threat evidence. Subsequent fixes strengthen T-03-02/03/08/17/18/20: normalize required fields before writes with exact raw recovery; escape feed discovery title/URL; preserve legacy control values; POST/configured-capability/action-nonce/readiness protect artist reorder, with bounded positive existing IDs and subset SQL; retain private cleanup metadata/logs on unconfirmed teardown and permit verified partial-resource retry. Actual focused WordPress checks and 54 HTTP checks passed, including subscriber/invalid-nonce/GET zero-write snapshots and exact subset artist read-back. Five controlled cleanup contract checks passed.
+
+Both Artists and Venues now load their dependency guard for normal page rendering, verified by actual HTTP; this does not alter dependency deletion policy. Parent checked the changed sinks/guards against the existing authored controls. This supplement is an inline source/test recheck, not a second independent audit. The current matrix and goal verification govern final source acceptance.
+
+The source review discovered inherited CSV notice injection, tour conversion write-loss and CSV status formatting defects outside the authored administration threat register. They are unresolved required Phase 05 work in CSV-REVIEW-FOLLOWUPS.md. The scoped SECURED 21/21 verdict does not certify those unregistered workflows or imply a clean plugin-wide security review. No accepted risk is fabricated.
