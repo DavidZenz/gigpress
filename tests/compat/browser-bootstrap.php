@@ -458,12 +458,28 @@ PHP;
     $after = browser_snapshot();
     $checks['snapshots_unchanged'] = $before === $after;
     $changedSnapshotKeys = array();
+    $changedSnapshotRows = array();
     foreach ($before as $key => $value) {
-        if ($value !== ($after[$key] ?? null)) $changedSnapshotKeys[] = $key;
+        if ($value !== ($after[$key] ?? null)) {
+            $changedSnapshotKeys[] = $key;
+            if ($key === 'posts') {
+                $beforeRows = array_column($value, null, 'ID');
+                $afterRows = array_column($after[$key] ?? array(), null, 'ID');
+                foreach (array_unique(array_merge(array_keys($beforeRows), array_keys($afterRows))) as $postId) {
+                    if (!isset($beforeRows[$postId])) $changedSnapshotRows[] = array('id' => (int) $postId, 'change' => 'added');
+                    elseif (!isset($afterRows[$postId])) $changedSnapshotRows[] = array('id' => (int) $postId, 'change' => 'removed');
+                    else {
+                        $fields = array();
+                        foreach ($beforeRows[$postId] as $field => $fieldValue) if ($fieldValue !== $afterRows[$postId][$field]) $fields[] = $field;
+                        if ($fields) $changedSnapshotRows[] = array('id' => (int) $postId, 'changed_fields' => $fields);
+                    }
+                }
+            }
+        }
     }
     $extra = array('pages' => array_map(function ($path) use ($base) { return $base . $path; }, $paths),
         'http_statuses' => array_map(function ($r) { return $r['status']; }, $responses), 'content_types' => array_map(function ($r) { return $r['content_type']; }, $responses),
-        'changed_snapshot_keys' => $changedSnapshotKeys);
+        'changed_snapshot_keys' => $changedSnapshotKeys, 'changed_snapshot_rows' => $changedSnapshotRows);
     $httpErrors = is_file('/tmp/gigpress-public-errors.log') ? file('/tmp/gigpress-public-errors.log', FILE_IGNORE_NEW_LINES) : array();
     $checks['no_plugin_http_errors'] = !$httpErrors;
 } elseif ($mode === 'smoke') {
