@@ -433,6 +433,9 @@ PHP;
         'supplemental_shows_available' => (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . GIGPRESS_SHOWS . ' WHERE show_id IN (801,802,803)') === 3,
         'complete_override_files' => count(glob($complete . '/*.php')) === 3,
         'mixed_override_files' => is_file($mixedChild . '/shows-list-start.php') && is_file($mixedParent . '/shows-list.php') && is_file($mixedContent . '/shows-list-end.php'));
+    $themeWarmup = public_fixture_http('/');
+    $checks['default_theme_navigation_initialized'] = $themeWarmup['status'] === 200
+        && (int) $wpdb->get_var("SELECT COUNT(*) FROM " . $wpdb->posts . " WHERE post_type = 'wp_navigation' AND post_status = 'publish' AND post_name = 'navigation'") > 0;
     if (in_array(false, $checks, true)) throw new RuntimeException('Public fixture page or override checks failed');
     $extra = array('pages' => $urls, 'home' => home_url('/'), 'source_show_ids' => array(109,801,802,803));
 } elseif ($mode === 'public-check') {
