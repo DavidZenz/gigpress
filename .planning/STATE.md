@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 04
 current_phase_name: Public Publishing
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-10-05T10:02:27.655Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-10-05T10:19:46.757Z"
 last_activity: 2026-10-05
 last_activity_desc: Phase 04 execution started
-state_head: 7f62194cad7716dc284f54d759d02564b0ae8fd8
+state_head: f8bb04a8a1d83cfb6c6f9dfe7819a0d5ae111470
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 18
-  completed_plans: 14
+  completed_plans: 15
   percent: 60
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-05)
 ## Current Position
 
 Phase: 04 (Public Publishing) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-10-05 — Phase 04 execution started
 
@@ -72,6 +72,7 @@ Progress: [██████░░░░] 60%
 | Phase 03 P03 | 16min | 3 tasks | 4 files |
 | Phase 03 P04 | 535min | 3 tasks | 11 files |
 | Phase 04 P01 | 20min | 2 tasks | 8 files |
+| Phase 04 P02 | 14min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,9 @@ Recent decisions affecting current work:
 - [Phase 04]: Keep persisted show_id and existing relationships as the identity anchor across public destinations.
 - [Phase 04]: Keep supplemental public-only values separate from canonical migration evidence.
 - [Phase 04]: Expect 1.1 migrated RSS order [113, 111] because its historical schema predates show_status; keep linked post and selected iCalendar checks tied to show 111.
+- [Phase 04]: Only the complete bundled start/body/end set receives automatic responsive styling; owner templates require explicit opt-in.
+- [Phase 04]: Keep the wide table and existing show, grouping, status, ticket, calendar, subscription, and theme-width contracts.
+- [Phase 04]: Keep final browser measurement and calendar-client acceptance in plan 04-05.
 
 ### Pending Todos
 
@@ -128,6 +132,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-05T10:02:27.619Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-10-05T10:19:46.723Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
