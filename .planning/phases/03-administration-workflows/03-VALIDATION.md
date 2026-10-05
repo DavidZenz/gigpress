@@ -3,13 +3,13 @@ phase: "03"
 slug: "administration-workflows"
 status: draft
 nyquist_compliant: false
-wave_0_complete: false
+wave_0_complete: true
 created: "2026-10-04"
 ---
 
 # Phase 03 — Validation Strategy
 
-> Draft contract mapped to the four written Phase 03 plans. No Phase 03 implementation tests have run. NEW cases/CLI modes below become runnable only when their owning tasks create their dispatch, modules and fail-closed result plumbing. Status remains draft, nyquist_compliant false and wave_0_complete false until execution evidence exists.
+> Execution evidence is recorded in the completed slice summaries, 03-ADMIN-MATRIX.md and 03-04-MATRIX-CLOSEOUT.md. The eight-case registry, all case modules, HTTP fixture and evidence modes now exist and run with positive assertions. Wave 0 is complete. Status remains draft and nyquist_compliant false until required browser observations and outstanding review items are resolved; matrix results cannot certify those items.
 
 ## Test Infrastructure
 
@@ -20,12 +20,12 @@ created: "2026-10-04"
 | Existing quick regression | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario upgrade-preservation --case show-lifecycle` |
 | Existing full preservation | `rtk proxy bash tests/compat/run.sh matrix --wp-lines 7.0,7.1 --php-supported upstream --wp-patches latest --php-min 8.3 --scenario upgrade-preservation --case all --error-reporting E_ALL` |
 | Existing workflow smoke | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario full-workflows` |
-| New administration checks | NEW `administration-workflows` scenario; registry/plumbing created in 03-01-01; entry cases in 03-01; settings/list modules in 03-02/03-03 |
-| New browser/HTTP checks | NEW `browser-fixture` runner mode/loopback override/bootstrap in 03-04-01; real options.php/guard expansion in 03-04-02 |
-| New evidence validator | NEW `administration-evidence --action build\|validate` in 03-04-03; no report or result exists yet |
-| Estimated runtime | Unmeasured for Phase 03; cold container starts/pulls are not a sub-30-second sampler |
+| Administration checks | `administration-workflows` exact eight-case registry; 896 assertions after the browser-discovered corrected-update regression |
+| Browser/HTTP checks | `browser-fixture` owned loopback start/status/stop and entry/settings/guards/all HTTP smoke; actual observations belong to 03-BROWSER.md |
+| Evidence validator | `administration-evidence --action build\|validate\|self-test`; validates source fingerprints, pinned runtime identities, exact cases and real corruption failures |
+| Measured runtime | Focused cached aggregate: 14 seconds plus teardown; full supported build and fast validator timings are recorded in 03-04-MATRIX-CLOSEOUT.md |
 
-The explicit `7.1.2` patch above is a proven prior-phase command, not a claim that it remains latest. Resolve current WordPress patches and supported PHP branches at the phase gate. Each automated command must exit nonzero on an assertion/error and prove a nonempty required assertion set; zero assertions must never pass.
+Task 03-04-03 resolves current WordPress patches and supported PHP branches once per build, then pins WordPress versions and immutable official Docker image IDs across all administration, preservation, fresh-workflow and PHP lint runs. See the matrix record for the actual resolution timestamp and identities. Each automated command exits nonzero on missing/failed assertions or errors; zero assertions cannot pass.
 
 ## Sampling Rate
 
@@ -39,21 +39,21 @@ The explicit `7.1.2` patch above is a proven prior-phase command, not a claim th
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 03-01-01 | 03-01 | 1 | ADMIN-01, UX-01 | T-03-01,02,05 | Authorized picker-to-save, sentinel and saved ID/fresh add | Real WP integration | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario administration-workflows --case entry-create` | NEW administration-entry.php and registry created in same task | Pending |
-| 03-01-02 | 03-01 | 1 | ADMIN-01, UX-01 | T-03-01,02,03,04 | Raw recovery, blocked snapshots, ID-safe retry/copy/edit | Real WP integration | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario administration-workflows --case entry-recovery` | NEW case added in same task; registry earlier | Pending |
-| 03-01-03 | 03-01 | 1 | ADMIN-01, UX-01 | T-03-02,03,04 | Date/time/expiration storage and escaped label/error targets | WP integration + rendered markup | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario administration-workflows --case entry-controls` | NEW case added in same task; browser observation later | Pending |
-| 03-02-01 | 03-02 | 2 | ADMIN-03, UX-01 | T-03-06,07,09 | Registered save/reload preserving baseline and programmatic updates | WordPress Options API integration | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario administration-workflows --case settings-save` | NEW administration-settings.php and case in same task | Pending |
-| 03-02-02 | 03-02 | 2 | ADMIN-03, UX-01 | T-03-07,08,09 | Six visible groups, explicit unchecked/current unknown values | WP integration + rendered markup | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario administration-workflows --case settings-sections` | NEW case added in same task | Pending |
-| 03-03-01 | 03-03 | 2 | ADMIN-02, UX-01 | T-03-10,11,13,14 | Owner-bound preview/confirm/cancel, real selected-row write | Real WP integration | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario administration-workflows --case list-single` | NEW administration-list.php and case in same task | Pending |
-| 03-03-02 | 03-03 | 2 | ADMIN-02, UX-01 | T-03-12,14,15 | Request domains, retained choices, narrow reset/safe pages | WP query/render/link integration | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario administration-workflows --case list-navigation` | NEW case added in same task | Pending |
-| 03-03-03 | 03-03 | 2 | ADMIN-02, UX-01 | T-03-10,11,13,14,15 | Exact IDs, truthful per-ID results, changed-only undo | Real WP integration | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario administration-workflows --case list-bulk` | NEW case added in same task | Pending |
-| 03-04-01 | 03-04 | 3 | ADMIN-01, UX-01 | T-03-16,17,18,20 | Isolated authenticated HTTP save/read-back and owned teardown | Real HTTP + independent WP read-back | `rtk proxy bash tests/compat/run.sh browser-fixture --action smoke --wp 7.1.2 --php 8.3 --case entry` | NEW mode/bootstrap/override created in same task | Pending |
-| 03-04-02 | 03-04 | 3 | ADMIN-01, ADMIN-02, ADMIN-03, UX-01 | T-03-06,10,16,17,18,20 | Actual options.php authority/save and observed browser/no-JS paths | HTTP snapshots + actual browser | `rtk proxy bash tests/compat/run.sh browser-fixture --action smoke --wp 7.1.2 --php 8.3 --case all` | NEW settings/guards/all cases added in same task; 03-BROWSER.md NEW | Pending |
-| 03-04-03 | 03-04 | 3 | ADMIN-01, ADMIN-02, ADMIN-03, UX-01 | T-03-05,19 | Exact nonempty case/runtime/source evidence, existing preservation | Supported integration matrix + evidence validator | `rtk proxy bash tests/compat/run.sh administration-evidence --action build --report .planning/phases/03-administration-workflows/03-ADMIN-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3`; then same mode `--action validate` | NEW modes/report created in same task | Pending |
+| 03-01-01 | 03-01 | 1 | ADMIN-01, UX-01 | T-03-01,02,05 | Authorized picker-to-save, sentinel and saved ID/fresh add | Real WP integration | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario administration-workflows --case entry-create` | Exists; completed slice and aggregate evidence | PASS integration; 9 checks |
+| 03-01-02 | 03-01 | 1 | ADMIN-01, UX-01 | T-03-01,02,03,04 | Raw recovery, blocked snapshots, ID-safe retry/copy/edit | Real WP integration | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario administration-workflows --case entry-recovery` | Exists; completed slice and aggregate evidence | PASS integration; 130 checks |
+| 03-01-03 | 03-01 | 1 | ADMIN-01, UX-01 | T-03-02,03,04 | Date/time/expiration storage and escaped label/error targets | WP integration + rendered markup | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario administration-workflows --case entry-controls` | Exists; completed slice and aggregate evidence | PASS integration; 73 checks |
+| 03-02-01 | 03-02 | 2 | ADMIN-03, UX-01 | T-03-06,07,09 | Registered save/reload preserving baseline and programmatic updates | WordPress Options API integration | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario administration-workflows --case settings-save` | Exists; completed slice and aggregate evidence | PASS integration; 54 checks |
+| 03-02-02 | 03-02 | 2 | ADMIN-03, UX-01 | T-03-07,08,09 | Six visible groups, explicit unchecked/current unknown values | WP integration + rendered markup | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario administration-workflows --case settings-sections` | Exists; completed slice and aggregate evidence | PASS integration; 170 checks |
+| 03-03-01 | 03-03 | 2 | ADMIN-02, UX-01 | T-03-10,11,13,14 | Owner-bound preview/confirm/cancel, real selected-row write | Real WP integration | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario administration-workflows --case list-single` | Exists; completed slice and aggregate evidence | PASS integration; 30 checks |
+| 03-03-02 | 03-03 | 2 | ADMIN-02, UX-01 | T-03-12,14,15 | Request domains, retained choices, narrow reset/safe pages | WP query/render/link integration | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario administration-workflows --case list-navigation` | Exists; completed slice and aggregate evidence | PASS integration; 266 checks |
+| 03-03-03 | 03-03 | 2 | ADMIN-02, UX-01 | T-03-10,11,13,14,15 | Exact IDs, truthful per-ID results, changed-only undo | Real WP integration | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario administration-workflows --case list-bulk` | Exists; completed slice and aggregate evidence | PASS integration; 164 checks |
+| 03-04-01 | 03-04 | 3 | ADMIN-01, UX-01 | T-03-16,17,18,20 | Isolated authenticated HTTP save/read-back and owned teardown | Real HTTP + independent WP read-back | `rtk proxy bash tests/compat/run.sh browser-fixture --action smoke --wp 7.1.2 --php 8.3 --case entry` | Exists; committed HTTP fixture | PASS HTTP tracer; browser separate |
+| 03-04-02 | 03-04 | 3 | ADMIN-01, ADMIN-02, ADMIN-03, UX-01 | T-03-06,10,16,17,18,20 | Actual options.php authority/save and observed browser/no-JS paths | HTTP snapshots + actual browser | `rtk proxy bash tests/compat/run.sh browser-fixture --action smoke --wp 7.1.2 --php 8.3 --case all` | Exists; def9b51 HTTP expansion | PASS HTTP 48 checks; browser acceptance separate |
+| 03-04-03 | 03-04 | 3 | ADMIN-01, ADMIN-02, ADMIN-03, UX-01 | T-03-05,19 | Exact nonempty case/runtime/source evidence, existing preservation | Supported integration matrix + evidence validator | `rtk proxy bash tests/compat/run.sh administration-evidence --action build --report .planning/phases/03-administration-workflows/03-ADMIN-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3`; then same mode `--action validate` and `--action self-test` | Exists; 03-ADMIN-MATRIX.md and closeout | PASS 6 runtime cells / 5376 checks; validator / 21 self-test checks PASS |
 
 Each `<automated>` in the plans is immediately followed by `<fails_when>` with observable failure direction. Positive assertion counts, exact named-case equality and zero runtime errors are required; an empty all/check predicate cannot pass. Threat references above use the phase-wide IDs T-03-01 through T-03-20; T-03-SC is the reserved repeated supply-chain row. ASVS level 1 is active with high-severity blocking. No package installation is scoped.
 
-Inherited regressions are reused verbatim from Phase 02: `rtk bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario upgrade-preservation --case show-lifecycle`, `--case settings-repeat` and `--case all`. The syntax gate is the tracked container-owned `lint --php-branches ... --files ...`; NEW owned PHP files must be staged before lint because that existing runner requires git-tracked paths. These planned commands are not execution evidence.
+Inherited regressions are reused verbatim from Phase 02: `rtk bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario upgrade-preservation --case show-lifecycle`, `--case settings-repeat` and `--case all`. The syntax gate is the tracked container-owned `lint --php-branches ... --files ...`; NEW owned PHP files must be staged before lint because that existing runner requires git-tracked paths. Observed administration/preservation/fresh-workflow results and exact pinned commands are recorded in 03-ADMIN-MATRIX.md; the inherited WordPress 7.1.2/PHP 8.3 aggregate also passed as a pinned matrix cell. A redundant standalone retry stalled in Docker pull and was terminated; see the closeout report.
 
 ## Waves and Ownership
 
@@ -69,7 +69,7 @@ Wave 2 has zero whole-file overlap. List pagination metadata is local, using the
 
 Wave 0 means assertion/dispatch creation before the matching implementation, folded into each leading tracer/expansion rather than a standalone horizontal infrastructure plan. The first registry and entry-create assertions are created in 03-01-01; later cases are created in their same task before their new command runs. Actual test creation/result plumbing is part of each task, not an assumed pre-existing command.
 
-- [ ] Extend existing runner/probe with an explicit administration scenario/case registry and fail-closed, nonempty assertion results; mark all proposed files/flags/cases NEW in plans.
+- [x] Extend existing runner/probe with an explicit administration scenario/case registry and fail-closed, nonempty assertion results; mark all proposed files/flags/cases NEW in plans.
 - [ ] Date/time fixtures: native and legacy request adapters, invalid raw values and impossible stored dates, optional-time sentinel versus true midnight, uncommon existing minutes, multi-day on/off, unchanged expiration semantics.
 - [ ] Form recovery/save fixtures: every input retained, new-entity marker/reveal state, related-post radio/notes, edit identity, copy source preservation, unchanged update success, blocked readiness, failed write after related creation and retry without duplicate creation.
 - [ ] List fixtures: all filters/navigation links, zero/single/multiple pages, page size distinct from SQL limit, reset preserving scope/sort/size, per-user scope/size persistence and request-only sort.
@@ -90,15 +90,15 @@ Wave 0 means assertion/dispatch creation before the matching implementation, fol
 
 ## Validation Sign-Off
 
-- [ ] Every final task has an automated verify with observable failure direction or a specific Wave 0 dependency.
-- [ ] No three consecutive tasks without an automated check.
-- [ ] All MISSING commands/files are assigned to earlier or same-task creation with explicit execution order.
-- [ ] No watch-mode flags or empty passing assertion registries.
-- [ ] Warm feedback latency measured against the target; full matrix timing recorded separately.
-- [ ] Manual browser evidence recorded with actual environment and outstanding gaps.
-- [ ] `wave_0_complete` and `nyquist_compliant` updated only when their evidence exists.
+- [x] Every final task has an automated verify with observable failure direction or a specific Wave 0 dependency.
+- [x] No three consecutive tasks without an automated check.
+- [x] All MISSING commands/files are assigned to earlier or same-task creation with explicit execution order.
+- [x] No watch-mode flags or empty passing assertion registries.
+- [x] Warm feedback latency measured against the target; full matrix timing recorded separately.
+- [x] Manual browser evidence recorded with actual environment and outstanding gaps.
+- [x] `wave_0_complete` and `nyquist_compliant` updated only when their evidence exists.
 
-**Approval:** Pending implementation and validation evidence.
+**Approval:** Automated matrix/evidence gates passed. Phase acceptance remains pending the required browser checks in 03-BROWSER.md and downstream review of ADMIN-03/unclassified plus the three descriptor-less prohibitions.
 
 ## Multi-Source Coverage Audit
 
