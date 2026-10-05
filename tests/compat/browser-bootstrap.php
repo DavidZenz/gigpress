@@ -466,7 +466,11 @@ PHP;
                 $beforeRows = array_column($value, null, 'ID');
                 $afterRows = array_column($after[$key] ?? array(), null, 'ID');
                 foreach (array_unique(array_merge(array_keys($beforeRows), array_keys($afterRows))) as $postId) {
-                    if (!isset($beforeRows[$postId])) $changedSnapshotRows[] = array('id' => (int) $postId, 'change' => 'added');
+                    if (!isset($beforeRows[$postId])) {
+                        global $wpdb;
+                        $postMeta = $wpdb->get_row($wpdb->prepare('SELECT post_type, post_status, post_name FROM ' . $wpdb->posts . ' WHERE ID = %d', $postId), ARRAY_A);
+                        $changedSnapshotRows[] = array('id' => (int) $postId, 'change' => 'added', 'classification' => $postMeta);
+                    }
                     elseif (!isset($afterRows[$postId])) $changedSnapshotRows[] = array('id' => (int) $postId, 'change' => 'removed');
                     else {
                         $fields = array();
