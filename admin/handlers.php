@@ -62,8 +62,17 @@ function gigpress_show_completed_ids($raw) {
 	return $created;
 }
 
-function gigpress_show_validate($raw, $mode) {
+function gigpress_show_normalized_required_fields($raw) {
+	$normalized = array();
+	foreach (array('artist_name', 'venue_name', 'venue_city', 'tour_name') as $field) {
+		$normalized[$field] = sanitize_text_field(trim($raw[$field] ?? ''));
+	}
+	return $normalized;
+}
+
+function gigpress_show_validate($raw, $mode, $normalized = null) {
 	global $wpdb;
+	if ($normalized === null) $normalized = gigpress_show_normalized_required_fields($raw);
 	$errors = array();
 	$fields = array('gpaction', 'show_id', 'show_date', 'show_end_date', 'show_date_picker', 'show_end_date_picker', 'replace_show_date', 'replace_show_end_date',
 		'gp_yy', 'gp_mm', 'gp_dd', 'exp_yy', 'exp_mm', 'exp_dd', 'gp_hh', 'gp_min', 'show_multi',
@@ -96,7 +105,7 @@ function gigpress_show_validate($raw, $mode) {
 		$value = $raw[$field] ?? ($kind === 'tour' || $kind === 'post' ? '0' : '');
 		if ($value === 'new') {
 			$required = $kind === 'venue' ? array('venue_name', 'venue_city') : ($kind === 'post' ? array() : array($kind . '_name'));
-			foreach ($required as $requiredField) if (trim($raw[$requiredField] ?? '') === '') $errors[$requiredField] = __('Enter a value for this required field.', 'gigpress');
+			foreach ($required as $requiredField) if ($normalized[$requiredField] === '') $errors[$requiredField] = __('Enter a value for this required field.', 'gigpress');
 		} elseif (($kind === 'tour' || $kind === 'post') && $value === '0') {
 			continue;
 		} elseif (!preg_match('/\A[1-9][0-9]*\z/', $value) || strlen($value) > 18 || !$wpdb->get_var($wpdb->prepare('SELECT ' . $column . ' FROM ' . $table . ' WHERE ' . $column . ' = %d', $value))) {
@@ -107,11 +116,12 @@ function gigpress_show_validate($raw, $mode) {
 	return $errors;
 }
 
-function gigpress_prepare_show_fields($context = 'new', $raw = null) {
+function gigpress_prepare_show_fields($context = 'new', $raw = null, $normalized = null) {
 	global $wpdb;
 	if ($raw === null) $raw = gigpress_show_raw_state();
+	if ($normalized === null) $normalized = gigpress_show_normalized_required_fields($raw);
 	$mode = $context === 'edit' ? 'update' : 'add';
-	$prepared = array('fields' => array(), 'field_errors' => gigpress_show_validate($raw, $mode), 'system_errors' => array(),
+	$prepared = array('fields' => array(), 'field_errors' => gigpress_show_validate($raw, $mode, $normalized), 'system_errors' => array(),
 		'created_ids' => gigpress_show_completed_ids($raw), 'raw_state' => $raw);
 	if ($prepared['field_errors']) return $prepared;
 	$gpo = get_option('gigpress_settings');
@@ -133,19 +143,19 @@ function gigpress_prepare_show_fields($context = 'new', $raw = null) {
 			continue;
 		}
 		if ($kind === 'artist') {
-			$name = sanitize_text_field(trim($raw['artist_name']));
+			$name = $normalized['artist_name'];
 			$data = array('artist_name' => $name, 'artist_alpha' => preg_replace('/^the /iu', '', strtolower($name)), 'artist_url' => wp_kses_post(trim($raw['artist_url'] ?? '')));
 			$write = $wpdb->insert(GIGPRESS_ARTISTS, $data);
 			$id = $write === false ? 0 : (int) $wpdb->insert_id;
 		} elseif ($kind === 'venue') {
 			$data = array();
 			foreach (array('venue_name', 'venue_address', 'venue_city', 'venue_state', 'venue_postal_code', 'venue_country', 'venue_url', 'venue_phone') as $key) {
-				$data[$key] = $key === 'venue_url' ? wp_kses_post(trim($raw[$key] ?? '')) : sanitize_text_field(trim($raw[$key] ?? ''));
+				$data[$key] = $normalized[$key] ?? ($key === 'venue_url' ? wp_kses_post(trim($raw[$key] ?? '')) : sanitize_text_field(trim($raw[$key] ?? '')));
 			}
 			$write = $wpdb->insert(GIGPRESS_VENUES, $data);
 			$id = $write === false ? 0 : (int) $wpdb->insert_id;
 		} elseif ($kind === 'tour') {
-			$write = $wpdb->insert(GIGPRESS_TOURS, array('tour_name' => sanitize_text_field(trim($raw['tour_name']))));
+			$write = $wpdb->insert(GIGPRESS_TOURS, array('tour_name' => $normalized['tour_name']));
 			$id = $write === false ? 0 : (int) $wpdb->insert_id;
 		} else {
 			$artist = $wpdb->get_var($wpdb->prepare('SELECT artist_name FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_id = %d', $show['show_artist_id']));
@@ -192,7 +202,8 @@ function gigpress_show_save($mode) {
 		$outcome['system_errors'][] = __('Show data is unavailable while its upgrade is paused. Keep these values and retry after your site administrator resolves the database condition.', 'gigpress');
 		return $outcome;
 	}
-	$outcome['field_errors'] = gigpress_show_validate($raw, $mode);
+	$normalized = gigpress_show_normalized_required_fields($raw);
+	$outcome['field_errors'] = gigpress_show_validate($raw, $mode, $normalized);
 	$id = 0;
 	if ($mode === 'update' && !isset($outcome['field_errors']['show_id'])) {
 		$id = (int) ($raw['show_id'] ?? 0);
@@ -205,7 +216,7 @@ function gigpress_show_save($mode) {
 		$outcome['show_id'] = $id;
 	}
 	if ($outcome['field_errors']) return $outcome;
-	$prepared = gigpress_prepare_show_fields($mode === 'add' ? 'new' : 'edit', $raw);
+	$prepared = gigpress_prepare_show_fields($mode === 'add' ? 'new' : 'edit', $raw, $normalized);
 	foreach (array('raw_state', 'field_errors', 'system_errors', 'created_ids') as $key) $outcome[$key] = $prepared[$key];
 	if ($prepared['field_errors'] || $prepared['system_errors']) {
 		$outcome['status'] = $prepared['field_errors'] ? 'invalid' : 'failed';
