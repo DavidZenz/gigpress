@@ -77,6 +77,18 @@ done
 
 MODE=${1:-}; shift || true
 
+# Public evidence contract: an absent report can never establish a passing matrix.
+if [[ "$MODE" == administration-contract-test ]]; then
+  contract_output=$(bash "$COMPAT_DIR/run.sh" administration-evidence --action validate --report .planning/phases/03-administration-workflows/03-ADMIN-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3 2>&1) && contract_exit=0 || contract_exit=$?
+  if [[ "$contract_exit" -ne 0 && "$contract_output" == *'administration evidence report is required'* ]]; then
+    printf 'ok 1 - administration-evidence.missing_report_rejected\n# tests 1\n# pass 1\n# fail 0\n'
+  else
+    printf 'not ok 1 - administration-evidence.missing_report_rejected\n# expected: administration evidence report is required\n# actual: %s\n# tests 1\n# pass 0\n# fail 1\n' "$contract_output"
+    exit 1
+  fi
+  exit 0
+fi
+
 # The ownership contract is runnable before transport implementation (TDD RED).
 if [[ "$MODE" == browser-contract-test ]]; then
   test_output=$(bash "$COMPAT_DIR/run.sh" browser-fixture --action status --session /tmp/foreign-gigpress-session.json 2>&1) && test_exit=0 || test_exit=$?
