@@ -218,6 +218,9 @@ function browser_guards() {
     $checks['unauthorized_show_no_write'] = $denied['status'] === 403 && browser_snapshot() === $expected;
     // Use the nonce delivered to the real authenticated administrator page.
     $artist_page = browser_http('/wp-admin/admin.php?page=gigpress-artists');
+    $venue_page = browser_http('/wp-admin/admin.php?page=gigpress-venues');
+    $checks['entity_pages_render_dependency_guard'] = $artist_page['status'] === 200 && $venue_page['status'] === 200
+        && strpos($artist_page['html'], 'gigpress-artist-sort') !== false && strpos($venue_page['html'], 'Browser Hall') !== false;
     preg_match('/var gigpressAdmin = (\{[^\n]+\});/', $artist_page['html'], $nonce_match);
     $config = json_decode($nonce_match[1] ?? '{}', true);
     $checks['artist_order_rendered_action_nonce'] = !empty($config['reorderNonce']);

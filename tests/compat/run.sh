@@ -642,7 +642,7 @@ const [root, action, report, work] = process.argv.slice(2);
 const admin = ['entry-create','entry-recovery','entry-controls','settings-save','settings-sections','list-single','list-navigation','list-bulk'];
 const legacy = ['tracer-1.4','safety-1.4','metadata-classification','versions-1.0-1.2','versions-1.3-1.5','current-1.6','settings-repeat','show-lifecycle','optional-request-fields','entity-guards','tour-undo'];
 const workflows = ['admin_create_edit_read','public_shortcode','rss','ical','csv_import_export','duplicate_preserved'];
-const lintFiles = ['gigpress.php','admin/new.php','admin/handlers.php','admin/settings.php','admin/shows.php','tests/compat/probe.php','tests/compat/administration-entry.php','tests/compat/administration-settings.php','tests/compat/administration-list.php','tests/compat/upgrade-preservation-crud.php','tests/compat/browser-bootstrap.php'];
+const lintFiles = ['gigpress.php','admin/new.php','admin/handlers.php','admin/settings.php','admin/shows.php','admin/artists.php','admin/venues.php','tests/compat/probe.php','tests/compat/administration-entry.php','tests/compat/administration-settings.php','tests/compat/administration-list.php','tests/compat/upgrade-preservation-crud.php','tests/compat/browser-bootstrap.php'];
 const git = (...args) => cp.execFileSync('git', ['-C',root,...args], {maxBuffer: 16*1024*1024});
 const hash = data => crypto.createHash('sha256').update(data).digest('hex');
 const same = (a,b) => JSON.stringify(a) === JSON.stringify(b);
@@ -814,9 +814,9 @@ run_administration_evidence() {
   trap 'rm -rf "$work"' EXIT
   administration_record snapshot "$work/source.json"
   printf 'Resolved WordPress: %s; PHP branches: %s\n' "$wp_pins" "$branches"
-  local lint_files='gigpress.php,admin/new.php,admin/handlers.php,admin/settings.php,admin/shows.php,tests/compat/probe.php,tests/compat/administration-entry.php,tests/compat/administration-settings.php,tests/compat/administration-list.php,tests/compat/upgrade-preservation-crud.php,tests/compat/browser-bootstrap.php'
+  local lint_files='gigpress.php,admin/new.php,admin/handlers.php,admin/settings.php,admin/shows.php,admin/artists.php,admin/venues.php,tests/compat/probe.php,tests/compat/administration-entry.php,tests/compat/administration-settings.php,tests/compat/administration-list.php,tests/compat/upgrade-preservation-crud.php,tests/compat/browser-bootstrap.php'
   bash "$COMPAT_DIR/run.sh" lint --php-branches "$branches" --image-ids "$image_pins" --files "$lint_files" >"$work/lint.log" 2>&1 || { tail -n 25 "$work/lint.log" >&2; fail "administration supported PHP lint failed"; }
-  printf 'Pinned PHP lint PASS: %s files per branch\n' 11
+  printf 'Pinned PHP lint PASS: %s files per branch\n' 13
   for scenario in administration-workflows upgrade-preservation full-workflows; do
     local -a args=(matrix --wp-lines "$wp_lines" --php-branches "$branches" --wp-versions "$wp_pins" --image-ids "$image_pins" --php-min 8.3 --error-reporting E_ALL --scenario "$scenario")
     [[ "$scenario" == full-workflows ]] || args+=(--case all)

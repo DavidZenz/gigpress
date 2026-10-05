@@ -1,6 +1,7 @@
 <?php
 
 function gigpress_artists() {
+	require_once __DIR__ . '/handlers.php';
 
 	global $wpdb;
 	
