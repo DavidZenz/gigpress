@@ -1350,6 +1350,201 @@ if [[ "$MODE" == browser-fixture ]]; then
   exit 0
 fi
 
+run_public_fixture() {
+  local action='' session='' public_case='all' report="$ROOT/.planning/phases/04-public-publishing/04-PUBLIC-MATRIX.md"
+  local output result started=$SECONDS port matrix_json validation source_revision source_fingerprint report_wp report_php expected_image_id image_id db_image_id BROWSER_PASSWORD
+  WP_VERSION=''; PHP_VERSION='8.3'
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --action) action=${2:-}; shift 2 ;;
+      --session) session=${2:-}; shift 2 ;;
+      --case) public_case=${2:-}; shift 2 ;;
+      --wp) WP_VERSION=${2:-}; shift 2 ;;
+      --php) PHP_VERSION=${2:-}; shift 2 ;;
+      *) fail "unknown public-fixture option $1" ;;
+    esac
+  done
+  [[ "$action" =~ ^(start|status|check|stop|smoke)$ ]] || fail "public-fixture requires start, status, check, stop or smoke"
+  [[ "$public_case" =~ ^(tracer-1\.4|migrated-contracts|layout-main|layout-compact|override-priority|html-json|rss-contract|ical-contract|empty-contracts|all)$ ]] || fail "unknown public fixture case"
+  [[ "$public_case" == all || "$action" == status || "$action" == stop ]] || fail "retained public fixture actions require --case all"
+
+  if [[ "$action" == status || "$action" == check || "$action" == stop ]]; then
+    [[ -n "$session" && -f "$session" && ! -L "$session" && ! -L "$(dirname "$session")" ]] || fail "not an owned private public session"
+    [[ "$(cd "$(dirname "$session")" && pwd -P)" == "$(dirname "$session")" ]] || fail "not an owned private public session"
+    [[ "$(stat -f '%u:%Lp' "$session")" == "$(id -u):600" && "$(stat -f '%u:%Lp' "$(dirname "$session")")" == "$(id -u):700" ]] || fail "not an owned private public session"
+    jq -e --arg root "$ROOT" --argjson uid "$(id -u)" '
+      .schema == "gigpress-public-session/v1" and .root == $root and .uid == $uid
+      and (.project | test("^gigpress_public_[0-9]+_[0-9]+_[0-9]+$"))
+      and (.owner | test("^[0-9a-f]{64}$")) and (.db_password | test("^[0-9a-f]{64}$")) and (.db_root_password | test("^[0-9a-f]{64}$"))
+      and .wp == "7.1.2" and .php == "8.3" and (.php_version | test("^8[.]3[.]\d+$"))
+      and (.url | test("^http://127[.]0[.]0[.]1:[0-9]+$")) and (.source_revision | test("^[0-9a-f]{40}$"))
+      and (.source_fingerprint | test("^[0-9a-f]{64}$")) and (.image_id | test("^sha256:[0-9a-f]{64}$"))
+      and (.db_image_id | test("^sha256:[0-9a-f]{64}$"))
+      and (.required_cases == ["tracer-1.4","migrated-contracts","layout-main","layout-compact","override-priority","html-json","rss-contract","ical-contract","empty-contracts"])
+    ' "$session" >/dev/null || fail "not an owned private public session"
+    PROJECT=$(jq -r .project "$session"); BROWSER_OWNER=$(jq -r .owner "$session")
+    WP_VERSION=$(jq -r .wp "$session"); PHP_VERSION=$(jq -r .php "$session")
+    DB_PASSWORD=$(jq -r .db_password "$session"); DB_ROOT_PASSWORD=$(jq -r .db_root_password "$session")
+    BROWSER_URL=$(jq -r .url "$session"); BROWSER_DIR=$(dirname "$session")
+    image_id=$(jq -r .image_id "$session"); db_image_id=$(jq -r .db_image_id "$session")
+    [[ "$BROWSER_DIR" == */gigpress-public-* && "$session" == "$BROWSER_DIR/session.json" ]] || fail "not an owned private public session"
+    if [[ "$action" == check ]]; then
+      validation=$(public_evidence_record validate "$report") || fail "public matrix evidence is not current and valid"
+      printf '%s\n' "$validation" | jq -e '.status == "PASS"' >/dev/null || fail "public matrix evidence is not passing"
+      matrix_json=$(sed -n 's/^<!-- public-evidence: //; s/ -->$//p' "$report")
+      source_revision=$(printf '%s' "$matrix_json" | jq -er '.source.revision')
+      source_fingerprint=$(printf '%s' "$matrix_json" | jq -cS '.source' | shasum -a 256 | awk '{print $1}')
+      report_wp=$(printf '%s' "$matrix_json" | jq -er '.resolution.wordpress_versions["7.1"]')
+      report_php=$(printf '%s' "$matrix_json" | jq -er '.resolution.php_versions["8.3"]')
+      expected_image_id=$(printf '%s' "$matrix_json" | jq -er '.resolution.images["8.3"]')
+      [[ "$(jq -r .source_revision "$session")" == "$source_revision" && "$(jq -r .source_fingerprint "$session")" == "$source_fingerprint" \
+        && "$report_wp" == "$WP_VERSION" && "$report_php" == "$(jq -r .php_version "$session")" && "$expected_image_id" == "$image_id" ]] \
+        || fail "public fixture source/runtime/session identity differs from the rebuilt matrix"
+    fi
+  else
+    [[ "$WP_VERSION" == 7.1.2 && "$PHP_VERSION" == 8.3 ]] || fail "public fixture requires the report-pinned WordPress 7.1.2 / PHP 8.3 cell"
+    validation=$(public_evidence_record validate "$report") || fail "public matrix evidence is not current and valid"
+    printf '%s\n' "$validation" | jq -e '.status == "PASS" and .source_revision' >/dev/null || fail "public matrix evidence is not passing"
+    matrix_json=$(sed -n 's/^<!-- public-evidence: //; s/ -->$//p' "$report")
+    [[ -n "$matrix_json" ]] || fail "public matrix evidence record is missing"
+    source_revision=$(printf '%s' "$matrix_json" | jq -er '.source.revision')
+    source_fingerprint=$(printf '%s' "$matrix_json" | jq -cS '.source' | shasum -a 256 | awk '{print $1}')
+    report_wp=$(printf '%s' "$matrix_json" | jq -er '.resolution.wordpress_versions["7.1"]')
+    report_php=$(printf '%s' "$matrix_json" | jq -er '.resolution.php_versions["8.3"]')
+    expected_image_id=$(printf '%s' "$matrix_json" | jq -er '.resolution.images["8.3"]')
+    [[ "$report_wp" == "$WP_VERSION" && "$report_php" =~ ^8[.]3[.]\d+$ ]] || fail "public matrix does not pin the requested fixture runtime"
+    image_id=$(docker image inspect --format '{{.Id}}' wordpress:php8.3-apache 2>/dev/null) || fail "pinned public WordPress image is unavailable"
+    [[ "$image_id" == "$expected_image_id" ]] || fail "public fixture image differs from the rebuilt evidence"
+    umask 077
+    BROWSER_DIR=$(mktemp -d "${TMPDIR:-/tmp}/gigpress-public-XXXXXX")
+    session="$BROWSER_DIR/session.json"
+    PROJECT="gigpress_public_${RANDOM}_$$_$(date +%s)"
+    DB_PASSWORD=$(openssl rand -hex 32); DB_ROOT_PASSWORD=$(openssl rand -hex 32); BROWSER_OWNER=$(openssl rand -hex 32)
+    BROWSER_PASSWORD=$(openssl rand -hex 32)
+    BROWSER_URL='http://127.0.0.1:1'
+  fi
+
+  COMPOSE=(docker compose --project-name "$PROJECT" --file "$COMPAT_DIR/compose.yaml" --file "$COMPAT_DIR/compose.browser.yaml")
+  compose_env() {
+    env -u COMPOSE_FILE -u COMPOSE_PROJECT_NAME -u COMPOSE_PATH_SEPARATOR -u WORDPRESS_DB_HOST -u MYSQL_HOST -u DB_HOST -u DATABASE_URL \
+      REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" WORDPRESS_IMAGE="wordpress:php${PHP_VERSION}-apache" PHP_VERSION="$PHP_VERSION" COMPAT_TABLE_PREFIX=compat_legacy_ \
+      COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" COMPAT_BROWSER_OWNER="$BROWSER_OWNER" "${COMPOSE[@]}" "$@"
+  }
+  public_cleanup() {
+    local status=$? failed=false containers='' volumes='' id owner project_label volume volume_project found=0
+    trap - EXIT INT TERM
+    if [[ "${PUBLIC_RETAIN:-false}" != true ]]; then
+      containers=$(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT" 2>>"$BROWSER_DIR/cleanup.log") || failed=true
+      while IFS= read -r id; do
+        [[ -n "$id" ]] || continue
+        found=$((found+1))
+        owner=$(docker inspect --format '{{index .Config.Labels "gigpress.browser.owner"}}' "$id" 2>>"$BROWSER_DIR/cleanup.log") || failed=true
+        project_label=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' "$id" 2>>"$BROWSER_DIR/cleanup.log") || failed=true
+        [[ "$owner" == "$BROWSER_OWNER" && "$project_label" == "$PROJECT" ]] || failed=true
+      done <<< "$containers"
+      [[ "$found" -le 2 ]] || failed=true
+      volumes=$(docker volume ls -q --filter "label=com.docker.compose.project=$PROJECT" 2>>"$BROWSER_DIR/cleanup.log") || failed=true
+      while IFS= read -r volume; do
+        [[ -n "$volume" ]] || continue
+        volume_project=$(docker volume inspect --format '{{index .Labels "com.docker.compose.project"}}' "$volume" 2>>"$BROWSER_DIR/cleanup.log") || failed=true
+        [[ "$volume_project" == "$PROJECT" ]] || failed=true
+      done <<< "$volumes"
+      if [[ "$failed" == false ]]; then compose_env down --volumes --remove-orphans >"$BROWSER_DIR/cleanup.log" 2>&1 || failed=true; fi
+      containers=$(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT" 2>>"$BROWSER_DIR/cleanup.log") || failed=true
+      volumes=$(docker volume ls -q --filter "label=com.docker.compose.project=$PROJECT" 2>>"$BROWSER_DIR/cleanup.log") || failed=true
+      [[ -z "$containers" && -z "$volumes" ]] || failed=true
+      if [[ "$failed" == true ]]; then
+        status=1
+        printf 'Public fixture cleanup is unconfirmed; recovery metadata is at %s. Retry with: rtk proxy bash tests/compat/run.sh public-fixture --action stop --session %q\n' "$BROWSER_DIR" "$session" >&2
+      else
+        printf '{"cleanup":"PASS","owned_project":"%s","services_removed":true,"volumes_removed":true}\n' "$PROJECT"
+        rm -rf -- "$BROWSER_DIR"
+      fi
+    fi
+    exit "$status"
+  }
+  PUBLIC_RETAIN=false
+  if [[ "$action" == status || "$action" == check || "$action" == stop ]]; then
+    local id found=0 owned_ids=''
+    owned_ids=$(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT") || fail "cannot inspect owned public services"
+    while IFS= read -r id; do
+      [[ -n "$id" ]] || continue
+      [[ "$(docker inspect --format '{{index .Config.Labels "gigpress.browser.owner"}}' "$id")" == "$BROWSER_OWNER" ]] || fail "not an owned private public session"
+      [[ "$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}' "$id")" == "$PROJECT" ]] || fail "not an owned private public session"
+      found=$((found+1))
+    done <<< "$owned_ids"
+    [[ "$found" -le 2 ]] || fail "owned public session has unexpected services"
+    if [[ "$action" == stop ]]; then trap public_cleanup EXIT; return 0; fi
+    [[ "$found" == 2 ]] || fail "owned public session must have exactly two services"
+    if [[ "$action" == status ]]; then
+      jq '{status:"PASS",session:$session,url,pages,wordpress_version:.wordpress_version,php_version:.php_version,image_id,db_image_id,source_revision,source_fingerprint,project}' --arg session "$session" "$session"
+      return 0
+    fi
+    trap public_cleanup EXIT INT TERM
+    output=$(compose_env exec -T -e COMPAT_BROWSER_MODE=public-check -e COMPAT_BROWSER_URL="$BROWSER_URL" wordpress php /compat/browser-bootstrap.php) || { printf '%s\n' "$output" >&2; fail "public fixture HTTP checks failed"; }
+    printf '%s\n' "$output" | jq -e '.status == "PASS" and .assertion_count > 0 and (.checks|length) == .assertion_count and ([.checks[]]|all) and .checks.snapshots_unchanged == true' >/dev/null || fail "public fixture checks were empty, false or changed migrated snapshots"
+    printf '%s\n' "$output" | jq -c --arg session "$session" --arg source_revision "$(jq -r .source_revision "$session")" --arg source_fingerprint "$(jq -r .source_fingerprint "$session")" '. + {session:$session,source_revision:$source_revision,source_fingerprint:$source_fingerprint}'
+    if [[ "$action" == smoke ]]; then return 0; fi
+    PUBLIC_RETAIN=true
+    return 0
+  fi
+
+  # Write private recovery metadata before any service can be created.
+  jq -n --arg root "$ROOT" --argjson uid "$(id -u)" --arg project "$PROJECT" --arg owner "$BROWSER_OWNER" --arg wp "$WP_VERSION" --arg php "$PHP_VERSION" \
+    --arg url "$BROWSER_URL" --arg db_password "$DB_PASSWORD" --arg db_root_password "$DB_ROOT_PASSWORD" --arg image_id "$image_id" \
+    --arg source_revision "$source_revision" --arg source_fingerprint "$source_fingerprint" --arg expected_php "$report_php" --arg db_image_id "sha256:$(printf '0%.0s' {1..64})" \
+    '{schema:"gigpress-public-session/v1",root:$root,uid:$uid,project:$project,owner:$owner,wp:$wp,php:$php,php_version:$expected_php,url:$url,
+      db_password:$db_password,db_root_password:$db_root_password,image_id:$image_id,db_image_id:$db_image_id,
+      source_revision:$source_revision,source_fingerprint:$source_fingerprint,pages:{},
+      required_cases:["tracer-1.4","migrated-contracts","layout-main","layout-compact","override-priority","html-json","rss-contract","ical-contract","empty-contracts"]}' >"$session"
+  chmod 600 "$session"
+  trap public_cleanup EXIT INT TERM
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  compose_env pull wordpress db >"$BROWSER_DIR/setup.log" 2>&1 || fail "could not resolve pinned public fixture images; private setup log retained"
+  image_id=$(docker image inspect --format '{{.Id}}' wordpress:php8.3-apache) || fail "public WordPress image identity unavailable"
+  [[ "$image_id" == "$expected_image_id" ]] || fail "public fixture image changed after matrix validation"
+  db_image_id=$(docker image inspect --format '{{.Id}}' mariadb:11.4.5) || fail "public fixture MariaDB image unavailable"
+  compose_env up -d db wordpress >>"$BROWSER_DIR/setup.log" 2>&1 || fail "could not start owned public fixture services; private setup log retained"
+  wait_for_database; wait_for_wordpress; install_archived_wordpress_core
+  port=$(compose_env port wordpress 80)
+  [[ "$port" =~ ^127[.]0[.]0[.]1:[0-9]+$ ]] || fail "public fixture is not loopback-only"
+  BROWSER_URL="http://$port"
+  public_php() { compose_env exec -T -e COMPAT_BROWSER_MODE="$1" -e COMPAT_BROWSER_URL="$BROWSER_URL" -e COMPAT_EXPECTED_WP_VERSION="$WP_VERSION" -e COMPAT_BROWSER_PASSWORD="$BROWSER_PASSWORD" wordpress php /compat/browser-bootstrap.php; }
+  output=$(public_php public-seed) || { printf '%s\n' "$output" >&2; fail "public WordPress site seed failed"; }
+  printf '%s\n' "$output" | jq -e '.status == "PASS" and .checks.fresh_public_site_installed and .checks.exact_wp' >/dev/null || fail "public WordPress seed contract failed"
+  output=$(compose_env exec -T -e COMPAT_PURPOSE=public-publishing -e COMPAT_UPGRADE_CASE=all wordpress php /compat/probe.php) || { printf '%s\n' "$output" >&2; fail "nine-case migrated public registry failed in retained fixture"; }
+  result=$(printf '%s\n' "$output" | tail -n 1)
+  printf '%s\n' "$result" | jq -e '
+    .status == "PASS" and .plugin_active == true and .fatal == null and (.plugin_errors|length) == 0 and (.menu_warnings|length) == 0
+    and .public_publishing.case == "all" and .public_publishing.status == "PASS"
+    and .public_publishing.required_cases == ["tracer-1.4","migrated-contracts","layout-main","layout-compact","override-priority","html-json","rss-contract","ical-contract","empty-contracts"]
+    and ([.public_publishing.cases[].case] == .public_publishing.required_cases)
+    and ([.public_publishing.cases[] | .status == "PASS" and (.checks|length)>0 and .assertion_count == (.checks|length) and ([.checks[]]|all)]|all)
+  ' >/dev/null || fail "retained public registry is missing, duplicated, empty or failed"
+  output=$(public_php public-pages) || { printf '%s\n' "$output" >&2; fail "public pages and override fixture setup failed"; }
+  printf '%s\n' "$output" | jq -e '.status == "PASS" and .assertion_count > 0 and ([.checks[]]|all) and .public_fixture.pages' >/dev/null || fail "public fixture pages are not ready"
+  local pages_json
+  pages_json=$(printf '%s\n' "$output" | jq -c '.public_fixture.pages')
+  jq --arg url "$BROWSER_URL" --arg image_id "$image_id" --arg db_image_id "$db_image_id" --arg wp_version "$WP_VERSION" --arg php_version "$report_php" --argjson pages "$pages_json" \
+    '.url=$url | .image_id=$image_id | .db_image_id=$db_image_id | .wordpress_version=$wp_version | .php_version=$php_version | .pages=$pages' "$session" >"$session.tmp"
+  chmod 600 "$session.tmp"; mv "$session.tmp" "$session"
+  output=$(public_php public-check) || { printf '%s\n' "$output" >&2; fail "retained public HTTP verification failed"; }
+  printf '%s\n' "$output" | jq -e '.status == "PASS" and .assertion_count > 0 and ([.checks[]]|all) and .checks.snapshots_unchanged' >/dev/null || fail "retained public HTTP verification is empty, false or mutated snapshots"
+  if [[ "$action" == smoke ]]; then
+    printf '%s\n' "$output" | jq -c --arg source_revision "$source_revision" --arg source_fingerprint "$source_fingerprint" --arg image_id "$image_id" --arg db_image_id "$db_image_id" '.public_fixture + {source_revision:$source_revision,source_fingerprint:$source_fingerprint,image_id:$image_id,db_image_id:$db_image_id}'
+    return 0
+  fi
+  PUBLIC_RETAIN=true
+  printf '%s\n' "$output" | jq -c --arg session "$session" --arg source_revision "$source_revision" --arg source_fingerprint "$source_fingerprint" --arg image_id "$image_id" --arg db_image_id "$db_image_id" \
+    --arg wp "$WP_VERSION" --arg php "$report_php" '.public_fixture + {status:"PASS",session:$session,source_revision:$source_revision,source_fingerprint:$source_fingerprint,wordpress_version:$wp,php_version:$php,image_id:$image_id,db_image_id:$db_image_id}'
+}
+
+if [[ "$MODE" == public-fixture ]]; then
+  run_public_fixture "$@"
+  exit 0
+fi
+
 if [[ "$MODE" == metadata ]]; then
   run_metadata "$@"
   exit 0

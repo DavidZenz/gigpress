@@ -15,7 +15,7 @@ $_SERVER['SERVER_NAME'] = '127.0.0.1';
 $_SERVER['REQUEST_URI'] = '/';
 $_SERVER['REQUEST_METHOD'] = 'GET';
 $_SERVER['SERVER_PORT'] = (string) parse_url($base, PHP_URL_PORT);
-if ($mode === 'seed') define('WP_INSTALLING', true);
+if ($mode === 'seed' || $mode === 'public-seed') define('WP_INSTALLING', true);
 require '/var/www/html/wp-load.php';
 require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 require_once ABSPATH . 'wp-admin/includes/plugin.php';
@@ -29,6 +29,28 @@ function browser_snapshot() {
         $snapshot[strtolower($table)] = $wpdb->get_results('SELECT * FROM ' . constant('GIGPRESS_' . $table) . ' ORDER BY 1', ARRAY_A);
     $snapshot['posts'] = $wpdb->get_results('SELECT ID, post_title, post_status, post_content FROM ' . $wpdb->posts . ' ORDER BY ID', ARRAY_A);
     return $snapshot;
+}
+
+function public_fixture_http($path) {
+    global $base;
+    if (!str_starts_with($path, '/') || str_starts_with($path, '//')) throw new RuntimeException('Owned HTTP path required');
+    $handle = curl_init($base . $path);
+    curl_setopt_array($handle, array(CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS => 5, CURLOPT_CONNECTTIMEOUT => 5, CURLOPT_TIMEOUT => 30,
+        CURLOPT_CONNECT_TO => array('127.0.0.1:' . parse_url($base, PHP_URL_PORT) . ':127.0.0.1:80'),
+        CURLOPT_PROXY => '', CURLOPT_HTTPHEADER => array('Cache-Control: no-cache')));
+    $body = curl_exec($handle);
+    if ($body === false) throw new RuntimeException('Fixture HTTP transport failed: ' . curl_error($handle));
+    $result = array('body' => $body, 'status' => (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE),
+        'content_type' => (string) curl_getinfo($handle, CURLINFO_CONTENT_TYPE));
+    unset($handle);
+    return $result;
+}
+
+function public_fixture_write_override($directory, $template, $source, $location) {
+    if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) return false;
+    $source = str_replace('__LOCATION__', $location, $source);
+    return file_put_contents($directory . '/' . $template . '.php', $source, LOCK_EX) !== false;
 }
 
 function browser_http($path, $post = null, $jar = 'admin') {
@@ -279,6 +301,161 @@ if ($mode === 'seed') {
     $mu = ABSPATH . 'wp-content/mu-plugins'; if (!is_dir($mu)) mkdir($mu);
     file_put_contents($mu . '/gigpress-browser-errors.php', '<?php error_reporting(E_ALL); set_error_handler(function($s,$m,$f,$l) { if (($s & E_ALL) && strpos($f,"/gigpress/") !== false) file_put_contents("/tmp/gigpress-browser-errors.log", json_encode(array("severity"=>$s,"message"=>$m,"file"=>basename($f),"line"=>$l))."\n", FILE_APPEND); return false; }); register_shutdown_function(function() { $e=error_get_last(); if ($e && in_array($e["type"],array(E_ERROR,E_PARSE,E_CORE_ERROR,E_COMPILE_ERROR),true)) file_put_contents("/tmp/gigpress-browser-errors.log",json_encode($e)."\n",FILE_APPEND); });');
     $checks = array('plugin_active' => is_plugin_active('gigpress/gigpress.php'), 'readiness' => $ready['status'] === 'ready', 'synthetic_rows' => count($ids) === 26, 'exact_wp' => $wp_version === getenv('COMPAT_EXPECTED_WP_VERSION'));
+} elseif ($mode === 'public-seed') {
+    if (is_blog_installed()) throw new RuntimeException('Public seed requires a fresh disposable database');
+    wp_install('Synthetic GigPress Public Fixture', 'public-admin', 'public-admin@example.test', true, '', getenv('COMPAT_BROWSER_PASSWORD'));
+    update_option('home', $base); update_option('siteurl', $base);
+    $checks = array('fresh_public_site_installed' => is_blog_installed(), 'exact_wp' => $wp_version === getenv('COMPAT_EXPECTED_WP_VERSION'));
+} elseif ($mode === 'public-pages') {
+    global $wpdb, $gpo;
+    if (!is_plugin_active('gigpress/gigpress.php') || !defined('GIGPRESS_SHOWS')) throw new RuntimeException('Migrated public fixture is not active');
+    $settings = array_replace((array) get_option('gigpress_settings'), array(
+        'buy_tickets_label' => 'Saved Label', 'display_subscriptions' => 1, 'display_country' => 1,
+        'relatedlink_notes' => 1, 'disable_css' => 0, 'disable_js' => 0));
+    update_option('gigpress_settings', $settings); $gpo = $settings;
+
+    $fixturePath = WP_PLUGIN_DIR . '/gigpress/tests/compat/fixtures/public-publishing/overrides.php';
+    $fixture = is_readable($fixturePath) ? require $fixturePath : null;
+    if (!is_array($fixture) || !isset($fixture['files'], $fixture['structural'])) throw new RuntimeException('Public override fixture is unavailable');
+    $themeRoot = WP_CONTENT_DIR . '/themes';
+    $child = $themeRoot . '/gigpress-public-child/gigpress-templates';
+    $parent = $themeRoot . '/gigpress-public-parent/gigpress-templates';
+    $emptyChild = $themeRoot . '/gigpress-public-empty-child/gigpress-templates';
+    $emptyParent = $themeRoot . '/gigpress-public-empty-parent/gigpress-templates';
+    $complete = $themeRoot . '/gigpress-public-complete/gigpress-templates';
+    $mixedChild = $themeRoot . '/gigpress-public-mixed-child/gigpress-templates';
+    $mixedParent = $themeRoot . '/gigpress-public-mixed-parent/gigpress-templates';
+    $mixedContent = WP_CONTENT_DIR . '/gigpress-templates';
+    foreach (array($complete, $mixedChild, $mixedParent, $mixedContent) as $path) {
+        if (is_dir($path) && $path === $mixedContent && glob($path . '/*.php')) throw new RuntimeException('Public fixture wp-content override path is already occupied');
+    }
+    $writes = array();
+    foreach ($fixture['structural'] as $template) $writes[] = public_fixture_write_override($child, $template, $fixture['files'][$template], 'child');
+    foreach ($fixture['structural'] as $template) $writes[] = public_fixture_write_override($parent, $template, $fixture['files'][$template], 'parent');
+    foreach ($fixture['structural'] as $template) $writes[] = public_fixture_write_override($mixedContent, $template, $fixture['files'][$template], 'wp-content');
+    foreach (array($emptyChild, $emptyParent) as $path) {
+        if (!is_dir($path) && !mkdir($path, 0775, true) && !is_dir($path)) $writes[] = false;
+    }
+    foreach ($fixture['structural'] as $template) {
+        $sourceName = $template;
+        if ($template === 'shows-list-start') $sourceName = 'shows-list-start-explicit';
+        $writes[] = public_fixture_write_override($complete, $template, $fixture['files'][$sourceName], 'complete');
+    }
+    $writes[] = public_fixture_write_override($mixedChild, 'shows-list-start', $fixture['files']['shows-list-start'], 'child');
+    $writes[] = public_fixture_write_override($mixedParent, 'shows-list', $fixture['files']['shows-list'], 'parent');
+    $writes[] = public_fixture_write_override($mixedContent, 'shows-list-end', $fixture['files']['shows-list-end'], 'wp-content');
+    if (in_array(false, $writes, true)) throw new RuntimeException('Could not create public override fixtures');
+
+    $pages = array(
+        'listing' => array('GigPress Public Listing', '[gigpress_shows scope="upcoming" group_artists="yes" artist_order="custom"]'),
+        'compact' => array('GigPress Compact Surfaces', "[gigpress_shows scope=\"upcoming\" artist=\"701\"]\n[gigpress_public_compact_fixture]"),
+        'child' => array('GigPress Child Theme Override', '[gigpress_public_override mode="child"]'),
+        'parent' => array('GigPress Parent Theme Override', '[gigpress_public_override mode="parent"]'),
+        'content' => array('GigPress wp-content Override', '[gigpress_public_override mode="content"]'),
+        'complete' => array('GigPress Complete Theme Override', '[gigpress_public_override mode="complete"]'),
+        'mixed' => array('GigPress Mixed Theme Override', '[gigpress_public_override mode="mixed"]'),
+    );
+    $urls = array();
+    foreach ($pages as $slug => $pageData) {
+        $existing = get_page_by_path('gigpress-public-' . $slug, OBJECT, 'page');
+        $pageId = wp_insert_post(array('ID' => $existing ? $existing->ID : 0, 'post_type' => 'page', 'post_status' => 'publish',
+            'post_title' => $pageData[0], 'post_name' => 'gigpress-public-' . $slug, 'post_content' => $pageData[1]), true);
+        if (is_wp_error($pageId)) throw new RuntimeException('Could not create public fixture page');
+        $urls[$slug] = get_permalink($pageId);
+        $pageIds[$slug] = (int) $pageId;
+    }
+    update_option('gigpress_public_fixture_pages', $pageIds);
+    update_option('show_on_front', 'page');
+    update_option('page_on_front', (int) get_page_by_path('gigpress-public-listing', OBJECT, 'page')->ID);
+    $mu = WP_CONTENT_DIR . '/mu-plugins';
+    if (!is_dir($mu) && !mkdir($mu, 0775, true)) throw new RuntimeException('Could not create fixture mu-plugins directory');
+    $muPlugin = <<<'PHP'
+<?php
+error_reporting(E_ALL);
+set_error_handler(function ($severity, $message, $file, $line) {
+    if (($severity & E_ALL) && strpos(str_replace('\\', '/', $file), '/gigpress/') !== false) {
+        file_put_contents('/tmp/gigpress-public-errors.log', json_encode(array('severity'=>$severity,'message'=>$message,'file'=>basename($file),'line'=>$line))."\n", FILE_APPEND);
+    }
+    return false;
+});
+register_shutdown_function(function () {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], array(E_ERROR,E_PARSE,E_CORE_ERROR,E_COMPILE_ERROR), true)) file_put_contents('/tmp/gigpress-public-errors.log', json_encode($error)."\n", FILE_APPEND);
+});
+add_action('init', function () {
+    add_shortcode('gigpress_public_override', function ($attributes) {
+        $attributes = shortcode_atts(array('mode' => ''), $attributes, 'gigpress_public_override');
+        $mode = $attributes['mode'];
+        if (!in_array($mode, array('child', 'parent', 'content', 'complete', 'mixed'), true)) return '';
+        $themeRoot = WP_CONTENT_DIR . '/themes';
+        $child = $themeRoot . '/gigpress-public-empty-child';
+        $parent = $themeRoot . '/gigpress-public-empty-parent';
+        if ($mode === 'child') $child = $themeRoot . '/gigpress-public-child';
+        if ($mode === 'parent') $parent = $themeRoot . '/gigpress-public-parent';
+        if ($mode === 'complete') $child = $themeRoot . '/gigpress-public-complete';
+        if ($mode === 'mixed') { $child = $themeRoot . '/gigpress-public-mixed-child'; $parent = $themeRoot . '/gigpress-public-mixed-parent'; }
+        $childFilter = function ($directory) use ($child) { return $child; };
+        $parentFilter = function ($directory) use ($parent) { return $parent; };
+        add_filter('stylesheet_directory', $childFilter, 99, 1);
+        add_filter('template_directory', $parentFilter, 99, 1);
+        $html = do_shortcode('[gigpress_shows scope="upcoming" group_artists="no"]');
+        remove_filter('stylesheet_directory', $childFilter, 99);
+        remove_filter('template_directory', $parentFilter, 99);
+        return $html;
+    });
+    add_shortcode('gigpress_public_compact_fixture', function () {
+        global $post, $is_excerpt, $wpdb;
+        $widgetOutput = '';
+        if (class_exists('Gigpress_widget')) {
+            ob_start();
+            (new Gigpress_widget())->widget(array('before_widget' => '<aside class="gigpress-public-widget">', 'after_widget' => '</aside>', 'before_title' => '<h2>', 'after_title' => '</h2>'),
+                array('title' => 'Compact fixture', 'scope' => 'upcoming', 'limit' => 3, 'group_artists' => 'no', 'show_feeds' => 'no'));
+            $widgetOutput = ob_get_clean();
+        }
+        $related = $wpdb->get_row('SELECT show_related FROM ' . GIGPRESS_SHOWS . ' WHERE show_id = 109');
+        $priorPost = $post ?? null; $priorExcerpt = $is_excerpt ?? false;
+        $post = $related && $related->show_related ? get_post((int) $related->show_related) : null;
+        $is_excerpt = false;
+        $relatedOutput = $post ? gigpress_show_related(array('scope' => 'upcoming')) : '';
+        $post = $priorPost; $is_excerpt = $priorExcerpt;
+        return '<section><h2>Widget</h2>' . $widgetOutput . '</section><section><h2>Related show</h2>' . $relatedOutput . '</section>';
+    });
+});
+PHP;
+    if (file_put_contents($mu . '/gigpress-public-fixture.php', $muPlugin, LOCK_EX) === false) throw new RuntimeException('Could not install public fixture helper');
+    $checks = array('plugin_active' => is_plugin_active('gigpress/gigpress.php'), 'all_public_pages_created' => count($urls) === 7,
+        'migrated_show_available' => (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . GIGPRESS_SHOWS . ' WHERE show_id = 109') === 1,
+        'supplemental_shows_available' => (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . GIGPRESS_SHOWS . ' WHERE show_id IN (801,802,803)') === 3,
+        'complete_override_files' => count(glob($complete . '/*.php')) === 3,
+        'mixed_override_files' => is_file($mixedChild . '/shows-list-start.php') && is_file($mixedParent . '/shows-list.php') && is_file($mixedContent . '/shows-list-end.php'));
+    if (in_array(false, $checks, true)) throw new RuntimeException('Public fixture page or override checks failed');
+    $extra = array('pages' => $urls, 'home' => home_url('/'), 'source_show_ids' => array(109,801,802,803));
+} elseif ($mode === 'public-check') {
+    $before = browser_snapshot();
+    $pageIds = get_option('gigpress_public_fixture_pages');
+    if (!is_array($pageIds) || count($pageIds) !== 7) throw new RuntimeException('Public fixture page registry is incomplete');
+    $paths = array();
+    foreach ($pageIds as $slug => $pageId) $paths[$slug] = wp_make_link_relative(get_permalink((int) $pageId));
+    $paths['rss'] = '/?feed=gigpress'; $paths['ical'] = '/?feed=gigpress-ical';
+    $responses = array();
+    foreach ($paths as $slug => $path) $responses[$slug] = public_fixture_http($path);
+    $checks = array(
+        'all_required_http_responses' => count($responses) === count($paths) && !array_filter($responses, function ($response) { return $response['status'] !== 200; }),
+        'migrated_and_supplemental_details_rendered' => strpos($responses['listing']['body'], 'Archive Hall') !== false && strpos($responses['listing']['body'], 'LongVenue') !== false && strpos($responses['listing']['body'], 'Readable long detail') !== false,
+        'compact_widget_and_related_rendered' => strpos($responses['compact']['body'], 'gigpress-public-widget') !== false && strpos($responses['compact']['body'], 'gigpress-related-show') !== false,
+        'child_override_resolves_and_remains_owner_controlled' => strpos($responses['child']['body'], 'compat-child-body') !== false && strpos($responses['child']['body'], 'gigpress-layout-bundled') === false,
+        'parent_override_resolves_and_remains_owner_controlled' => strpos($responses['parent']['body'], 'compat-parent-body') !== false && strpos($responses['parent']['body'], 'gigpress-layout-bundled') === false,
+        'wp_content_override_resolves_and_remains_owner_controlled' => strpos($responses['content']['body'], 'compat-wp-content-body') !== false && strpos($responses['content']['body'], 'gigpress-layout-bundled') === false,
+        'complete_override_is_explicitly_adopted' => strpos($responses['complete']['body'], 'compat-complete-body') !== false && strpos($responses['complete']['body'], 'compat-override-start gigpress-layout-bundled') !== false,
+        'mixed_override_remains_owner_controlled' => strpos($responses['mixed']['body'], 'compat-child-body') === false && strpos($responses['mixed']['body'], 'compat-parent-body') !== false && strpos($responses['mixed']['body'], 'compat-wp-content-end') !== false && strpos($responses['mixed']['body'], 'gigpress-layout-bundled') === false,
+        'anonymous_subscription_and_calendar_endpoints' => strpos($responses['rss']['body'], '<rss ') !== false && strpos($responses['ical']['body'], 'BEGIN:VCALENDAR') !== false,
+    );
+    $after = browser_snapshot();
+    $checks['snapshots_unchanged'] = $before === $after;
+    $extra = array('pages' => array_map(function ($path) use ($base) { return $base . $path; }, $paths),
+        'http_statuses' => array_map(function ($r) { return $r['status']; }, $responses), 'content_types' => array_map(function ($r) { return $r['content_type']; }, $responses));
+    $httpErrors = is_file('/tmp/gigpress-public-errors.log') ? file('/tmp/gigpress-public-errors.log', FILE_IGNORE_NEW_LINES) : array();
+    $checks['no_plugin_http_errors'] = !$httpErrors;
 } elseif ($mode === 'smoke') {
     $case = getenv('COMPAT_BROWSER_CASE') ?: 'entry';
     $required = $case === 'all' ? array('entry','settings','guards') : array($case);
@@ -294,8 +471,9 @@ if ($mode === 'seed') {
 } elseif ($mode === 'snapshot') {
     echo json_encode(browser_snapshot(), JSON_UNESCAPED_SLASHES) . PHP_EOL; exit;
 } else throw new RuntimeException('Unknown browser bootstrap mode');
-$httpErrors = is_file('/tmp/gigpress-browser-errors.log') ? file('/tmp/gigpress-browser-errors.log', FILE_IGNORE_NEW_LINES) : array();
+$errorLog = in_array($mode, array('public-seed', 'public-pages', 'public-check'), true) ? '/tmp/gigpress-public-errors.log' : '/tmp/gigpress-browser-errors.log';
+$httpErrors = is_file($errorLog) ? file($errorLog, FILE_IGNORE_NEW_LINES) : array();
 $ok = $checks && !in_array(false, $checks, true) && !$errors && !$httpErrors;
 echo json_encode(array('status' => $ok ? 'PASS' : 'FAIL', 'wordpress_version' => $wp_version, 'php_version' => PHP_VERSION,
-    'checks' => $checks, 'assertion_count' => count($checks), 'cases' => $cases ?? array(), 'errors' => $errors, 'http_errors' => $httpErrors), JSON_UNESCAPED_SLASHES) . PHP_EOL;
+    'checks' => $checks, 'assertion_count' => count($checks), 'cases' => $cases ?? array(), 'errors' => $errors, 'http_errors' => $httpErrors, 'public_fixture' => $extra ?? null), JSON_UNESCAPED_SLASHES) . PHP_EOL;
 exit($ok ? 0 : 1);
