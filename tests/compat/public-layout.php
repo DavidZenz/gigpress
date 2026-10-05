@@ -28,6 +28,180 @@ function gigpress_public_layout_seed_supplemental() {
 	return true;
 }
 
+function gigpress_public_layout_override_location_path($location, $child, $parent) {
+	if ($location === 'child') return $child . '/gigpress-templates';
+	if ($location === 'parent') return $parent . '/gigpress-templates';
+	return WP_CONTENT_DIR . '/gigpress-templates';
+}
+
+function gigpress_public_layout_override_write($directory, $template, $source) {
+	if (!is_dir($directory) && !@mkdir($directory, 0775, true) && !is_dir($directory)) return false;
+	return file_put_contents($directory . '/' . $template . '.php', $source) !== false;
+}
+
+function gigpress_public_layout_override_cleanup($fixture, $child, $parent, $removeContentDirectory) {
+	$templates = array_merge($fixture['structural'], array('shows-artist-heading', 'shows-tour-heading', 'shows-list-footer'));
+	$locations = array('child' => $child . '/gigpress-templates', 'parent' => $parent . '/gigpress-templates', 'wp-content' => WP_CONTENT_DIR . '/gigpress-templates');
+	foreach ($locations as $directory) {
+		foreach ($templates as $template) {
+			$file = $directory . '/' . $template . '.php';
+			if (is_file($file)) @unlink($file);
+		}
+		if (is_dir($directory) && ($directory === WP_CONTENT_DIR . '/gigpress-templates' ? $removeContentDirectory : true)) @rmdir($directory);
+	}
+	foreach (array($child, $parent) as $directory) if (is_dir($directory)) @rmdir($directory);
+}
+
+function gigpress_public_layout_override_case() {
+	global $gpo;
+	$fixturePath = WP_PLUGIN_DIR . '/gigpress/tests/compat/fixtures/public-publishing/overrides.php';
+	$fixture = is_readable($fixturePath) ? require $fixturePath : null;
+	$checks = array(
+		'fixture_loaded' => is_array($fixture) && isset($fixture['files'], $fixture['structural']),
+		'child_parent_wp_content_bundled_priority' => false,
+		'complete_child_parent_wp_content_sets_remain_owned' => false,
+		'bundled_start_owner_body_is_unmarked' => false,
+		'owner_start_bundled_body_is_unmarked' => false,
+		'owner_end_is_unmarked' => false,
+		'cross_location_mixed_set_is_unmarked' => false,
+		'explicit_owner_opt_in_is_respected' => false,
+		'heading_and_footer_overrides_render' => false,
+		'owner_context_and_hooks_preserved' => false,
+		'optional_css_js_and_custom_stylesheet_contracts_preserved' => false,
+	);
+	if (!$checks['fixture_loaded']) return array('case' => 'override-priority', 'checks' => $checks, 'reason' => 'override fixture is unreadable');
+	$root = WP_CONTENT_DIR . '/compat-public-layout-' . str_replace('.', '', uniqid('', true));
+	$child = $root . '/child';
+	$parent = $root . '/parent';
+	$contentDirectory = WP_CONTENT_DIR . '/gigpress-templates';
+	$removeContentDirectory = !is_dir($contentDirectory);
+	$targetNames = array_merge($fixture['structural'], array('shows-artist-heading', 'shows-tour-heading', 'shows-list-footer'));
+	foreach ($targetNames as $template) {
+		if (is_file($contentDirectory . '/' . $template . '.php')) {
+			$checks['fixture_loaded'] = false;
+			return array('case' => 'override-priority', 'checks' => $checks, 'reason' => 'wp-content override fixture path is already occupied');
+		}
+	}
+	$childFilter = function () use ($child) { return $child; };
+	$parentFilter = function () use ($parent) { return $parent; };
+	add_filter('stylesheet_directory', $childFilter, 99, 1);
+	add_filter('template_directory', $parentFilter, 99, 1);
+	$gpo['display_subscriptions'] = 1;
+	$gpo['display_country'] = 1;
+	$okWrites = @mkdir($child, 0775, true) && @mkdir($parent, 0775, true);
+	$put = function ($location, $template, $sourceName = null) use ($fixture, $child, $parent) {
+		$directory = gigpress_public_layout_override_location_path($location, $child, $parent);
+		$sourceName = $sourceName ?: $template;
+		$source = str_replace('__LOCATION__', $location, $fixture['files'][$sourceName]);
+		return gigpress_public_layout_override_write($directory, $template, $source);
+	};
+	$clear = function () use ($fixture, $child, $parent) {
+		foreach (array('child' => $child, 'parent' => $parent, 'wp-content' => WP_CONTENT_DIR) as $location => $root) {
+			$directory = $location === 'wp-content' ? $root . '/gigpress-templates' : $root . '/gigpress-templates';
+			foreach (array_merge($fixture['structural'], array('shows-artist-heading', 'shows-tour-heading', 'shows-list-footer')) as $template) {
+				$file = $directory . '/' . $template . '.php';
+				if (is_file($file)) @unlink($file);
+			}
+		}
+	};
+	$sourcePath = function ($location, $template) use ($child, $parent) {
+		return gigpress_public_layout_override_location_path($location, $child, $parent) . '/' . $template . '.php';
+	};
+	try {
+		$priorityPass = $okWrites;
+		foreach ($fixture['structural'] as $template) {
+			foreach (array('child', 'parent', 'wp-content') as $location) $priorityPass = $priorityPass && $put($location, $template);
+			$resolved = gigpress_template($template === 'shows-list-start' ? 'shows-list-start' : ($template === 'shows-list' ? 'shows-list' : 'shows-list-end'));
+			$priorityPass = $priorityPass && realpath($resolved) === realpath($sourcePath('child', $template));
+			@unlink($sourcePath('child', $template));
+			$resolved = gigpress_template($template);
+			$priorityPass = $priorityPass && realpath($resolved) === realpath($sourcePath('parent', $template));
+			@unlink($sourcePath('parent', $template));
+			$resolved = gigpress_template($template);
+			$priorityPass = $priorityPass && realpath($resolved) === realpath($sourcePath('wp-content', $template));
+			@unlink($sourcePath('wp-content', $template));
+			$resolved = gigpress_template($template);
+			$bundled = WP_PLUGIN_DIR . '/gigpress/templates/' . $template . '.php';
+			$priorityPass = $priorityPass && realpath($resolved) === realpath($bundled) && basename($resolved) === $template . '.php';
+		}
+		$checks['child_parent_wp_content_bundled_priority'] = $priorityPass;
+
+		$completePass = true;
+		$contextPass = true;
+		foreach (array('child', 'parent', 'wp-content') as $location) {
+			$clear();
+			foreach ($fixture['structural'] as $template) $completePass = $completePass && $put($location, $template);
+			$html = do_shortcode('[gigpress_shows scope="upcoming" group_artists="no"]');
+			$completePass = $completePass && strpos($html, 'class="compat-override-start') !== false
+				&& strpos($html, 'compat-' . $location . '-body') !== false && strpos($html, 'compat-' . $location . '-end') !== false
+				&& strpos($html, 'gigpress-layout-bundled') === false;
+			$contextOk = strpos($html, 'data-show-id="109"') !== false && strpos($html, 'class="gigpress-row active') !== false
+				&& strpos($html, '&quot;artist&quot;:false') !== false && strpos($html, '&quot;group_artists&quot;:&quot;no&quot;') !== false
+				&& strpos($html, '&quot;total_artists&quot;:3') !== false && strpos($html, '&quot;scope&quot;:&quot;upcoming&quot;') !== false
+				&& strpos($html, '&quot;cols&quot;:3') !== false && strpos($html, '&quot;artist_label&quot;:&quot;Acts&quot;') !== false;
+			$contextPass = $contextPass && $contextOk;
+		}
+		$checks['complete_child_parent_wp_content_sets_remain_owned'] = $completePass;
+		$checks['owner_context_and_hooks_preserved'] = $contextPass;
+
+		$clear();
+		$put('parent', 'shows-list');
+		$html = do_shortcode('[gigpress_shows scope="upcoming" group_artists="no"]');
+		$checks['bundled_start_owner_body_is_unmarked'] = strpos($html, 'gigpress-layout-bundled') === false && strpos($html, 'compat-parent-body') !== false;
+
+		$clear();
+		$put('child', 'shows-list-start');
+		$html = do_shortcode('[gigpress_shows scope="upcoming" group_artists="no"]');
+		$checks['owner_start_bundled_body_is_unmarked'] = strpos($html, 'compat-override-start') !== false && strpos($html, 'gigpress-layout-bundled') === false;
+
+		$clear();
+		$put('child', 'shows-list-end');
+		$html = do_shortcode('[gigpress_shows scope="upcoming" group_artists="no"]');
+		$checks['owner_end_is_unmarked'] = strpos($html, 'compat-child-end') !== false && strpos($html, 'gigpress-layout-bundled') === false;
+
+		$clear();
+		$put('child', 'shows-list-start');
+		$put('parent', 'shows-list');
+		$put('wp-content', 'shows-list-end');
+		$html = do_shortcode('[gigpress_shows scope="upcoming" group_artists="no"]');
+		$checks['cross_location_mixed_set_is_unmarked'] = strpos($html, 'compat-override-start') !== false
+			&& strpos($html, 'compat-parent-body') !== false && strpos($html, 'compat-wp-content-end') !== false
+			&& strpos($html, 'gigpress-layout-bundled') === false;
+
+		$clear();
+		$put('child', 'shows-list-start', 'shows-list-start-explicit');
+		$put('child', 'shows-list');
+		$put('child', 'shows-list-end');
+		$html = do_shortcode('[gigpress_shows scope="upcoming" group_artists="no"]');
+		$checks['explicit_owner_opt_in_is_respected'] = strpos($html, 'class="compat-override-start gigpress-layout-bundled"') !== false;
+
+		$clear();
+		foreach (array('shows-artist-heading', 'shows-tour-heading', 'shows-list-footer') as $template) $put('child', $template);
+		$html = do_shortcode('[gigpress_shows scope="upcoming" group_artists="yes"]');
+		$checks['heading_and_footer_overrides_render'] = strpos($html, 'compat-child-artist-heading') !== false
+			&& strpos($html, 'compat-child-tour-heading') !== false && strpos($html, 'compat-child-footer') !== false;
+		$pluginSource = file_get_contents(WP_PLUGIN_DIR . '/gigpress/gigpress.php');
+		$cssSource = file_get_contents(WP_PLUGIN_DIR . '/gigpress/css/gigpress.css');
+		$jsSource = file_get_contents(WP_PLUGIN_DIR . '/gigpress/scripts/gigpress.js');
+		$checks['optional_css_js_and_custom_stylesheet_contracts_preserved'] = is_string($pluginSource) && is_string($cssSource) && is_string($jsSource)
+			&& strpos($pluginSource, "if(empty(\$gpo['disable_css']))") !== false
+			&& strpos($pluginSource, "get_stylesheet_directory().\"/gigpress.css\"") !== false
+			&& strpos($pluginSource, "get_template_directory().\"/gigpress.css\"") !== false
+			&& strpos($pluginSource, "if(empty(\$gpo['disable_js']))") !== false
+			&& strpos($pluginSource, "wp_enqueue_script('gigpress-js'") !== false
+			&& strpos($cssSource, '.gigpress-table:not(.gigpress-layout-bundled) div.gigpress-calendar-links') !== false
+			&& strpos($jsSource, 'gigpress-links-toggle') !== false;
+	} catch (Throwable $error) {
+		$checks['fixture_loaded'] = false;
+		$reason = $error->getMessage();
+	} finally {
+		remove_filter('stylesheet_directory', $childFilter, 99);
+		remove_filter('template_directory', $parentFilter, 99);
+		gigpress_public_layout_override_cleanup($fixture, $child, $parent, $removeContentDirectory);
+	}
+	return array('case' => 'override-priority', 'checks' => $checks, 'locations' => array('child', 'parent', 'wp-content', 'bundled'), 'reason' => $reason ?? null);
+}
+
 function gigpress_public_layout_case($case) {
 	global $gpo, $wpdb, $post, $is_excerpt;
 	$checks = array();
@@ -42,6 +216,11 @@ function gigpress_public_layout_case($case) {
 	$gpo['display_subscriptions'] = 1;
 	$gpo['display_country'] = 1;
 	$gpo['relatedlink_notes'] = 1;
+	if ($case === 'override-priority') {
+		$result = gigpress_public_layout_override_case();
+		$gpo = $oldSettings;
+		return $result;
+	}
 	$main = do_shortcode('[gigpress_shows scope="upcoming" group_artists="yes" artist_order="custom"]');
 	$evidence = array();
 	$checks['supplemental_seeded'] = strpos($main, 'data-show-id="801"') !== false && strpos($main, 'data-show-id="803"') !== false;
@@ -64,14 +243,12 @@ function gigpress_public_layout_case($case) {
 		$checks['real_markup_labels'] = strpos($ungrouped, 'gigpress-mobile-label') !== false && strpos($ungrouped, '>Date:</span>') !== false && strpos($ungrouped, '>Acts:</span>') !== false && strpos($ungrouped, '>City:</span>') !== false && strpos($ungrouped, '>Venue:</span>') !== false;
 		$visibleMain = preg_replace('/\s+/', ' ', wp_strip_all_tags($main));
 		$checks['date_range_uses_saved_format'] = strpos($visibleMain, $dateStart . ' - ' . $dateEnd) !== false;
-		$row801 = strpos($main, 'data-show-id="801"');
 		$evidence['expected_range'] = $dateStart . ' - ' . $dateEnd;
 		$evidence['range_found'] = $checks['date_range_uses_saved_format'];
 		$evidence['artist_701_heading_found'] = $artistHeading !== false;
 		$evidence['group_table_after_heading'] = $groupTable !== false && $artistHeading !== false && $groupTable > $artistHeading;
 		$evidence['tour_heading_found'] = $tourHeading !== false;
 		$evidence['tour_heading_before_show_109'] = $tourHeading !== false && $lastShow !== false && $tourHeading < $lastShow;
-		$evidence['row_801_excerpt'] = $row801 === false ? '' : substr($main, $row801, 600);
 		$checks['no_time_omitted_and_midnight_visible'] = preg_match('/<tr class="gigpress-info active[^"]*" data-show-id="801">(.*?)<\/tr>/s', $main, $noTimeRow) === 1
 			&& strpos($noTimeRow[1], '<span class="gigpress-info-label">Time:</span>') === false
 			&& preg_match('/<tr class="gigpress-info soldout[^"]*" data-show-id="802">(.*?)<\/tr>/s', $main, $midnightRow) === 1

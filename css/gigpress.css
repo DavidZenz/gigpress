@@ -215,7 +215,7 @@ p.gigpress-subscribe a:hover {
 .gigpress-related-show li {
 	max-width: 100%;
 	box-sizing: border-box;
-	 overflow-wrap: anywhere;
+	overflow-wrap: anywhere;
 }
 
 .gigpress-listing li.cancelled,
@@ -315,15 +315,15 @@ p.gigpress-subscribe a:hover {
 
 
 /* These styles control the peek-a-boo "add" links to iCal and Google Calendar. Behaviour dictated by a separate jQuery script. */
-td.gigpress-links-cell {
+.gigpress-table:not(.gigpress-layout-bundled) td.gigpress-links-cell {
 	vertical-align: top;
 }
 
-.gigpress-calendar-add {
+.gigpress-table:not(.gigpress-layout-bundled) .gigpress-calendar-add {
 	position: relative;
 }
 
-a.gigpress-links-toggle {
+.gigpress-table:not(.gigpress-layout-bundled) a.gigpress-links-toggle {
 	display: block;
 	text-indent: -9999px;
 	width: 11px;
@@ -332,19 +332,19 @@ a.gigpress-links-toggle {
 	cursor: pointer;
 }
 
-a.gigpress-links-toggle:hover {
+.gigpress-table:not(.gigpress-layout-bundled) a.gigpress-links-toggle:hover {
 	background-position: -11px 0px;
 }
 
-a.gigpress-link-active {
+.gigpress-table:not(.gigpress-layout-bundled) a.gigpress-link-active {
 	background-position: -33px;
 }
 
-a.gigpress-link-active:hover {
+.gigpress-table:not(.gigpress-layout-bundled) a.gigpress-link-active:hover {
 	background-position: -22px;
 }
 
-div.gigpress-calendar-links {
+.gigpress-table:not(.gigpress-layout-bundled) div.gigpress-calendar-links {
 	display: none;
 	position: absolute;
 	left: 20px;
@@ -354,7 +354,7 @@ div.gigpress-calendar-links {
 	background: transparent url(../images/calendar-links-bg.png) no-repeat left center;
 }
 
-.gigpress-calendar-links-inner {
+.gigpress-table:not(.gigpress-layout-bundled) .gigpress-calendar-links-inner {
 	background-color: #F3F3F3;
 	padding: 6px 8px;
 	font-size: 11px;
@@ -363,7 +363,7 @@ div.gigpress-calendar-links {
 	border-width: 1px 1px 1px 0;
 }
 
-div.gigpress-calendar-links span {
+.gigpress-table:not(.gigpress-layout-bundled) div.gigpress-calendar-links span {
 	display: block;
 }
 
