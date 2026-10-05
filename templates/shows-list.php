@@ -35,26 +35,15 @@
 	
 	<tr class="gigpress-info <?php echo $class; ?>">
 	
-		<td class="gigpress-links-cell">
-			<?php
-			// Only show these links if this show is in the future
-			if($scope != 'past') : ?>
-			<div class="gigpress-calendar-add">
-				<a class="gigpress-links-toggle" href="#calendar-links-<?php echo $showdata['id']; ?>">Add</a>
-				<div class="gigpress-calendar-links" id="calendar-links-<?php echo $showdata['id']; ?>">
-					<div class="gigpress-calendar-links-inner">
-						<span><?php echo $showdata['gcal']; ?></span>
-						<span><?php echo $showdata['ical']; ?></span>
-					</div>
-				</div>
-			</div>
-			<?php endif; ?>
-		</td>
-		
-		<td colspan="<?php echo $cols - 1; ?>">
+		<td colspan="<?php echo $cols; ?>">
 		
 			<?php if($showdata['time']) : ?>
 				<span class="gigpress-info-item"><span class="gigpress-info-label"><?php _e("Time", "gigpress"); ?>:</span> <?php echo $showdata['time']; ?>.</span>
+			<?php endif; ?>
+			<?php
+			// Keep per-show actions beside the saved date/time data and directly usable without JavaScript.
+			if($scope != 'past') : ?>
+				<span class="gigpress-info-item gigpress-calendar-actions"><?php echo $showdata['gcal']; ?> | <?php echo str_replace(__('Download iCal', 'gigpress'), __('Download iCalendar', 'gigpress'), $showdata['ical']); ?></span>
 			<?php endif; ?>
 			
 			<?php if($showdata['price']) : ?>
