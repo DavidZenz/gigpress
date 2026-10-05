@@ -1,43 +1,43 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 03
-current_phase_name: Administration Workflows
-status: Verifying — human verification needed (8 UAT items)
-stopped_at: Completed Phase 03 execution and review fixes; human verification pending (8 items)
-last_updated: "2026-10-05T07:13:28.499Z"
+current_phase: 4
+current_phase_name: Public Publishing
+status: planning
+stopped_at: Phase 03 complete; ready to discuss Phase 04 Public Publishing
+last_updated: "2026-10-05T07:38:02.898Z"
 last_activity: 2026-10-05
-last_activity_desc: Phase 03 review fixes and supported evidence pass; eight UAT items pending
-state_head: 989fa127827f2f2a96907db6061882905f513f4e
+last_activity_desc: Phase 03 complete, transitioned to Phase 4
+state_head: 18b025a5706043e5893108399c9c574940a8ed2e
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 13
   completed_plans: 13
-  percent: 40
+  percent: 60
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-04)
+See: .planning/PROJECT.md (updated 2026-10-05)
 
 **Core value:** Site owners can manage show information and reliably publish it on their WordPress sites.
-**Current focus:** Phase 03 — Administration Workflows
+**Current focus:** Phase 04 — Public Publishing
 
 ## Current Position
 
-Phase: 03 (Administration Workflows) — VERIFYING
-Plan: 4 of 4
-Status: Verifying — human verification needed (8 UAT items)
-Last activity: 2026-10-05 — Phase 03 review fixes and supported evidence pass; eight UAT items pending
+Phase: 4 — Public Publishing
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-05 — Phase 03 complete, transitioned to Phase 4
 
-Progress: ░░░░░░░░░░ [████░░░░░░] 40%
+Progress: [██████░░░░] 60%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
+- Total plans completed: 13
 - Average duration: -
 - Total execution time: -
 
@@ -47,6 +47,7 @@ Progress: ░░░░░░░░░░ [████░░░░░░] 40%
 |-------|-------|-------|----------|
 | 01 | 5 | - | - |
 | 02 | 4 | - | - |
+| 03 | 4 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: none
@@ -102,6 +103,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Bind trash to the current owner, exact deduplicated ordered IDs and stored return state, consuming the expiring intent before writes.
 - [Phase 03]: Count only strict verified status transitions and scope Undo to changed IDs; recount and clamp return links after writes.
 
+- [Phase 03]: Eight explicit user UAT passes close manual acceptance; source-equivalent automated evidence remains separate from human confirmations.
+
 ### Pending Todos
 
 None yet.
@@ -110,7 +113,7 @@ None yet.
 
 - [Phase 01] The unavailable live site's callback identity for the reported warning remains unproven; the controlled fixture is not evidence of the live actor.
 - [Phase 04] Verify template overrides and feed contracts with representative fixtures.
-- [Phase 05] Verify CSV import/export edge cases and mutation protection with representative fixtures.
+- [Phase 05] Verify CSV import/export edge cases and mutation protection with representative fixtures; close required CR-04 unsafe notices, CR-05 conversion write-loss and CR-07 status-format defects from CSV-REVIEW-FOLLOWUPS.md.
 
 ## Deferred Items
 
@@ -121,6 +124,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-05T07:13:28.459Z
-Stopped at: Completed Phase 03 execution and review fixes; human verification pending (8 items)
-Resume file: .planning/phases/03-administration-workflows/03-UAT.md
+Last session: 2026-10-05T07:38:02.816Z
+Stopped at: Phase 03 complete; ready to discuss Phase 04 Public Publishing
+Resume file: None

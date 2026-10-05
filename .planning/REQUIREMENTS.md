@@ -26,9 +26,9 @@ Requirements for the first compatibility and UX delivery. Each maps to a roadmap
 
 ### Administration Workflows
 
-- [ ] **ADMIN-01**: Add and edit show forms make date, optional time, multi-day, and expiration fields clear; invalid values receive field-specific text feedback and all entered values remain available for correction.
-- [ ] **ADMIN-02**: Show-list filters for scope, artist, tour, venue, sort, and page size remain visible after filtering and pagination; bulk actions identify their result and do not affect unselected shows.
-- [ ] **ADMIN-03**: Settings are grouped with contextual help while retaining existing option keys, saved values, and setting meanings.
+- [x] **ADMIN-01**: Add and edit show forms make date, optional time, multi-day, and expiration fields clear; invalid values receive field-specific text feedback and all entered values remain available for correction.
+- [x] **ADMIN-02**: Show-list filters for scope, artist, tour, venue, sort, and page size remain visible after filtering and pagination; bulk actions identify their result and do not affect unselected shows.
+- [x] **ADMIN-03**: Settings are grouped with contextual help while retaining existing option keys, saved values, and setting meanings.
 
 ### CSV Import and Export
 
@@ -37,7 +37,7 @@ Requirements for the first compatibility and UX delivery. Each maps to a roadmap
 
 ### Usability and Safety
 
-- [ ] **UX-01**: Administration controls changed for this delivery have associated labels, semantic table headings where applicable, keyboard operation, and text-based success and error feedback.
+- [x] **UX-01**: Administration controls changed for this delivery have associated labels, semantic table headings where applicable, keyboard operation, and text-based success and error feedback.
 - [ ] **SEC-01**: Changed administration and import/export paths validate inputs, retain appropriate capability and nonce checks for mutations, and escape output for its destination format.
 
 ## v2 Requirements
@@ -69,10 +69,10 @@ Which phases cover which requirements.
 | COMP-04 | Phase 1 | Complete |
 | DATA-01 | Phase 2 | Complete |
 | DATA-02 | Phase 2 | Complete |
-| ADMIN-01 | Phase 3 | Pending |
-| ADMIN-02 | Phase 3 | Pending |
-| ADMIN-03 | Phase 3 | Pending |
-| UX-01 | Phase 3 | Pending |
+| ADMIN-01 | Phase 3 | Complete |
+| ADMIN-02 | Phase 3 | Complete |
+| ADMIN-03 | Phase 3 | Complete |
+| UX-01 | Phase 3 | Complete |
 | PUB-01 | Phase 4 | Pending |
 | PUB-02 | Phase 4 | Pending |
 | CSV-01 | Phase 5 | Pending |

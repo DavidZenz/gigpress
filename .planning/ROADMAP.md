@@ -8,7 +8,7 @@ Modernize GigPress in compatibility-first slices. Establish the WordPress 7.0+ a
 
 - [x] **Phase 1: Compatibility Baseline and Menu Diagnosis** - Establish supported runtime metadata and warning-free core workflows. (completed 2026-10-04)
 - [x] **Phase 2: Data and Upgrade Preservation** - Keep existing records, relationships, settings, and CRUD behavior usable through updates. (completed 2026-10-04)
-- [ ] **Phase 3: Administration Workflows** - Improve show entry, show-list management, and settings while keeping established behavior.
+- [x] **Phase 3: Administration Workflows** - Improve show entry, show-list management, and settings while keeping established behavior. (completed 2026-10-05)
 - [ ] **Phase 4: Public Publishing** - Make default show listings responsive and preserve public output and theme override contracts.
 - [ ] **Phase 5: CSV Import/Export** - Improve task clarity and outcome feedback while preserving CSV behavior and protecting mutations.
 
@@ -82,7 +82,7 @@ Plans:
   3. Site owners can find settings in clear groups with contextual help, while existing option keys, saved values, and setting meanings remain usable.
   4. Changed administration controls have associated labels and semantic table headings where applicable, work by keyboard, and provide text-based success and error feedback.
 
-**Plans**: 4/4 plans executed in 3 waves
+**Plans**: 4/4 plans complete in 3 waves
 **Wave 1**
 - [x] 03-01-PLAN.md — Show entry, correction, and safe retry with administration harness support.
 
@@ -133,6 +133,6 @@ Required inherited review fixes: [CSV review follow-ups](CSV-REVIEW-FOLLOWUPS.md
 |-------|----------------|--------|-----------|
 | 1. Compatibility Baseline and Menu Diagnosis | 5/5 | Complete    | 2026-10-04 |
 | 2. Data and Upgrade Preservation | 4/4 | Complete    | 2026-10-04 |
-| 3. Administration Workflows | 4/4 | In Progress|  |
+| 3. Administration Workflows | 4/4 | Complete    | 2026-10-05 |
 | 4. Public Publishing | 0/TBD | Not started | - |
 | 5. CSV Import/Export | 0/TBD | Not started | - |

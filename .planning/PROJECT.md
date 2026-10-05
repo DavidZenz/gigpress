@@ -20,11 +20,13 @@ Site owners can manage show information and reliably publish it on their WordPre
 - ✓ Reproduce and trace the reported admin-menu warning with a controlled fixture, fix GigPress's equivalent menu-order conflict, and leave the unavailable live callback unclaimed — Phase 1
 - ✓ Preserve records, IDs, relationships, settings, and linked content through recognized database upgrades, interruption/retry, and repeat loads — Phase 2, reconstructed fixtures
 - ✓ Preserve post-upgrade show create/edit/copy/trash/restore, dependency-safe entity deletion, and ownership-safe tour undo — Phase 2
+- ✓ Clear show date/time entry and recoverable validation, retained show-list filtering and selected-only confirmation, and grouped settings preserving stored values — Phase 3, automated evidence plus eight user-reported UAT passes
+- ✓ Changed Phase 3 controls support associated labels, keyboard operation and readable feedback — Phase 3 human acceptance
 
 ### Active
 
 - [ ] Preserve established public display, feed, theme-override, and import/export contracts while improving publishing and CSV workflows.
-- [ ] Identify and deliver useful improvements to the add-show date/time workflow, show-list filtering and bulk actions, settings organization and help, responsive public show displays, and import/export layout and feedback.
+- [ ] Deliver responsive public show displays and clearer import/export layout and feedback — remaining Phases 4 and 5.
 
 ### Out of Scope
 
@@ -40,6 +42,9 @@ Site owners can manage show information and reliably publish it on their WordPre
 - UX opportunities were identified by reading the existing source. The preferred and conflict-order admin menus were visually checked in disposable WordPress 7.1.2/PHP 8.3 cells; no live-site UI audit was performed.
 - A repository-owned OrbStack/Compose compatibility harness now covers supported PHP syntax, WordPress activation, menu ordering, data-preserving lifecycle transitions, and existing admin/public/feed/CSV workflows.
 - Phase 2 verifies populated reconstructed database versions 1.0–1.6 and post-upgrade CRUD across the supported matrix. No live backup was tested; public/CSV workflow cells use fresh databases, with migrated-fixture publishing and CSV integration assigned to Phases 4 and 5.
+
+- Phase 3 has 6384 passing administration assertions across six pinned supported cells, 54 authenticated HTTP checks and 39 PHP syntax checks. Eight user-reported passing UAT checkpoints close manual acceptance; the earlier browser record retains its actual observation limits.
+- Three inherited CSV/conversion review defects remain required Phase 5 fixes in `.planning/CSV-REVIEW-FOLLOWUPS.md`; Phase 3 acceptance does not establish plugin-wide safety.
 
 ## Constraints
 
@@ -62,9 +67,13 @@ Site owners can manage show information and reliably publish it on their WordPre
 | Count active and trashed dependencies before entity deletion and track tour undo ownership per show. | Deletion and undo must preserve relationships and intervening reassignment. | Verified against upgraded fixtures in Phase 2. |
 | Resolve upstream runtime targets and pin one WordPress patch per line for each matrix run. | Compatibility evidence must test consistent versions across PHP branches. | Six supported runtime cells pass in Phase 2; exact versions and image IDs are recorded. |
 
+| Keep raw received correction values separate from normalized writes and reuse completed related-record IDs on retry. | Failed saves must remain correctable without duplicate related records. | Implemented and accepted in Phase 3. |
+| Bind trash confirmation to the owner and exact selected IDs, then report verified per-ID outcomes. | Filtering must not expand selection; Cancel must change nothing. | Implemented and accepted in Phase 3. |
+| Keep six settings groups immediately visible and preserve protected, unknown, nested and falsey stored values. | Clear settings navigation must retain existing site configuration and semantics. | Implemented and accepted in Phase 3. |
+
 ## Evolution
 
 After each phase, move completed and confirmed requirements from Active to Validated, move rejected requirements to Out of Scope with a reason, record new requirements and decisions, and update this project description if the product changes. Review all sections at each milestone.
 
 ---
-*Last updated: 2026-10-04 after Phase 2 data and upgrade preservation verification.*
+*Last updated: 2026-10-05 after Phase 3 administration verification and human acceptance.*
