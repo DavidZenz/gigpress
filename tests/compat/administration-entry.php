@@ -161,7 +161,13 @@ function gigpress_administration_entry_snapshot() {
 }
 
 function gigpress_administration_entry_input_matches($html, $field, $value) {
-    return strpos($html, 'name="' . $field . '"') !== false && strpos($html, 'value="' . esc_attr($value) . '"') !== false;
+    preg_match_all('/<input\b[^>]*>/', $html, $inputs);
+    $matching = array();
+    foreach ($inputs[0] as $input) {
+        if (preg_match('/\sname="' . preg_quote($field, '/') . '"(?:\s|\/?>)/', $input) === 1) $matching[] = $input;
+    }
+    if (count($matching) !== 1 || preg_match('/\svalue="([^"]*)"/', $matching[0], $attribute) !== 1) return false;
+    return $attribute[1] === esc_attr($value) && html_entity_decode($attribute[1], ENT_QUOTES, 'UTF-8') === $value;
 }
 
 function gigpress_administration_entry_recovery_checks($request, $bad, $hostile) {
