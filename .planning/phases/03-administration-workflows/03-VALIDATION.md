@@ -1,15 +1,15 @@
 ---
 phase: "03"
 slug: "administration-workflows"
-status: draft
-nyquist_compliant: false
+status: validated
+nyquist_compliant: true
 wave_0_complete: true
 created: "2026-10-04"
 ---
 
 # Phase 03 — Validation Strategy
 
-> Execution evidence is recorded in the completed slice summaries, 03-ADMIN-MATRIX.md and 03-04-MATRIX-CLOSEOUT.md. The eight-case registry, all case modules, HTTP fixture and evidence modes now exist and run with positive assertions. Wave 0 is complete. Status remains draft and nyquist_compliant false until required browser observations and outstanding review items are resolved; matrix results cannot certify those items.
+> Execution evidence is recorded in the completed slice summaries, 03-ADMIN-MATRIX.md and 03-04-MATRIX-CLOSEOUT.md. The eight-case registry, all case modules, HTTP fixture and evidence modes now exist and run with positive assertions. Wave 0 is complete. All automated task commands have passing recorded evidence. The eight human acceptance items were explicitly reported pass in 03-UAT.md. Human confirmations close manual acceptance; matrix results alone do not certify those items.
 
 ## Test Infrastructure
 
@@ -70,13 +70,13 @@ Wave 2 has zero whole-file overlap. List pagination metadata is local, using the
 Wave 0 means assertion/dispatch creation before the matching implementation, folded into each leading tracer/expansion rather than a standalone horizontal infrastructure plan. The first registry and entry-create assertions are created in 03-01-01; later cases are created in their same task before their new command runs. Actual test creation/result plumbing is part of each task, not an assumed pre-existing command.
 
 - [x] Extend existing runner/probe with an explicit administration scenario/case registry and fail-closed, nonempty assertion results; mark all proposed files/flags/cases NEW in plans.
-- [ ] Date/time fixtures: native and legacy request adapters, invalid raw values and impossible stored dates, optional-time sentinel versus true midnight, uncommon existing minutes, multi-day on/off, unchanged expiration semantics.
-- [ ] Form recovery/save fixtures: every input retained, new-entity marker/reveal state, related-post radio/notes, edit identity, copy source preservation, unchanged update success, blocked readiness, failed write after related creation and retry without duplicate creation.
-- [ ] List fixtures: all filters/navigation links, zero/single/multiple pages, page size distinct from SQL limit, reset preserving scope/sort/size, per-user scope/size persistence and request-only sort.
-- [ ] Mutation fixtures: no/duplicate/malformed selection, confirm/cancel/bypass, invalid nonce/capability/readiness, individual and bulk trash, mixed missing/already-trashed/failed IDs, unchanged unselected rows, undo only confirmed changes, post-action page clamping.
-- [ ] Settings fixtures: six sections and one save; actual registered sanitizer/options submission and reload; unknown scalar/nested values, false/zero/empty values, protected hidden/sticky metadata, unchecked flags, unknown untouched radio/select values.
-- [ ] Provide a disposable browser fixture or explicit existing supported local-site procedure. Record setup/teardown and keyboard/no-JS checks without assuming the current callback-only runner exposes HTTP.
-- [ ] No new test framework or host PHP install required; reuse container-owned PHP and existing assertions.
+- [x] Date/time fixtures: native and legacy request adapters, invalid raw values and impossible stored dates, optional-time sentinel versus true midnight, uncommon existing minutes, multi-day on/off, unchanged expiration semantics.
+- [x] Form recovery/save fixtures: every input retained, new-entity marker/reveal state, related-post radio/notes, edit identity, copy source preservation, unchanged update success, blocked readiness, failed write after related creation and retry without duplicate creation.
+- [x] List fixtures: all filters/navigation links, zero/single/multiple pages, page size distinct from SQL limit, reset preserving scope/sort/size, per-user scope/size persistence and request-only sort.
+- [x] Mutation fixtures: no/duplicate/malformed selection, confirm/cancel/bypass, invalid nonce/capability/readiness, individual and bulk trash, mixed missing/already-trashed/failed IDs, unchanged unselected rows, undo only confirmed changes, post-action page clamping.
+- [x] Settings fixtures: six sections and one save; actual registered sanitizer/options submission and reload; unknown scalar/nested values, false/zero/empty values, protected hidden/sticky metadata, unchecked flags, unknown untouched radio/select values.
+- [x] Provide a disposable browser fixture or explicit existing supported local-site procedure. Record setup/teardown and keyboard/no-JS checks without assuming the current callback-only runner exposes HTTP.
+- [x] No new test framework or host PHP install required; reuse container-owned PHP and existing assertions.
 
 ## Manual-Only Verifications
 
@@ -98,7 +98,7 @@ Wave 0 means assertion/dispatch creation before the matching implementation, fol
 - [x] Manual browser evidence recorded with actual environment and outstanding gaps.
 - [x] `wave_0_complete` and `nyquist_compliant` updated only when their evidence exists.
 
-**Approval:** Automated matrix/evidence gates passed. Phase acceptance remains pending the required browser checks in 03-BROWSER.md and downstream review of ADMIN-03/unclassified plus the three descriptor-less prohibitions.
+**Approval:** Automated matrix/evidence gates passed; 03-UAT.md records user-reported PASS for all eight manual checks, including ADMIN-03 scope and three product prohibitions. The historical browser report retains the limits of agent observations. Canonical goal verification governs phase completion.
 
 ## Multi-Source Coverage Audit
 
@@ -197,3 +197,14 @@ All four plan frontmatter validations and plan-structure queries passed with zer
 ## Post-review evidence refresh
 
 See 03-REVIEW-CLOSEOUT.md for current source-bound matrix, updated case counts,54 actual HTTP checks,39PHP lint checks and5 cleanup contract checks. Actual legacy URL/whitespace-number browser save/reload now passes with independent exact storage read-back. Original three grouped browser procedures, sortable feedback, product prohibitions and unidentified settings intent remain pending; draft/nyquist false are retained. Historical summaries and the first matrix closeout are not current-source certificates.
+
+## Validation Audit 2026-10-05 — UAT closure
+
+| Metric | Count |
+|--------|-------|
+| Automated task commands with passing evidence | 11 |
+| New automated coverage gaps | 0 |
+| Pending human checkpoints resolved by explicit user pass | 8 |
+| Remaining pending/blocked/failed UAT rows | 0 |
+
+The existing requirement-to-task map covers ADMIN-01, ADMIN-02, ADMIN-03 and UX-01 through the eight administration cases, authenticated HTTP and source-bound matrix checks. No tests or implementation files were added or run during this acceptance audit. All Wave 0 fixtures exist in the completed harness. Manual-only verification procedures remain manual and are accepted through user confirmations in 03-UAT.md; no automated browser observations are invented. The unidentified ADMIN-03 item was accepted within existing grouped-settings preservation scope, without supplying a new edge. CR-04/05/07 remain required Phase 5 work and do not become a clean plugin-wide verdict.

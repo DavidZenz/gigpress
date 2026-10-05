@@ -69,3 +69,13 @@ Parent verification at source f3f1781: the original independent 21-row audit abo
 Both Artists and Venues now load their dependency guard for normal page rendering, verified by actual HTTP; this does not alter dependency deletion policy. Parent checked the changed sinks/guards against the existing authored controls. This supplement is an inline source/test recheck, not a second independent audit. The current matrix and goal verification govern final source acceptance.
 
 The source review discovered inherited CSV notice injection, tour conversion write-loss and CSV status formatting defects outside the authored administration threat register. They are unresolved required Phase 05 work in CSV-REVIEW-FOLLOWUPS.md. The scoped SECURED 21/21 verdict does not certify those unregistered workflows or imply a clean plugin-wide security review. No accepted risk is fabricated.
+
+## Security Audit 2026-10-05 — UAT closure
+
+| Metric | Count |
+|--------|-------|
+| Authored threats | 21 |
+| Closed | 21 |
+| Open | 0 |
+
+ASVS L1 and the authored plan register permit the workflow's no-open-threat short circuit. The existing threat register and post-review source supplement were checked with the unchanged production source; capability/nonce/readiness guards, selected-ID intent checks, normalized input and destination encoding remain present. This inline closure does not represent a new independent audit. The user reported all eight manual acceptance checks pass in 03-UAT.md. No implementation changes, new runtime execution, accepted risks or broader security claims are introduced; Phase 5 CSV/conversion defects remain unresolved.
