@@ -21,8 +21,8 @@ Requirements for the first compatibility and UX delivery. Each maps to a roadmap
 
 ### Public Publishing
 
-- [ ] **PUB-01**: Existing shortcodes, widgets, related-post displays, RSS and iCalendar feeds, and their established output contracts continue to work after the update.
-- [ ] **PUB-02**: The bundled public show listing remains readable at a 320 CSS-pixel viewport without page-level horizontal scrolling, with existing show details and links available; child-theme, parent-theme, and `wp-content/gigpress-templates` overrides continue to resolve with their current filenames, variables, and CSS hooks.
+- [x] **PUB-01**: Existing shortcodes, widgets, related-post displays, RSS and iCalendar feeds, and their established output contracts continue to work after the update.
+- [x] **PUB-02**: The bundled public show listing remains readable at a 320 CSS-pixel viewport without page-level horizontal scrolling, with existing show details and links available; child-theme, parent-theme, and `wp-content/gigpress-templates` overrides continue to resolve with their current filenames, variables, and CSS hooks.
 
 ### Administration Workflows
 
@@ -73,8 +73,8 @@ Which phases cover which requirements.
 | ADMIN-02 | Phase 3 | Complete |
 | ADMIN-03 | Phase 3 | Complete |
 | UX-01 | Phase 3 | Complete |
-| PUB-01 | Phase 4 | Pending |
-| PUB-02 | Phase 4 | Pending |
+| PUB-01 | Phase 4 | Complete |
+| PUB-02 | Phase 4 | Complete |
 | CSV-01 | Phase 5 | Pending |
 | CSV-02 | Phase 5 | Pending |
 | SEC-01 | Phase 5 | Pending |

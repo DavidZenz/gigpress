@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 04
 current_phase_name: Public Publishing
 status: executing
-stopped_at: Phase 04 plans verified; ready to execute Public Publishing
-last_updated: "2026-10-05T09:00:42.167Z"
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-10-05T10:02:27.655Z"
 last_activity: 2026-10-05
-last_activity_desc: Phase 04 planned and independently verified (5 plans, 5 waves)
-state_head: 4598b3788ac29530a0774e1b62605402a0a573a8
+last_activity_desc: Phase 04 execution started
+state_head: 7f62194cad7716dc284f54d759d02564b0ae8fd8
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 18
-  completed_plans: 13
+  completed_plans: 14
   percent: 60
 ---
 
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-10-05)
 
 ## Current Position
 
-Phase: 04 (Public Publishing) — READY TO EXECUTE
-Plan: Not started
+Phase: 04 (Public Publishing) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-10-05 — Phase 04 planned and independently verified (5 plans, 5 waves)
+Last activity: 2026-10-05 — Phase 04 execution started
 
 Progress: [██████░░░░] 60%
 
@@ -71,6 +71,7 @@ Progress: [██████░░░░] 60%
 | Phase 03 P02 | 12min | 2 tasks | 4 files |
 | Phase 03 P03 | 16min | 3 tasks | 4 files |
 | Phase 03 P04 | 535min | 3 tasks | 11 files |
+| Phase 04 P01 | 20min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -104,6 +105,9 @@ Recent decisions affecting current work:
 - [Phase 03]: Count only strict verified status transitions and scope Undo to changed IDs; recount and clamp return links after writes.
 
 - [Phase 03]: Eight explicit user UAT passes close manual acceptance; source-equivalent automated evidence remains separate from human confirmations.
+- [Phase 04]: Keep persisted show_id and existing relationships as the identity anchor across public destinations.
+- [Phase 04]: Keep supplemental public-only values separate from canonical migration evidence.
+- [Phase 04]: Expect 1.1 migrated RSS order [113, 111] because its historical schema predates show_status; keep linked post and selected iCalendar checks tied to show 111.
 
 ### Pending Todos
 
@@ -124,6 +128,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-05T09:00:42.127Z
-Stopped at: Phase 04 plans verified; ready to execute Public Publishing
-Resume file: .planning/phases/04-public-publishing/04-01-PLAN.md
+Last session: 2026-10-05T10:02:27.619Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None
