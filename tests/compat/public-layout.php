@@ -278,6 +278,10 @@ function gigpress_public_layout_case($case) {
 		$checks['bundled_only_responsive_css'] = is_string($css) && strpos($css, '@media screen and (max-width: 42em)') !== false
 			&& strpos($css, '.gigpress-layout-bundled > tbody > tr.gigpress-row') !== false
 			&& strpos($css, 'content:') === false;
+		$checks['bundled_long_table_and_heading_values_wrap'] = is_string($css)
+			&& strpos($css, '.gigpress-layout-bundled th,') !== false
+			&& strpos($css, '.gigpress-layout-bundled-heading') !== false
+			&& strpos($main, 'class="gigpress-artist-heading gigpress-layout-bundled-heading"') !== false;
 	} elseif ($case === 'layout-compact') {
 		$compact = do_shortcode('[gigpress_shows scope="upcoming" artist="701"]');
 		$compactLinks = html_entity_decode($compact, ENT_QUOTES | ENT_HTML5, 'UTF-8');

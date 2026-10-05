@@ -9,7 +9,7 @@
 
 ?>
 
-<h3 class="gigpress-artist-heading" id="artist-<?php echo (int) $showdata['artist_id']; ?>"><?php echo gigpress_public_text_fragment($showdata['artist']); ?>
+<h3 class="gigpress-artist-heading<?php if (!empty($gigpress_bundled_layout)) echo ' gigpress-layout-bundled-heading'; ?>" id="artist-<?php echo (int) $showdata['artist_id']; ?>"><?php echo gigpress_public_text_fragment($showdata['artist']); ?>
 <?php if(!empty($gpo['display_subscriptions'])) : ?>
 	<span class="gigpress-artist-subscriptions">
 		<a href="<?php echo esc_url(GIGPRESS_RSS . '&artist=' . (int) $showdata['artist_id']); ?>" title="<?php echo esc_attr($showdata['artist_plain']); ?> RSS"><img src="<?php echo esc_url(plugins_url('/gigpress/images/feed-icon-12x12.png')); ?>" alt="" /></a>

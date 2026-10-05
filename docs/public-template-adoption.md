@@ -11,7 +11,7 @@ The main listing's structural files are `shows-list-start.php`, `shows-list.php`
 
 ## Bundled responsive layout
 
-When all three structural files resolve to GigPress's bundled files, GigPress adds the `gigpress-layout-bundled` class to the bundled table. The bundled stylesheet retains the wide table at wider viewports. At viewports up to 42em it stacks each show into labelled date, artist (when not already grouped), city, venue, country, and details rows. The actual labels are in the HTML. Time, admission, address, notes, ticket and external links, statuses, and available calendar actions remain visible and can wrap. Artist and tour headings remain outside their show blocks.
+When all three structural files resolve to GigPress's bundled files, GigPress adds the `gigpress-layout-bundled` class to the bundled table. The bundled stylesheet retains the wide table at wider viewports. At viewports up to 42em it stacks each show into labelled date, artist (when not already grouped), city, venue, country, and details rows. The actual labels are in the HTML. Long unbroken table values and grouped artist headings wrap within the content width. Time, admission, address, notes, ticket and external links, statuses, and available calendar actions remain visible and can wrap. Artist and tour headings remain outside their show blocks.
 
 The table and its established hooks remain available to themes: `.gigpress-table`, `.gigpress-header`, `.gigpress-row`, `.gigpress-info`, `.gigpress-tour`, `.gigpress-heading`, `.gigpress-date`, `.gigpress-artist`, `.gigpress-city`, `.gigpress-venue`, `.gigpress-country`, `.gigpress-info-item`, and `.gigpress-info-label`. The bundled start partial still exposes `$cols` for later partials.
 

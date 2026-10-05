@@ -166,6 +166,16 @@ a.gigpress-address {
 	display: none;
 }
 
+.gigpress-layout-bundled th,
+.gigpress-layout-bundled td {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.gigpress-layout-bundled-heading {
+	overflow-wrap: anywhere;
+}
+
 .gigpress-layout-bundled .gigpress-info-item {
 	display: inline-block;
 	margin: 0 0.65em 0.35em 0;
