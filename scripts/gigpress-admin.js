@@ -54,11 +54,17 @@ $gp(document).ready(function()
 			helper: fixHelper,
 			update : function () { 
 		      var order = $gp('.gigpress-artist-sort').sortable('serialize');
-		      $gp("#artist-sort-update").load(ajaxurl, order + '&action=gigpress_reorder_artists&cachebuster=' + Math.floor(Math.random()*99999), function()
-		      	{
-		   			$gp("#artist-sort-update").fadeIn(100, function(){$gp(this).fadeOut(1500)});  
-		      	}
-		      ); 
+		      var feedback = $gp('#artist-sort-update');
+		      var config = window.gigpressAdmin || {};
+		      $gp.ajax({url: ajaxurl, type: 'POST', dataType: 'json', data: order + '&action=gigpress_reorder_artists&_ajax_nonce=' + encodeURIComponent(config.reorderNonce || '')})
+		        .done(function(response) {
+		          feedback.text(response.data && response.data.message || config.reorderError).show();
+		          if (response.success) feedback.delay(1500).fadeOut(100);
+		        })
+		        .fail(function(xhr) {
+		          var response = xhr.responseJSON;
+		          feedback.text(response && response.data && response.data.message || config.reorderError).show();
+		        });
 		    } 
 		});
 					

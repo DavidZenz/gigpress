@@ -75,6 +75,10 @@ function gigpress_settings() {
                         $raw = array_key_exists($key, $gpo) ? $gpo[$key] : '';
                         $value = is_scalar($raw) ? (string) $raw : '';
                         $disabled = !is_scalar($raw);
+                        $input_type = $type === 'format' ? 'text' : $type;
+                        // Native controls must be able to submit an unchanged stored value.
+                        if ($type === 'number' && $value !== '' && !preg_match('/\A[0-9]+\z/', $value)) $input_type = 'text';
+                        if ($type === 'url' && $value !== '' && (!preg_match('/\Ahttps?:\/\/[^\s]+\z/i', $value) || !filter_var($value, FILTER_VALIDATE_URL))) $input_type = 'text';
                         $id = 'gp-setting-' . $key;
                         $help_id = $id . '-help';
                         $name = 'gigpress_settings[' . $key . ']';
@@ -111,7 +115,7 @@ function gigpress_settings() {
                                     </select>
                                 <?php }
                             } else { ?>
-                                <input type="<?php echo esc_attr($type === 'format' ? 'text' : $type); ?>" class="regular-text" id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" value="<?php echo esc_attr($value); ?>" <?php disabled($disabled); ?> <?php if ($type === 'number') echo 'min="0" step="1"'; ?> aria-describedby="<?php echo esc_attr($help_id); ?>" />
+                                <input type="<?php echo esc_attr($input_type); ?>" class="regular-text" id="<?php echo esc_attr($id); ?>" name="<?php echo esc_attr($name); ?>" value="<?php echo esc_attr($value); ?>" <?php disabled($disabled); ?> <?php if ($input_type === 'number') echo 'min="0" step="1"'; ?> aria-describedby="<?php echo esc_attr($help_id); ?>" />
                             <?php } ?>
                                 <p class="description" id="<?php echo esc_attr($help_id); ?>"><?php echo esc_html($help); ?>
                                 <?php if ($type === 'format') {

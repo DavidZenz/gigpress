@@ -123,6 +123,7 @@ function gigpress_admin_head()	{
 	wp_enqueue_script('jquery');
 	wp_enqueue_script('jquery-ui-sortable');
 	wp_enqueue_script('gigpress-admin-js', plugins_url('scripts/gigpress-admin.js', __FILE__), array('jquery'));
+	wp_localize_script('gigpress-admin-js', 'gigpressAdmin', array('reorderNonce' => wp_create_nonce('gigpress-reorder-artists'), 'reorderError' => __('Artist order could not be updated. Reload and retry.', 'gigpress')));
 	wp_enqueue_style('gigpress-admin-css', plugins_url('css/gigpress-admin.css', __FILE__));
 }
 
@@ -164,7 +165,7 @@ function gigpress_head() {
 	
 	if(!empty($gpo['rss_head'])){
 	// Adds auto-discovery of our RSS feed
-	echo('<link href="'.GIGPRESS_RSS.'" rel="alternate" type="application/rss+xml" title="'.$gpo['rss_title'].'" />
+	echo('<link href="'.esc_url(GIGPRESS_RSS).'" rel="alternate" type="application/rss+xml" title="'.esc_attr($gpo['rss_title']).'" />
 ');
 	}
 }
@@ -569,24 +570,41 @@ function add_upload_ext($mimes='') {
 	return $mimes;
 }
 
-function gigpress_reorder_artists() {
-	
+function gigpress_reorder_artist_rows() {
 	global $wpdb;
-	$wpdb->show_errors();
-	
-	$sql = "UPDATE " . GIGPRESS_ARTISTS . " SET artist_order = CASE artist_id ";
-	foreach($_REQUEST['artist'] as $order => $artist) {
-		$sql .= $wpdb->prepare("WHEN %d THEN %d ", $artist, $order);
+	$settings = get_option('gigpress_settings', array());
+	$capability = is_array($settings) && is_string($settings['user_level'] ?? null) ? $settings['user_level'] : 'manage_options';
+	if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !current_user_can($capability)) return new WP_Error('artist_order_forbidden', __('You cannot change artist order.', 'gigpress'));
+	$nonce = $_POST['_ajax_nonce'] ?? '';
+	if (!is_string($nonce) || !wp_verify_nonce($nonce, 'gigpress-reorder-artists')) return new WP_Error('artist_order_nonce', __('The security check failed. Reload and retry.', 'gigpress'));
+	$ready = function_exists('gigpress_db_bootstrap') ? gigpress_db_bootstrap() : array();
+	if (($ready['status'] ?? '') !== 'ready' || ($settings['db_version'] ?? null) !== GIGPRESS_DB_VERSION) return new WP_Error('artist_order_readiness', __('GigPress data upgrade is paused. Resolve it before changing artist order.', 'gigpress'));
+	$received = $_POST['artist'] ?? null;
+	if (!is_array($received) || !$received || count($received) > 10000) return new WP_Error('artist_order_ids', __('Select valid artists to reorder.', 'gigpress'));
+	$ids = array();
+	foreach ($received as $id) {
+		if ((!is_int($id) && !is_string($id)) || !preg_match('/\A[1-9][0-9]{0,17}\z/', (string) $id)) return new WP_Error('artist_order_ids', __('Select valid artists to reorder.', 'gigpress'));
+		$ids[(int) $id] = (int) $id;
 	}
-	$sql .= " END";
-	
-	$update_order = $wpdb->query($sql);
-	
-	if($update_order !== FALSE) {
-		_e("Artist order updated.", "gigpress");
+	$ids = array_values($ids);
+	$placeholders = implode(',', array_fill(0, count($ids), '%d'));
+	$found = $wpdb->get_col($wpdb->prepare('SELECT artist_id FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_id IN (' . $placeholders . ')', $ids));
+	if (count($found) !== count($ids)) return new WP_Error('artist_order_missing', __('An artist no longer exists. Reload and retry.', 'gigpress'));
+	$sql = 'UPDATE ' . GIGPRESS_ARTISTS . ' SET artist_order = CASE artist_id ';
+	foreach ($ids as $order => $id) $sql .= $wpdb->prepare('WHEN %d THEN %d ', $id, $order);
+	$sql .= $wpdb->prepare('ELSE artist_order END WHERE artist_id IN (' . $placeholders . ')', $ids);
+	if ($wpdb->query($sql) === false) return new WP_Error('artist_order_write', __('Artist order could not be updated. Reload and retry.', 'gigpress'));
+	$rows = $wpdb->get_results($wpdb->prepare('SELECT artist_id, artist_order FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_id IN (' . $placeholders . ')', $ids), OBJECT_K);
+	foreach ($ids as $order => $id) {
+		if (!isset($rows[$id]) || (int) $rows[$id]->artist_order !== $order) return new WP_Error('artist_order_write', __('Artist order could not be verified. Reload and retry.', 'gigpress'));
 	}
-	
-	die();
+	return array('message' => __('Artist order updated.', 'gigpress'));
+}
+
+function gigpress_reorder_artists() {
+	$result = gigpress_reorder_artist_rows();
+	if (is_wp_error($result)) wp_send_json_error(array('message' => $result->get_error_message()), 400);
+	wp_send_json_success($result);
 }
 
 
