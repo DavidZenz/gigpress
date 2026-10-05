@@ -1,5 +1,5 @@
 <?php
-	
+
 // 	STOP! DO NOT MODIFY THIS FILE!
 //	If you wish to customize the output, you can safely do so by COPYING this file
 //	into a new folder called 'gigpress-templates' in your 'wp-content' directory
@@ -20,7 +20,7 @@
 	$cols = (!empty($gpo['display_country'])) ? $cols + 1 : $cols;
 ?>
 
-<table class="gigpress-table <?php echo $scope; ?>" cellspacing="0">
+<table class="gigpress-table <?php echo $scope; ?><?php if (!empty($gigpress_bundled_layout)) echo ' gigpress-layout-bundled'; ?>" cellspacing="0">
 	<tbody>
 		<tr class="gigpress-header">
 			<th scope="col" class="gigpress-date"><?php _e("Date", "gigpress"); ?></th>
@@ -34,4 +34,3 @@
 		<?php endif; ?>
 		</tr>
 	</tbody>
-	

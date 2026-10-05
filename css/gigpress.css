@@ -161,6 +161,158 @@ strong.gigpress-cancelled, strong.gigpress-soldout {
 a.gigpress-address {
 }
 
+/* Labels are real markup for narrow bundled layouts and remain hidden in the wide table. */
+.gigpress-mobile-label {
+	display: none;
+}
+
+.gigpress-layout-bundled .gigpress-info-item {
+	display: inline-block;
+	margin: 0 0.65em 0.35em 0;
+	max-width: 100%;
+	vertical-align: top;
+	overflow-wrap: anywhere;
+}
+
+.gigpress-layout-bundled .gigpress-calendar-actions {
+	font-weight: bold;
+}
+
+.gigpress-layout-bundled .gigpress-calendar-actions a {
+	margin-right: 0.4em;
+}
+
+.gigpress-layout-bundled strong.gigpress-cancelled,
+.gigpress-layout-bundled strong.gigpress-soldout {
+	display: inline-block;
+	padding: 0.2em 0.45em;
+	border: 1px solid currentColor;
+	border-radius: 0.2em;
+	font-size: 0.9em;
+}
+
+/* The default list footer stays compact, labelled and naturally wraps. */
+p.gigpress-subscribe {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.25em 0.55em;
+	color: inherit;
+}
+
+p.gigpress-subscribe a,
+p.gigpress-subscribe a:hover {
+	width: auto;
+	margin: 0;
+	background: none;
+	text-indent: 0;
+}
+
+/* Compact surfaces inherit theme typography and wrap long owner-supplied values. */
+.gigpress-listing,
+.gigpress-listing li,
+.gigpress-related-show,
+.gigpress-related-show li {
+	max-width: 100%;
+	box-sizing: border-box;
+	 overflow-wrap: anywhere;
+}
+
+.gigpress-listing li.cancelled,
+.gigpress-listing li.soldout,
+.gigpress-related-show.cancelled,
+.gigpress-related-show.soldout {
+	padding-bottom: 0.45em;
+	border-bottom: 1px solid currentColor;
+}
+
+@media screen and (max-width: 42em) {
+	.gigpress-layout-bundled,
+	.gigpress-layout-bundled > tbody,
+	.gigpress-layout-bundled > tbody > tr,
+	.gigpress-layout-bundled > tbody > tr > td {
+		display: block;
+		width: 100%;
+		box-sizing: border-box;
+	}
+
+	.gigpress-layout-bundled > tbody > tr.gigpress-header {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+	}
+
+	.gigpress-layout-bundled > tbody > tr.gigpress-row {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		gap: 0.25em;
+		padding: 0.7em 0.5em 0.55em;
+		border-bottom: 1px solid #ccc;
+	}
+
+	.gigpress-layout-bundled > tbody > tr.gigpress-row td,
+	.gigpress-layout-bundled > tbody > tr.gigpress-info td {
+		padding: 0;
+		border: 0;
+		text-align: left;
+	}
+
+	.gigpress-layout-bundled .gigpress-mobile-label {
+		display: inline;
+		font-weight: bold;
+	}
+
+	.gigpress-layout-bundled > tbody > tr.gigpress-info {
+		padding: 0 0.5em 0.65em;
+		border-bottom: 1px solid #ccc;
+	}
+
+	.gigpress-layout-bundled > tbody > tr.gigpress-info td {
+		font-size: 100%;
+	}
+
+	.gigpress-layout-bundled > tbody > tr.gigpress-info .gigpress-info-item {
+		display: block;
+		margin: 0.2em 0;
+	}
+
+	.gigpress-layout-bundled > tbody > tr.gigpress-info .gigpress-calendar-actions {
+		margin: 0.35em 0 0.55em;
+	}
+
+	.gigpress-layout-bundled > tbody > tr.gigpress-info .gigpress-info-label {
+		color: inherit;
+	}
+
+	.gigpress-layout-bundled > tbody > tr.gigpress-row.cancelled,
+	.gigpress-layout-bundled > tbody > tr.gigpress-info.cancelled,
+	.gigpress-layout-bundled > tbody > tr.gigpress-row.soldout,
+	.gigpress-layout-bundled > tbody > tr.gigpress-info.soldout {
+		color: inherit;
+	}
+
+	.gigpress-layout-bundled > tbody > tr.gigpress-row.cancelled td,
+	.gigpress-layout-bundled > tbody > tr.gigpress-info.cancelled td,
+	.gigpress-layout-bundled > tbody > tr.gigpress-row.soldout td,
+	.gigpress-layout-bundled > tbody > tr.gigpress-info.soldout td {
+		color: inherit;
+	}
+
+	.gigpress-layout-bundled > tbody > tr.gigpress-info.cancelled .gigpress-info-item,
+	.gigpress-layout-bundled > tbody > tr.gigpress-info.cancelled .gigpress-info-label,
+	.gigpress-layout-bundled > tbody > tr.gigpress-info.soldout .gigpress-info-item,
+	.gigpress-layout-bundled > tbody > tr.gigpress-info.soldout .gigpress-info-label {
+		color: inherit;
+	}
+
+	.gigpress-layout-bundled > tbody > tr.gigpress-tour th {
+		white-space: normal;
+	}
+}
+
 
 /* These styles control the peek-a-boo "add" links to iCal and Google Calendar. Behaviour dictated by a separate jQuery script. */
 td.gigpress-links-cell {

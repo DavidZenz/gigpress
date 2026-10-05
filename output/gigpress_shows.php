@@ -150,6 +150,14 @@ function gigpress_shows($filter = null, $content = null) {
 	}
 	
 	$shows_markup = array();
+	// Resolve the complete structural set before a bundled-only style opt-in is emitted.
+	$gigpress_list_start_template = gigpress_template('shows-list-start');
+	$gigpress_list_body_template = gigpress_template('shows-list');
+	$gigpress_list_end_template = gigpress_template('shows-list-end');
+	$gigpress_bundled_templates = trailingslashit(WP_PLUGIN_DIR) . 'gigpress/templates/';
+	$gigpress_bundled_layout = realpath($gigpress_list_start_template) === realpath($gigpress_bundled_templates . 'shows-list-start.php')
+		&& realpath($gigpress_list_body_template) === realpath($gigpress_bundled_templates . 'shows-list.php')
+		&& realpath($gigpress_list_end_template) === realpath($gigpress_bundled_templates . 'shows-list-end.php');
 	
 	// If we're grouping by artist, we'll unfortunately have to first get all artists
 	// Then  make a query for each one. Looking for a better way to do this.
@@ -175,7 +183,7 @@ function gigpress_shows($filter = null, $content = null) {
 				);
 			
 				include gigpress_template('shows-artist-heading');
-				include gigpress_template('shows-list-start');
+				include $gigpress_list_start_template;
 											
 				foreach($shows as $show) {
 				
@@ -196,7 +204,7 @@ function gigpress_shows($filter = null, $content = null) {
 					}
 					$class .= ($showdata['tour'] && !$tour) ? ' gigpress-tour' : '';
 					
-					include gigpress_template('shows-list');
+					include $gigpress_list_body_template;
 					
 					if($gpo['output_schema_json'] == 'y')
 					{
@@ -205,7 +213,7 @@ function gigpress_shows($filter = null, $content = null) {
 					}
 				}
 				
-				include gigpress_template('shows-list-end');						
+				include $gigpress_list_end_template;
 			}
 		}
 		
@@ -243,7 +251,7 @@ function gigpress_shows($filter = null, $content = null) {
 			$current_tour = '';
 			$i = 0;
 
-			include gigpress_template('shows-list-start');
+			include $gigpress_list_start_template;
 			
 			foreach($shows as $show) {
 			
@@ -263,7 +271,7 @@ function gigpress_shows($filter = null, $content = null) {
 				}
 				$class .= ($showdata['tour'] && !$tour) ? ' gigpress-tour' : '';
 				
-				include gigpress_template('shows-list');
+				include $gigpress_list_body_template;
 				
 				if($gpo['output_schema_json'] == 'y')
 				{
@@ -272,7 +280,7 @@ function gigpress_shows($filter = null, $content = null) {
 				}
 			}
 			
-			include gigpress_template('shows-list-end');
+			include $gigpress_list_end_template;
 			include gigpress_template('shows-list-footer');
 
 			if(!empty($shows_markup))

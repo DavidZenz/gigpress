@@ -11,31 +11,31 @@
 
 <tbody>
 	
-	<tr class="gigpress-row <?php echo $class; ?>">
+	<tr class="gigpress-row <?php echo $class; ?>" data-show-id="<?php echo (int) $showdata['id']; ?>">
 	
-		<td class="gigpress-date"><?php echo $showdata['date']; ?>
+		<td class="gigpress-date"><span class="gigpress-mobile-label"><?php _e("Date", "gigpress"); ?>:</span> <?php echo $showdata['date']; ?>
 			<?php if($showdata['end_date']) : ?> - <?php echo $showdata['end_date']; ?><?php endif; ?>
 		</td>
 		
 	<?php if((!$artist && $group_artists == 'no') && $total_artists > 1) : ?>
-		<td class="gigpress-artist">
+		<td class="gigpress-artist"><span class="gigpress-mobile-label"><?php echo wptexturize($gpo['artist_label']); ?>:</span>
 			<?php echo $showdata['artist']; ?>
 		</td>
 	<?php endif; ?>
 	
-		<td class="gigpress-city"><?php echo $showdata['city']; if(!empty($showdata['state'])) echo ', '.$showdata['state']; ?></td>
+		<td class="gigpress-city"><span class="gigpress-mobile-label"><?php _e("City", "gigpress"); ?>:</span> <?php echo $showdata['city']; if(!empty($showdata['state'])) echo ', '.$showdata['state']; ?></td>
 		
-		<td class="gigpress-venue"><?php echo $showdata['venue']; ?></td>
+		<td class="gigpress-venue"><span class="gigpress-mobile-label"><?php _e("Venue", "gigpress"); ?>:</span> <?php echo $showdata['venue']; ?></td>
 		
 	<?php if(!empty($gpo['display_country'])) : ?>
-		<td class="gigpress-country"><?php echo $showdata['country']; ?></td>
+		<td class="gigpress-country"><span class="gigpress-mobile-label"><?php _e("Country", "gigpress"); ?>:</span> <?php echo $showdata['country']; ?></td>
 	<?php endif; ?>
 	
 	</tr>
 	
-	<tr class="gigpress-info <?php echo $class; ?>">
+	<tr class="gigpress-info <?php echo $class; ?>" data-show-id="<?php echo (int) $showdata['id']; ?>">
 	
-		<td colspan="<?php echo $cols; ?>">
+		<td colspan="<?php echo $cols; ?>" class="gigpress-details">
 		
 			<?php if($showdata['time']) : ?>
 				<span class="gigpress-info-item"><span class="gigpress-info-label"><?php _e("Time", "gigpress"); ?>:</span> <?php echo $showdata['time']; ?>.</span>
