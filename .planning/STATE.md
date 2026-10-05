@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 04
 current_phase_name: Public Publishing
 status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-10-05T10:19:46.757Z"
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-10-05T10:52:07.999Z"
 last_activity: 2026-10-05
 last_activity_desc: Phase 04 execution started
-state_head: f8bb04a8a1d83cfb6c6f9dfe7819a0d5ae111470
+state_head: ebc563bf130e62612e7afbbd855291832088670d
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 18
-  completed_plans: 15
+  completed_plans: 16
   percent: 60
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-05)
 ## Current Position
 
 Phase: 04 (Public Publishing) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-10-05 — Phase 04 execution started
 
@@ -73,6 +73,7 @@ Progress: [██████░░░░] 60%
 | Phase 03 P04 | 535min | 3 tasks | 11 files |
 | Phase 04 P01 | 20min | 2 tasks | 8 files |
 | Phase 04 P02 | 14min | 2 tasks | 7 files |
+| Phase 04 P03 | 23min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -112,6 +113,8 @@ Recent decisions affecting current work:
 - [Phase 04]: Only the complete bundled start/body/end set receives automatic responsive styling; owner templates require explicit opt-in.
 - [Phase 04]: Keep the wide table and existing show, grouping, status, ticket, calendar, subscription, and theme-width contracts.
 - [Phase 04]: Keep final browser measurement and calendar-client acceptance in plan 04-05.
+- [Phase 04]: Keep legacy fragment keys and owner-template variables while adding plain prepared values for machine output.
+- [Phase 04]: Escape configured table labels and grouped artist headings at the output boundary after hostile fixture assertions exposed raw paths.
 
 ### Pending Todos
 
@@ -132,6 +135,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-05T10:19:46.723Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-10-05T10:52:07.965Z
+Stopped at: Completed 04-03-PLAN.md
 Resume file: None

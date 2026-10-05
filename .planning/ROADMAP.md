@@ -106,7 +106,7 @@ Plans:
   2. The bundled show listing is readable at a 320 CSS-pixel viewport without page-level horizontal scrolling, with existing show details and links available.
   3. Child-theme, parent-theme, and `wp-content/gigpress-templates` overrides continue to resolve with their existing filenames, variables, and CSS hooks.
 
-**Plans**: 2/5 plans executed
+**Plans**: 3/5 plans executed
 
 Plans:
 **Wave 1**
@@ -116,7 +116,7 @@ Plans:
 - [x] 04-02-PLAN.md — Bundled responsive layout and template override isolation
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 04-03-PLAN.md — HTML and JSON-LD destination encoding
+- [x] 04-03-PLAN.md — HTML and JSON-LD destination encoding
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 04-04-PLAN.md — RSS/iCalendar serialization and supported matrix evidence
@@ -151,5 +151,5 @@ Required inherited review fixes: [CSV review follow-ups](CSV-REVIEW-FOLLOWUPS.md
 | 1. Compatibility Baseline and Menu Diagnosis | 5/5 | Complete    | 2026-10-04 |
 | 2. Data and Upgrade Preservation | 4/4 | Complete    | 2026-10-04 |
 | 3. Administration Workflows | 4/4 | Complete    | 2026-10-05 |
-| 4. Public Publishing | 2/5 | In Progress|  |
+| 4. Public Publishing | 3/5 | In Progress|  |
 | 5. CSV Import/Export | 0/TBD | Not started | - |
