@@ -267,19 +267,21 @@ function gigpress_prepare($show, $scope = 'public') {
 		$showdata['artist_plain'] = wptexturize($show->artist_name);
 		$showdata['artist_id'] = $show->artist_id;
 		$showdata['artist_url'] = (!empty($show->artist_url)) ? esc_url($show->artist_url) : '';
-		$showdata['calendar_summary'] = $show->artist_name . ' ' . __("at", "gigpress") . ' ' . $show->venue_name;
+		$calendarArtist = gigpress_calendar_plain_text($show->artist_name);
+		$calendarVenue = gigpress_calendar_plain_text($show->venue_name);
+		$showdata['calendar_summary'] = $calendarArtist . ' ' . __("at", "gigpress") . ' ' . $calendarVenue;
 		$showdata['calendar_summary_ical'] = str_replace(array(";",","), array('\;','\,'), $showdata['calendar_summary']);
 		$showdata['calendar_details'] = '';
-			if($show->tour_name) $showdata['calendar_details'] .= $gpo['tour_label'] . ': ' . $show->tour_name . '. ';
-			if(!empty($show->show_price)) $showdata['calendar_details'] .= __("Price", "gigpress") . ': ' . $show->show_price . '. ';
-			if(!empty($show->show_tix_phone)) $showdata['calendar_details'] .= __("Box office", "gigpress") . ': ' . $show->show_tix_phone . '. ';
-			if(!empty($show->show_venue_phone)) $showdata['calendar_details'] .= __("Venue phone", "gigpress") . ': ' . $show->venue_phone . '. ';
-			if(!empty($show->show_notes)) $showdata['calendar_details'] .= __("Notes", "gigpress") . ': ' . $show->show_notes . ' ';
-			$showdata['calendar_details'] .= $showdata['admittance'];
+			if($show->tour_name) $showdata['calendar_details'] .= $gpo['tour_label'] . ': ' . gigpress_calendar_plain_text($show->tour_name) . '. ';
+			if(!empty($show->show_price)) $showdata['calendar_details'] .= __("Price", "gigpress") . ': ' . gigpress_calendar_plain_text($show->show_price) . '. ';
+			if(!empty($show->show_tix_phone)) $showdata['calendar_details'] .= __("Box office", "gigpress") . ': ' . gigpress_calendar_plain_text($show->show_tix_phone) . '. ';
+			if(!empty($show->show_venue_phone)) $showdata['calendar_details'] .= __("Venue phone", "gigpress") . ': ' . gigpress_calendar_plain_text($show->venue_phone) . '. ';
+			if(!empty($show->show_notes)) $showdata['calendar_details'] .= __("Notes", "gigpress") . ': ' . gigpress_calendar_plain_text($show->show_notes) . ' ';
+			if(!empty($show->show_ages) && $show->show_ages != 'Not sure') $showdata['calendar_details'] .= gigpress_calendar_plain_text($show->show_ages);
 		$showdata['calendar_details_ical'] = str_replace(array(";",",","\n","\r"), array('\;','\,',' ',' '), $showdata['calendar_details']);
-		$showdata['calendar_location'] = $show->venue_name . ", ";
-			if(!empty($show->venue_address)) $showdata['calendar_location'] .= $show->venue_address . ", ";
-			$showdata['calendar_location'] .= $show->venue_city . ", " . $show->venue_country;
+		$showdata['calendar_location'] = $calendarVenue . ", ";
+			if(!empty($show->venue_address)) $showdata['calendar_location'] .= gigpress_calendar_plain_text($show->venue_address) . ", ";
+			$showdata['calendar_location'] .= gigpress_calendar_plain_text($show->venue_city) . ", " . gigpress_calendar_plain_text($show->venue_country);
 		$show->venue_city . ", " . $show->venue_country;
 		$showdata['calendar_location_ical'] = str_replace(",", "\,", $showdata['calendar_location']);
 		$showdata['calendar_start'] = ($timeparts[2] == '01') ? str_replace('-', '', $show->show_date) : str_replace(array('-',':',' '), array('','','T'), get_gmt_from_date($show->show_date . ' ' . $show->show_time)) . 'Z';
@@ -331,7 +333,7 @@ function gigpress_prepare($show, $scope = 'public') {
 			. '&amp;text=' . urlencode($showdata['calendar_summary'])
 			. '&amp;dates=' . $showdata['calendar_start'] . '/' . $showdata['calendar_end']
 			. '&amp;sprop=website:' . urlencode(GIGPRESS_URL)
-			. '&amp;sprop=name:' . urlencode($show->artist_name)
+			. '&amp;sprop=name:' . urlencode($calendarArtist)
 			. '&amp;location=' . urlencode($showdata['calendar_location'])
 			. '&amp;details=' . urlencode($showdata['calendar_details'])
 			. '&amp;trp=true;'
@@ -370,6 +372,20 @@ function gigpress_prepare_plain_values($show) {
 /** Text fragments remain HTML-compatible while escaping untrusted text. */
 function gigpress_public_text_fragment($value) {
 	return wptexturize(esc_html((string) $value));
+}
+
+/** Convert saved HTML and entities into readable plain text for calendar URLs. */
+function gigpress_calendar_plain_text($value) {
+	$value = (string) $value;
+	$value = preg_replace('~<\s*br\s*/?\s*>|<\s*/\s*(?:p|div|li|ul|ol|blockquote|pre|h[1-6])\s*>~i', "\n", $value);
+	$value = preg_replace('~<\s*(?:p|div|li|ul|ol|blockquote|pre|h[1-6])\b[^>]*>~i', "\n", $value);
+	$value = wp_strip_all_tags($value);
+	$charset = get_bloginfo('charset');
+	$value = html_entity_decode($value, ENT_QUOTES | ENT_HTML5, $charset ? $charset : 'UTF-8');
+	$value = preg_replace('/[ \t]+/', ' ', $value);
+	// URL escaping removes encoded CR/LF; replace them with spaces before link generation.
+	$value = preg_replace('/[ \t]*\R+[ \t]*/', ' ', $value);
+	return trim($value);
 }
 
 

@@ -54,7 +54,7 @@ function gigpress_feed_description($showdata, $show) {
 	$gcal = 'http://www.google.com/calendar/event?action=TEMPLATE&text=' . rawurlencode($calendarSummary)
 		. '&dates=' . rawurlencode($calendarStart . '/' . $calendarEnd)
 		. '&sprop=website:' . rawurlencode(GIGPRESS_URL)
-		. '&sprop=name:' . rawurlencode($plain['artist'] ?? '')
+		. '&sprop=name:' . rawurlencode(gigpress_calendar_plain_text($plain['artist'] ?? ''))
 		. '&location=' . rawurlencode($calendarLocation)
 		. '&details=' . rawurlencode($calendarDetails) . '&trp=true';
 	$ical = GIGPRESS_ICAL . '&show_id=' . (int) ($showdata['id'] ?? 0);

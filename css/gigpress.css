@@ -125,12 +125,17 @@ tr.gigpress-info td.description {
 }
 
 /* Greys-out cancelled shows */
-tr.gigpress-row.cancelled, tr.gigpress-info.cancelled, tr.cancelled span.gigpress-info-label, tr.cancelled span.gigpress-info-item {
+tr.gigpress-row.cancelled, tr.gigpress-info.cancelled, tr.cancelled span.gigpress-info-label, tr.cancelled .gigpress-info-item {
 	color: #999;
 }
 
 /* This wraps each of the bits of info in the "info" cell */
 span.gigpress-info-item {
+}
+
+/* Keep note line breaks visible while allowing safe rich-text markup. */
+.gigpress-notes {
+	white-space: pre-line;
 }
 
 /* For the labels for address, admission, etc in the "info" cell */

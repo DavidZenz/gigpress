@@ -237,8 +237,14 @@ function gigpress_public_feeds_case($case) {
 		$externalLink = $descriptionLinks->length > 1 ? $descriptionLinks->item(1)->getAttribute('href') : '';
 		$calendarLink = $descriptionLinks->length > 2 ? $descriptionLinks->item(2)->getAttribute('href') : '';
 		$icalLink = $descriptionLinks->length > 3 ? $descriptionLinks->item(3)->getAttribute('href') : '';
+		$calendarQuery = array();
+		if ($calendarLink !== '') parse_str((string) wp_parse_url($calendarLink, PHP_URL_QUERY), $calendarQuery);
 		$checks['rss_rich_notes_are_safe_and_cdata_terminator_round_trips'] = $descriptionParsed && strpos($descriptionText, ']]>') !== false && $richTextPreserved && !$descriptionDom->getElementsByTagName('script')->length && strpos($descriptionText, 'X-Injected: no') !== false;
 		$checks['rss_description_links_keep_saved_destinations_and_calendar_identity'] = $ticketLink === $seed['shows'][0]['show_tix_url'] && $externalLink === $seed['shows'][0]['show_external_url'] && strpos($calendarLink, 'http://www.google.com/calendar/event?action=TEMPLATE') === 0 && strpos($icalLink, GIGPRESS_ICAL . '&show_id=1891') === 0;
+		$checks['rss_google_calendar_values_are_plain_text_with_readable_notes'] = isset($calendarQuery['text'], $calendarQuery['location'], $calendarQuery['details'])
+			&& strpos($calendarQuery['text'], '<Orchestra>') === false && strpos($calendarQuery['location'], '<Room>') === false
+			&& strpos($calendarQuery['details'], '<p>') === false && strpos($calendarQuery['details'], '<strong>') === false
+			&& strpos($calendarQuery['details'], 'Notes: Doors open & music CDATA closer:') !== false;
 		$checks['rss_xml_text_has_no_injected_markup_or_unexpected_entities'] = $firstDocument && $firstDocument->getElementsByTagName('free')->length === 0 && $firstDocument->getElementsByTagName('script')->length === 0 && strpos($firstDocument->saveXML(), '&amp;amp;') === false;
 		$checks['rss_configured_limit_is_preserved'] = $limitedDocument && $limitedIds === array(1891);
 		$checks['rss_repeated_and_concurrent_reads_are_complete'] = count($repeat) === 4 && count(array_unique($repeatBodies)) === 1 && !array_filter($repeat, function ($response) { return $response['status'] !== 200 || $response['error'] !== ''; }) && gigpress_public_feeds_ids(gigpress_public_feeds_parse_xml($repeatBodies[0] ?? '')[0]) === $expectedIds;

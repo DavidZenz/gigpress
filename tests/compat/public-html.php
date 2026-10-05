@@ -107,6 +107,9 @@ function gigpress_public_html_case($case) {
 	$fixtureRow = $mainXPath ? $mainXPath->query('//tr[@data-show-id="891" and contains(concat(" ", normalize-space(@class), " "), " active ")]')->item(0) : null;
 	$ticketAnchor = $mainXPath ? $mainXPath->query('//tr[@data-show-id="891"]/following-sibling::tr[1]//a[contains(concat(" ", normalize-space(@class), " "), " gigpress-tickets-link ")]')->item(0) : null;
 	$calendarAnchors = $mainXPath ? $mainXPath->query('//tr[@data-show-id="891"]/following-sibling::tr[1]//span[contains(concat(" ", normalize-space(@class), " "), " gigpress-calendar-actions ")]/a') : array();
+	$mainNotes = $mainXPath ? $mainXPath->query('//tr[@data-show-id="891"]/following-sibling::tr[1]//div[contains(concat(" ", normalize-space(@class), " "), " gigpress-notes ")]')->item(0) : null;
+	$googleCalendar = array();
+	if ($calendarAnchors && $calendarAnchors->length) parse_str((string) wp_parse_url($calendarAnchors->item(0)->getAttribute('href'), PHP_URL_QUERY), $googleCalendar);
 	$footerLinks = $mainXPath ? $mainXPath->query('//p[contains(concat(" ", normalize-space(@class), " "), " gigpress-subscribe ")]/a') : array();
 	$footerTitleOk = false;
 	if ($footerLinks) foreach ($footerLinks as $footerLink) {
@@ -116,6 +119,14 @@ function gigpress_public_html_case($case) {
 		&& $ticketAnchor->getAttribute('href') === $seed['ticket_url'] && $ticketAnchor->textContent === $gpo['buy_tickets_label']
 		&& $calendarAnchors && $calendarAnchors->length === 2 && $calendarAnchors->item(0)->textContent === __('Add to Google Calendar', 'gigpress')
 		&& $calendarAnchors->item(1)->textContent === __('Download iCalendar', 'gigpress');
+	$checks['main_note_markup_keeps_rich_formatting_and_source_line_breaks'] = $mainNotes instanceof DOMElement
+		&& $mainNotes->getElementsByTagName('strong')->length > 0
+		&& strpos(str_replace(array("\r\n", "\r"), "\n", $mainNotes->textContent), "First line\nBEGIN:VEVENT") !== false;
+	$checks['main_google_calendar_values_are_readable_plain_text'] = isset($googleCalendar['text'], $googleCalendar['location'], $googleCalendar['details'])
+		&& strpos($googleCalendar['text'], '<a') === false && strpos($googleCalendar['text'], 'javascript:') === false
+		&& strpos($googleCalendar['location'], '<img') === false && strpos($googleCalendar['location'], 'onerror=') === false
+		&& strpos($googleCalendar['details'], '<p') === false && strpos($googleCalendar['details'], '<strong') === false
+		&& strpos($googleCalendar['details'], '<script') === false && strpos($googleCalendar['details'], 'alert(2)') === false;
 	$checks['subscription_partial_escapes_titles_and_keeps_feed_destinations'] = $footerLinks && $footerLinks->length === 2 && $footerTitleOk
 		&& strpos($footerLinks->item(0)->getAttribute('href'), '?feed=gigpress') !== false
 		&& strpos($footerLinks->item(1)->getAttribute('href'), 'gigpress-ical') !== false;

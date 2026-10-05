@@ -67,7 +67,7 @@
 			<?php endif; ?>				
 			
 			<?php if($showdata['notes']) : ?>
-				<span class="gigpress-info-item"><?php echo $showdata['notes']; ?></span>
+				<div class="gigpress-info-item gigpress-notes"><?php echo $showdata['notes']; ?></div>
 			<?php endif; ?>
 			
 			<?php if($showdata['related_link'] && !empty($gpo['relatedlink_notes'])) : ?>
