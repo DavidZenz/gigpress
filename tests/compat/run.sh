@@ -79,7 +79,9 @@ MODE=${1:-}; shift || true
 
 # Public evidence contract: an absent report can never establish a passing matrix.
 if [[ "$MODE" == administration-contract-test ]]; then
-  contract_output=$(bash "$COMPAT_DIR/run.sh" administration-evidence --action validate --report .planning/phases/03-administration-workflows/03-ADMIN-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3 2>&1) && contract_exit=0 || contract_exit=$?
+  contract_dir=$(mktemp -d "${TMPDIR:-/tmp}/gigpress-admin-contract.XXXXXX"); chmod 700 "$contract_dir"
+  contract_output=$(COMPAT_PRIVATE_EVIDENCE_DIR="$contract_dir" bash "$COMPAT_DIR/run.sh" administration-evidence --action validate --report "$contract_dir/missing.md" --wp-lines 7.0,7.1 --php-min 8.3 2>&1) && contract_exit=0 || contract_exit=$?
+  rmdir "$contract_dir"
   if [[ "$contract_exit" -ne 0 && "$contract_output" == *'administration evidence report is required'* ]]; then
     printf 'ok 1 - administration-evidence.missing_report_rejected\n# tests 1\n# pass 1\n# fail 0\n'
   else
@@ -114,10 +116,11 @@ if [[ "$MODE" == browser-expanded-test ]]; then
 fi
 
 run_lint() {
-  local branches='' files='' all_tracked=false
+  local branches='' files='' all_tracked=false image_ids=''
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --php-branches) branches=${2:-}; shift 2 ;;
+      --image-ids) image_ids=${2:-}; shift 2 ;;
       --files) files=${2:-}; shift 2 ;;
       --all-tracked-php) all_tracked=true; shift ;;
       *) fail "unknown lint option $1" ;;
@@ -141,7 +144,8 @@ run_lint() {
     [[ "$branch" =~ ^[0-9]+[.][0-9]+$ ]] || fail "PHP must be a major.minor version"
     [[ "$branch" != 8.2 ]] || fail "PHP 8.2 is diagnostic-only and cannot satisfy lint"
     image="wordpress:php${branch}-apache"
-    docker pull "$image" >/dev/null || fail "could not resolve official image $image"
+    if [[ -n "$image_ids" ]]; then image=$(pinned_value "$image_ids" "$branch");
+    else docker pull "$image" >/dev/null || fail "could not resolve official image $image"; fi
     printf 'lint image %s (%s)\n' "$image" "$(docker image inspect --format '{{.Id}}' "$image")"
     for file in "${php_files[@]}"; do
       [[ "$file" == *.php && -f "$ROOT/$file" ]] || fail "lint file must be a repository PHP file: $file"
@@ -456,9 +460,12 @@ PHP
 
 run_matrix() {
   local wp_lines='' php_branches='' php_supported='' scenario='activation-menu' upgrade_case='' conflict_fixture='' conflict_mode='' conflict_position='' wp_patches='latest' php_min='' error_reporting=''
+  local wp_versions='' image_ids=''
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --wp-lines) wp_lines=${2:-}; shift 2 ;;
+      --wp-versions) wp_versions=${2:-}; shift 2 ;;
+      --image-ids) image_ids=${2:-}; shift 2 ;;
       --php-branches) php_branches=${2:-}; shift 2 ;;
       --php-supported) php_supported=${2:-}; shift 2 ;;
       --wp-patches) wp_patches=${2:-}; shift 2 ;;
@@ -498,7 +505,9 @@ run_matrix() {
   local -a matrix_wp_lines=() matrix_wp_versions=()
   pairs=$(normalise_matrix "$wp_lines" "$php_branches") || fail "invalid compatibility matrix"
   [[ -n "$pairs" ]] || fail "compatibility matrix is empty"
-  resolved_wp_versions=$(resolve_matrix_wp_versions "$pairs") || fail "could not resolve WordPress patches for matrix"
+  if [[ -n "$wp_versions" ]]; then
+    resolved_wp_versions=$(printf '%s' "$wp_versions" | tr ';=' '\n,')
+  else resolved_wp_versions=$(resolve_matrix_wp_versions "$pairs") || fail "could not resolve WordPress patches for matrix"; fi
   while IFS=, read -r line wp_version; do
     matrix_wp_lines+=("$line")
     matrix_wp_versions+=("$wp_version")
@@ -513,6 +522,7 @@ run_matrix() {
     done
     [[ -n "$wp_version" ]] || fail "matrix has no pinned WordPress patch for line $line"
     local -a cell_args=(cell --wp "$wp_version" --php "$branch" --scenario "$scenario")
+    [[ -z "$image_ids" ]] || cell_args+=(--image-id "$(pinned_value "$image_ids" "$branch")")
     [[ "$scenario" != upgrade-preservation && "$scenario" != administration-workflows ]] || cell_args+=(--case "$upgrade_case")
     if [[ -n "$conflict_fixture" ]]; then
       cell_args+=(--conflict-fixture "$conflict_fixture" --conflict-mode "$conflict_mode" --conflict-position "$conflict_position")
@@ -581,6 +591,214 @@ run_preservation_evidence() {
     ] | all)
   ' >/dev/null || fail "preservation report does not contain complete passing supported evidence"
   printf '{"status":"PASS","report":"%s","wordpress_lines":"%s","php_min":"%s"}\n' "$report" "$wp_lines" "$php_min"
+}
+
+pinned_value() {
+  local pins=$1 key=$2 value
+  value=$(printf '%s' "$pins" | tr ';' '\n' | awk -F= -v key="$key" '$1 == key { print $2 }')
+  [[ -n "$value" && "$value" != *$'\n'* ]] || fail "missing or duplicate pinned target $key"
+  printf '%s' "$value"
+}
+
+# Node only parses records and hashes source; PHP execution stays container-owned.
+administration_record() {
+  node - "$ROOT" "$@" <<'NODE'
+const fs = require('fs'), path = require('path'), crypto = require('crypto'), cp = require('child_process');
+const [root, action, report, work] = process.argv.slice(2);
+const admin = ['entry-create','entry-recovery','entry-controls','settings-save','settings-sections','list-single','list-navigation','list-bulk'];
+const legacy = ['tracer-1.4','safety-1.4','metadata-classification','versions-1.0-1.2','versions-1.3-1.5','current-1.6','settings-repeat','show-lifecycle','optional-request-fields','entity-guards','tour-undo'];
+const workflows = ['admin_create_edit_read','public_shortcode','rss','ical','csv_import_export','duplicate_preserved'];
+const lintFiles = ['gigpress.php','admin/new.php','admin/handlers.php','admin/settings.php','admin/shows.php','tests/compat/probe.php','tests/compat/administration-entry.php','tests/compat/administration-settings.php','tests/compat/administration-list.php','tests/compat/upgrade-preservation-crud.php','tests/compat/browser-bootstrap.php'];
+const git = (...args) => cp.execFileSync('git', ['-C',root,...args], {maxBuffer: 16*1024*1024});
+const hash = data => crypto.createHash('sha256').update(data).digest('hex');
+const same = (a,b) => JSON.stringify(a) === JSON.stringify(b);
+const exact = (actual,required) => Array.isArray(actual) && actual.length === required.length && same([...actual].sort(), [...required].sort());
+const must = (condition,reason) => { if (!condition) throw new Error(reason); };
+const sourcePaths = () => git('ls-files','-z').toString().split('\0').filter(f => /\.(php|js|css)$/.test(f) || ['tests/compat/run.sh','tests/compat/compose.yaml','tests/compat/compose.browser.yaml'].includes(f)).sort();
+const source = () => ({revision:git('rev-parse','HEAD').toString().trim(), files:sourcePaths().map(file => ({file,sha256:hash(fs.readFileSync(path.join(root,file)))}))});
+const read = file => {
+  const matches = [...fs.readFileSync(file,'utf8').matchAll(/^<!-- administration-evidence: (.*) -->$/gm)];
+  must(matches.length === 1, 'exactly one administration evidence record is required');
+  return JSON.parse(matches[0][1]);
+};
+function validate(e) {
+  must(e.schema === 'gigpress-administration-evidence/v1' && e.status === 'PASS','schema/status');
+  must(same(e.wordpress_lines,['7.0','7.1']) && e.support_boundary.php_min === '8.3' && same(e.support_boundary.diagnostic_only_php,['8.2']),'support boundary');
+  const branches = e.php_branches;
+  must(Array.isArray(branches) && branches.length > 0 && branches.includes('8.3') && exact(branches,[...new Set(branches)]) && branches.every(b => /^\d+\.\d+$/.test(b) && (Number(b.split('.')[0]) > 8 || Number(b.split('.')[0]) === 8 && Number(b.split('.')[1]) >= 3)), 'supported PHP branches');
+  must(e.resolution.wordpress_url === 'https://api.wordpress.org/core/version-check/1.7/' && e.resolution.php_url === 'https://www.php.net/supported-versions.php' && !isNaN(Date.parse(e.resolution.resolved_at)), 'target resolution provenance');
+  must(exact(Object.keys(e.resolution.wordpress_versions),e.wordpress_lines) && exact(Object.keys(e.resolution.images),branches) && exact(Object.keys(e.resolution.php_versions),branches),'resolved target coverage');
+  must(exact(e.required_cases,admin) && exact(e.preservation_required_cases,legacy), 'required case registry');
+  must(/^\w{40}$/.test(e.source.revision) && /^[0-9a-f]{40}$/.test(e.source.revision), 'source revision');
+  git('merge-base','--is-ancestor',e.source.revision,'HEAD');
+  const current = source();
+  must(same(e.source.files,current.files),'stale source fingerprint');
+  must(exact(e.source.files.map(f=>f.file),sourcePaths()),'source file set');
+  git('diff','--quiet',e.source.revision,'--',...e.source.files.map(f=>f.file));
+  const verifiedRevisions = new Set([e.source.revision]);
+  must(Array.isArray(e.commands) && ['administration-workflows','upgrade-preservation','full-workflows'].every(s=>e.commands.some(c=>c.includes(`--scenario ${s}`) && c.includes('--wp-versions ') && c.includes('--image-ids '))), 'pinned matrix commands');
+  must(Number.isFinite(e.elapsed_seconds) && e.elapsed_seconds > 0, 'matrix duration');
+  must(e.browser_acceptance === 'separate-observations-required' && e.migrated_public_csv === 'not-certified' && same(e.review_items,['ADMIN-03/unclassified','three-descriptorless-product-prohibitions']), 'honest acceptance boundaries');
+  must(e.lint.status === 'PASS' && exact(e.lint.files,lintFiles) && exact(e.lint.branches,branches) && exact(e.lint.cells.map(c=>c.php_branch),branches), 'lint coverage');
+  must(e.lint.cells.every(c=>c.status === 'PASS' && c.image_id === e.resolution.images[c.php_branch] && Number.isInteger(c.file_count) && c.file_count === lintFiles.length), 'pinned lint identities');
+  must(Array.isArray(e.cells) && e.cells.length === branches.length*2, 'runtime cell count');
+  must(exact(e.cells.map(c=>c.wordpress_line+'/'+c.php_branch), e.wordpress_lines.flatMap(w=>branches.map(p=>w+'/'+p))), 'duplicate/missing runtime cell');
+  let assertions = 0;
+  for (const cell of e.cells) {
+    must(cell.status === 'PASS' && Number.isFinite(cell.elapsed_seconds) && cell.elapsed_seconds > 0,'cell status/duration');
+    must(cell.wordpress_version === e.resolution.wordpress_versions[cell.wordpress_line] && /^\d+\.\d+\.\d+$/.test(cell.wordpress_version) && cell.wordpress_version.startsWith(cell.wordpress_line+'.'), 'pinned WordPress patch');
+    must(/^\d+\.\d+\.\d+$/.test(cell.php_version) && cell.php_version.startsWith(cell.php_branch+'.') && cell.php_version === e.resolution.php_versions[cell.php_branch], 'exact pinned PHP patch');
+    must(cell.image === `wordpress:php${cell.php_branch}-apache` && /^sha256:[0-9a-f]{64}$/.test(cell.image_id) && cell.image_id === e.resolution.images[cell.php_branch], 'pinned image');
+    for (const scenario of ['administration','preservation','workflows']) {
+      const result = cell[scenario];
+      must(result.status === 'PASS' && result.plugin_active === true && result.fatal === null && Array.isArray(result.plugin_errors) && result.plugin_errors.length === 0 && Array.isArray(result.menu_warnings) && result.menu_warnings.length === 0,scenario+' zero-error active plugin');
+      must(result.wordpress_version === cell.wordpress_version && result.php_version === cell.php_version && result.image === cell.image && result.image_id === cell.image_id && /^[0-9a-f]{40}$/.test(result.source_revision), scenario+' runtime/source identity');
+      if (!verifiedRevisions.has(result.source_revision)) {
+        git('merge-base','--is-ancestor',result.source_revision,'HEAD');
+        git('diff','--quiet',result.source_revision,'--',...e.source.files.map(f=>f.file));
+        verifiedRevisions.add(result.source_revision);
+      }
+      must(result.elapsed_seconds > 0, scenario+' duration');
+    }
+    const a = cell.administration.administration_workflows;
+    must(a.status === 'PASS' && a.case === 'all' && exact(a.required_cases,admin) && exact(a.cases.map(c=>c.case),admin),'administration exact cases');
+    for (const c of a.cases) {
+      must(c.status === 'PASS' && c.plugin_active === true && c.ready === true && c.checks && !Array.isArray(c.checks) && typeof c.checks === 'object', 'administration ready case');
+      const checks = Object.entries(c.checks);
+      must(checks.length > 0 && checks.every(([name,value])=>name.length>0 && value === true) && Number.isInteger(c.assertion_count) && c.assertion_count === checks.length,'positive named checks');
+      must(c.warning_count === 0 && c.fatal_count === 0 && c.plugin_error_count === 0 && Number.isFinite(c.elapsed_seconds) && c.elapsed_seconds >= 0, 'case zero errors/timing');
+      assertions += c.assertion_count;
+    }
+    const p = cell.preservation.upgrade_preservation;
+    must(p.status === 'PASS' && p.case === 'all' && p.ready === true && p.plugin_active === true && exact(p.required_cases,legacy) && exact(p.cases.map(c=>c.case),legacy),'preservation exact eleven cases');
+    must(p.cases.every(c=>c.status === 'PASS' && c.ready === true && c.plugin_active === true && c.warning_count === 0 && c.fatal_count === 0 && c.plugin_error_count === 0 && typeof c.fixture === 'string' && c.fixture.startsWith('reconstructed-')), 'preservation readiness/errors/fixture');
+    const f = cell.workflows.full_workflows;
+    must(f.status === 'PASS' && workflows.every(name=>f[name] === true),'fresh full workflows');
+  }
+  must(assertions === e.assertion_count && assertions > 0,'aggregate assertion count');
+  return {status:'PASS',schema:e.schema,cells:e.cells.length,administration_cases:admin.length,assertion_count:assertions,preservation_cases:legacy.length,warnings:0,fatals:0,plugin_errors:0,source_revision:e.source.revision};
+}
+function write(file,e) {
+  const rows=e.cells.map(c=>`| ${c.wordpress_version} | ${c.php_version} | ${c.image_id} | ${c.administration.administration_workflows.cases.reduce((n,c)=>n+c.assertion_count,0)} / 8 | 11 PASS | PASS | 0 / 0 / 0 | ${c.elapsed_seconds} |`).join('\n');
+  fs.writeFileSync(file,`# Phase 03 Administration Matrix\n\nSource revision: \`${e.source.revision}\`\n\nResolved once: ${e.resolution.resolved_at}. WordPress patches and immutable official image IDs were pinned across all three matrices and container PHP lint. PHP 8.2 is diagnostic only and excluded.\n\n| WordPress | PHP | Official image ID | Administration assertions / cases | Preservation cases | Fresh workflows | Warnings / fatals / plugin errors | Cell seconds |\n|---|---|---|---|---|---|---|---|\n${rows}\n\nFull build: ${e.elapsed_seconds} seconds; ${e.assertion_count} administration assertions across ${e.cells.length} supported cells. Preservation fixtures are reconstructed from repository evidence. No live backup or live site was tested. Full workflows use fresh synthetic fixtures; migrated public/CSV integration belongs to Phases 04/05.\n\nBrowser acceptance requires separate actual observations in 03-BROWSER.md. This matrix does not certify native picker, keyboard, disabled-JS or assistive announcements. ADMIN-03/unclassified and all three descriptor-less product prohibitions remain unresolved/flagged-unverified for downstream review.\n\n## Exact commands\n\n${e.commands.map(c=>'\x60'+c+'\x60').join('\n\n')}\n\n## Machine evidence\n\n<!-- administration-evidence: ${JSON.stringify(e)} -->\n`);
+}
+try {
+  if (action === 'snapshot') { fs.writeFileSync(report,JSON.stringify(source())); }
+  else if (action === 'render') {
+    const e=JSON.parse(fs.readFileSync(path.join(work,'meta.json'),'utf8'));
+    e.source=JSON.parse(fs.readFileSync(path.join(work,'source.json'),'utf8'));
+    e.cells=[]; e.assertion_count=0;
+    for (const w of e.wordpress_lines) for (const p of e.php_branches) {
+      const wp=e.resolution.wordpress_versions[w];
+      const get=s=>JSON.parse(fs.readFileSync(path.join(work,`${wp}-php${p}-${s}.json`),'utf8'));
+      const a=get('administration-workflows'), preservation=get('upgrade-preservation'), workflows=get('full-workflows');
+      const cell={wordpress_line:w,wordpress_version:wp,php_branch:p,php_version:a.php_version,image:a.image,image_id:a.image_id,status:'PASS',administration:a,preservation,workflows,elapsed_seconds:a.elapsed_seconds+preservation.elapsed_seconds+workflows.elapsed_seconds};
+      e.assertion_count+=a.administration_workflows.cases.reduce((n,c)=>n+c.assertion_count,0); e.cells.push(cell);
+    }
+    e.required_cases=admin; e.preservation_required_cases=legacy;
+    e.lint={status:'PASS',files:lintFiles,branches:e.php_branches,cells:e.php_branches.map(p=>({php_branch:p,image_id:e.resolution.images[p],file_count:lintFiles.length,status:'PASS'}))};
+    const verdict=validate(e); write(report,e); console.log(JSON.stringify(verdict));
+  } else if (action === 'validate') console.log(JSON.stringify(validate(read(report))));
+  else if (action === 'self-test') {
+    const control=read(report); validate(control);
+    const corruptions={
+      missing_case:e=>e.cells[0].administration.administration_workflows.cases.pop(),
+      duplicate_case:e=>e.cells[0].administration.administration_workflows.cases[1]=e.cells[0].administration.administration_workflows.cases[0],
+      empty_checks:e=>{e.cells[0].administration.administration_workflows.cases[0].checks={};e.cells[0].administration.administration_workflows.cases[0].assertion_count=0;},
+      failed_check:e=>{const c=e.cells[0].administration.administration_workflows.cases[0];c.checks[Object.keys(c.checks)[0]]=false;},
+      failed_case:e=>e.cells[0].administration.administration_workflows.cases[0].status='FAIL',
+      warning:e=>e.cells[0].administration.administration_workflows.cases[0].warning_count=1,
+      fatal:e=>e.cells[0].administration.fatal={message:'synthetic corruption'},
+      plugin_error:e=>e.cells[0].administration.plugin_errors.push({message:'synthetic corruption'}),
+      missing_cell:e=>e.cells.pop(), duplicate_cell:e=>e.cells[1]=e.cells[0],
+      stale_source:e=>e.source.files[0].sha256='0'.repeat(64),
+      foreign_revision:e=>e.source.revision='0'.repeat(40),
+      altered_wp:e=>e.cells[0].wordpress_version='7.0.0',
+      altered_php:e=>e.cells[0].php_version='8.2.0',
+      altered_image:e=>e.cells[0].image_id='sha256:'+'0'.repeat(64),
+      missing_runtime:e=>delete e.cells[0].php_version,
+      preservation_missing:e=>e.cells[0].preservation.upgrade_preservation.cases.pop(),
+      workflows_failed:e=>e.cells[0].workflows.full_workflows.csv_import_export=false,
+      lint_missing:e=>e.lint.files.pop(),
+      browser_overclaim:e=>e.browser_acceptance='PASS'
+    };
+    const temp=fs.mkdtempSync(path.join(require('os').tmpdir(),'gigpress-admin-evidence-')); fs.chmodSync(temp,0o700);
+    const checks={clean_control:true};
+    try {
+      for (const [name,mutate] of Object.entries(corruptions)) {
+        const e=JSON.parse(JSON.stringify(control)); mutate(e);
+        const file=path.join(temp,name+'.md'); write(file,e); fs.chmodSync(file,0o600);
+        const result=cp.spawnSync('bash',[path.join(root,'tests/compat/run.sh'),'administration-evidence','--action','validate','--report',file,'--wp-lines','7.0,7.1','--php-min','8.3'],{env:{...process.env,COMPAT_PRIVATE_EVIDENCE_DIR:temp},encoding:'utf8'});
+        must(result.status !== null && result.status !== 0 && result.stderr.includes('invalid administration evidence'), 'corruption accepted or validator did not run: '+name);
+        checks[name]=true;
+      }
+    } finally { fs.rmSync(temp,{recursive:true,force:true}); }
+    console.log(JSON.stringify({status:'PASS',assertion_count:Object.keys(checks).length,checks}));
+  } else throw new Error('unknown evidence record action');
+} catch(error) { console.error('compat runner: invalid administration evidence: '+error.message); process.exit(2); }
+NODE
+}
+
+run_administration_evidence() {
+  local action='' report='' wp_lines='' php_min=''
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --action) action=${2:-}; shift 2 ;;
+      --report) report=${2:-}; shift 2 ;;
+      --wp-lines) wp_lines=${2:-}; shift 2 ;;
+      --php-min) php_min=${2:-}; shift 2 ;;
+      *) fail "unknown administration-evidence option $1" ;;
+    esac
+  done
+  [[ "$action" == build || "$action" == validate || "$action" == self-test ]] || fail "administration evidence action must be build, validate or self-test"
+  [[ "$wp_lines" == 7.0,7.1 && "$php_min" == 8.3 ]] || fail "administration evidence requires WordPress 7.0,7.1 and PHP 8.3 minimum"
+  if [[ "$report" == .planning/phases/03-administration-workflows/03-ADMIN-MATRIX.md ]]; then report="$ROOT/$report";
+  elif [[ "$action" == validate && -n "${COMPAT_PRIVATE_EVIDENCE_DIR:-}" && "$report" == "$COMPAT_PRIVATE_EVIDENCE_DIR/"*.md && -d "$COMPAT_PRIVATE_EVIDENCE_DIR" && ! -L "$COMPAT_PRIVATE_EVIDENCE_DIR" && "$(stat -f '%Lp' "$COMPAT_PRIVATE_EVIDENCE_DIR")" == 700 ]]; then :;
+  else fail "administration evidence report is required"; fi
+  if [[ "$action" != build ]]; then
+    [[ -f "$report" ]] || fail "administration evidence report is required"
+    administration_record "$action" "$report"
+    return
+  fi
+  local started resolved branches pairs wp_pins='' image_pins='' php_pins='' line wp branch image image_id php_patch scenario work duration
+  started=$(date +%s); resolved=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  branches=$(resolve_upstream_php_branches 8.3)
+  pairs=$(normalise_matrix "$wp_lines" "$branches")
+  while IFS=, read -r line wp; do wp_pins+="${wp_pins:+;}$line=$wp"; done <<< "$(resolve_matrix_wp_versions "$pairs")"
+  IFS=',' read -r -a supported <<< "$branches"
+  for branch in "${supported[@]}"; do
+    image="wordpress:php${branch}-apache"
+    docker pull "$image" >/dev/null || fail "could not resolve official image $image"
+    image_id=$(docker image inspect --format '{{.Id}}' "$image")
+    [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "invalid official image identity"
+    image_pins+="${image_pins:+;}$branch=$image_id"
+    php_patch=$(docker run --rm --network none "$image_id" php -r 'echo PHP_VERSION;')
+    [[ "$php_patch" == "$branch."* && "$php_patch" =~ ^[0-9]+[.][0-9]+[.][0-9]+$ ]] || fail "official image does not match PHP branch $branch"
+    php_pins+="${php_pins:+;}$branch=$php_patch"
+  done
+  work=$(mktemp -d "${TMPDIR:-/tmp}/gigpress-admin-build.XXXXXX"); chmod 700 "$work"
+  trap 'rm -rf "$work"' EXIT
+  administration_record snapshot "$work/source.json"
+  printf 'Resolved WordPress: %s; PHP branches: %s\n' "$wp_pins" "$branches"
+  local lint_files='gigpress.php,admin/new.php,admin/handlers.php,admin/settings.php,admin/shows.php,tests/compat/probe.php,tests/compat/administration-entry.php,tests/compat/administration-settings.php,tests/compat/administration-list.php,tests/compat/upgrade-preservation-crud.php,tests/compat/browser-bootstrap.php'
+  bash "$COMPAT_DIR/run.sh" lint --php-branches "$branches" --image-ids "$image_pins" --files "$lint_files" >"$work/lint.log" 2>&1 || { tail -n 25 "$work/lint.log" >&2; fail "administration supported PHP lint failed"; }
+  printf 'Pinned PHP lint PASS: %s files per branch\n' 11
+  for scenario in administration-workflows upgrade-preservation full-workflows; do
+    local -a args=(matrix --wp-lines "$wp_lines" --php-branches "$branches" --wp-versions "$wp_pins" --image-ids "$image_pins" --php-min 8.3 --error-reporting E_ALL --scenario "$scenario")
+    [[ "$scenario" == full-workflows ]] || args+=(--case all)
+    printf 'Running pinned %s matrix\n' "$scenario"
+    if ! bash "$COMPAT_DIR/run.sh" "${args[@]}" >"$work/$scenario.log" 2>&1; then tail -c 6000 "$work/$scenario.log" >&2; fail "$scenario supported matrix failed"; fi
+    while IFS=, read -r line branch; do
+      wp=$(pinned_value "$wp_pins" "$line")
+      cp "$RESULT_DIR/${wp}-php${branch}-${scenario}.json" "$work/"
+    done <<< "$pairs"
+    printf '%s PASS: %s cells\n' "$scenario" "$(printf '%s\n' "$pairs" | wc -l | tr -d ' ')"
+  done
+  duration=$(($(date +%s)-started))
+  jq -n --arg branches "$branches" --arg wp_pins "$wp_pins" --arg image_pins "$image_pins" --arg php_pins "$php_pins" --arg resolved "$resolved" --argjson duration "$duration" '
+    {schema:"gigpress-administration-evidence/v1",status:"PASS",wordpress_lines:["7.0","7.1"],php_branches:($branches|split(",")),support_boundary:{php_min:"8.3",diagnostic_only_php:["8.2"]},resolution:{wordpress_url:"https://api.wordpress.org/core/version-check/1.7/",php_url:"https://www.php.net/supported-versions.php",resolved_at:$resolved,wordpress_versions:($wp_pins|split(";")|map(split("=")|{key:.[0],value:.[1]})|from_entries),images:($image_pins|split(";")|map(split("=")|{key:.[0],value:.[1]})|from_entries),php_versions:($php_pins|split(";")|map(split("=")|{key:.[0],value:.[1]})|from_entries)},elapsed_seconds:$duration,browser_acceptance:"separate-observations-required",migrated_public_csv:"not-certified",review_items:["ADMIN-03/unclassified","three-descriptorless-product-prohibitions"],commands:(["administration-workflows","upgrade-preservation","full-workflows"]|map("rtk proxy bash tests/compat/run.sh matrix --scenario "+.+(if . == "full-workflows" then "" else " --case all" end)+" --wp-lines 7.0,7.1 --php-branches "+$branches+" --wp-versions \u0027"+$wp_pins+"\u0027 --image-ids \u0027"+$image_pins+"\u0027 --php-min 8.3 --error-reporting E_ALL"))}' >"$work/meta.json"
+  administration_record render "$report" "$work"
+  rm -rf "$work"; trap - EXIT
 }
 
 runtime_wp_version() {
@@ -910,17 +1128,24 @@ if [[ "$MODE" == preservation-evidence ]]; then
   exit 0
 fi
 
+if [[ "$MODE" == administration-evidence ]]; then
+  run_administration_evidence "$@"
+  exit 0
+fi
+
 if [[ "$MODE" == matrix ]]; then
   run_matrix "$@"
   exit 0
 fi
 
 [[ "$MODE" == cell ]] || fail "supported commands: cell, matrix, lint, metadata, self-test, runtime-floor, menu-contract, preservation-evidence"
-WP_VERSION=''; PHP_VERSION=''; SCENARIO='activation-menu'; UPGRADE_CASE='tracer-1.4'; TABLE_PREFIX='wp_'; CONFLICT_FIXTURE=''; CONFLICT_MODE=''; CONFLICT_POSITION=''
+WP_VERSION=''; PHP_VERSION=''; SCENARIO='activation-menu'; UPGRADE_CASE='tracer-1.4'; TABLE_PREFIX='wp_'; CONFLICT_FIXTURE=''; CONFLICT_MODE=''; CONFLICT_POSITION=''; PINNED_IMAGE=''
+CELL_STARTED=$(date +%s)
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --wp) WP_VERSION=${2:-}; shift 2 ;;
     --php) PHP_VERSION=${2:-}; shift 2 ;;
+    --image-id) PINNED_IMAGE=${2:-}; shift 2 ;;
     --scenario) SCENARIO=${2:-}; shift 2 ;;
     --case) UPGRADE_CASE=${2:-}; shift 2 ;;
     --conflict-fixture) CONFLICT_FIXTURE=${2:-}; shift 2 ;;
@@ -933,6 +1158,7 @@ require_value --wp "$WP_VERSION"; require_value --php "$PHP_VERSION"
 [[ "$WP_VERSION" =~ ^[0-9]+([.][0-9]+){2}$ ]] || fail "WordPress must be an exact patch version"
 [[ "$PHP_VERSION" =~ ^[0-9]+[.][0-9]+$ ]] || fail "PHP must be a major.minor version"
 [[ "$PHP_VERSION" != 8.2 ]] || fail "PHP 8.2 is diagnostic-only and cannot be a supported cell"
+[[ -z "$PINNED_IMAGE" || "$PINNED_IMAGE" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "pinned image must be an exact local official image ID"
 case "$SCENARIO" in
   activation-menu|admin-menu|csv-roundtrip|full-workflows) [[ "$UPGRADE_CASE" == tracer-1.4 ]] || fail "--case is only supported by upgrade-preservation" ;;
   upgrade-preservation) [[ "$UPGRADE_CASE" =~ ^(tracer-1\.4|safety-1\.4|metadata-classification|versions-1\.0-1\.2|versions-1\.3-1\.5|current-1\.6|settings-repeat|show-lifecycle|optional-request-fields|entity-guards|tour-undo|all)$ ]] || fail "unsupported upgrade-preservation case: $UPGRADE_CASE" ;;
@@ -954,18 +1180,18 @@ CLEANUP_NEEDED=false
 cleanup() {
   local status=$?
   if [[ "$CLEANUP_NEEDED" == true ]]; then
-    compose_env down --volumes --remove-orphans >/dev/null 2>&1 || true
+    compose_env down --volumes --remove-orphans >/dev/null 2>&1 || { printf 'compat runner: owned cell cleanup failed: %s\n' "$PROJECT" >&2; status=2; }
   fi
   exit "$status"
 }
 trap cleanup EXIT INT TERM
 compose_env() {
   env -u COMPOSE_FILE -u COMPOSE_PROJECT_NAME -u WORDPRESS_DB_HOST -u MYSQL_HOST -u DB_HOST -u DATABASE_URL \
-    REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" WORDPRESS_IMAGE="wordpress:php${PHP_VERSION}-apache" PHP_VERSION="$PHP_VERSION" COMPAT_TABLE_PREFIX="$TABLE_PREFIX" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" "$@"
+    REPO_ROOT="$ROOT" WP_VERSION="$WP_VERSION" WORDPRESS_IMAGE="${PINNED_IMAGE:-wordpress:php${PHP_VERSION}-apache}" PHP_VERSION="$PHP_VERSION" COMPAT_TABLE_PREFIX="$TABLE_PREFIX" COMPAT_DB_PASSWORD="$DB_PASSWORD" COMPAT_DB_ROOT_PASSWORD="$DB_ROOT_PASSWORD" "${COMPOSE[@]}" "$@"
 }
 
 CLEANUP_NEEDED=true
-compose_env pull wordpress db
+if [[ -n "$PINNED_IMAGE" ]]; then compose_env pull db; else compose_env pull wordpress db; fi
 compose_env up -d db wordpress
 for attempt in $(seq 1 45); do
   if compose_env exec -T db mariadb-admin ping -h localhost -uroot -p"$DB_ROOT_PASSWORD" --silent >/dev/null 2>&1; then break; fi
@@ -991,8 +1217,8 @@ if [[ "$probe_status" -ne 0 ]]; then
   fail "probe failed"
 fi
 image="wordpress:php${PHP_VERSION}-apache"
-image_id=$(rtk docker image inspect --format '{{.Id}}' "$image")
-result=$(printf '%s\n' "$output" | rtk proxy jq -c --arg image "$image" --arg image_id "$image_id" --arg source_revision "$(rtk proxy git rev-parse HEAD)" '. + {image: $image, image_id: $image_id, source_revision: $source_revision}')
+image_id=$(rtk docker image inspect --format '{{.Id}}' "${PINNED_IMAGE:-$image}")
+result=$(printf '%s\n' "$output" | rtk proxy jq -c --arg image "$image" --arg image_id "$image_id" --arg source_revision "$(rtk proxy git rev-parse HEAD)" --argjson elapsed_seconds "$(($(date +%s) - CELL_STARTED))" '. + {image: $image, image_id: $image_id, source_revision: $source_revision, elapsed_seconds: $elapsed_seconds}')
 printf '%s\n' "$result" | tee "$RESULT_DIR/${WP_VERSION}-php${PHP_VERSION}-${SCENARIO}.json"
 printf '%s\n' "$result" | rtk jq -e --arg wp "$WP_VERSION" '.wordpress_version == $wp' >/dev/null || fail "probe did not boot requested WordPress $WP_VERSION"
 if [[ "$SCENARIO" == admin-menu && "$CONFLICT_MODE" == order-only ]]; then
