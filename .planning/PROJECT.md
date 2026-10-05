@@ -66,7 +66,6 @@ Site owners can manage show information and reliably publish it on their WordPre
 | Block unsafe metadata and gate all admin mutations on database readiness. | An unproven upgrade state must not accept writes or CSV upload side effects. | Verified bootstrap and handler guards in Phase 2. |
 | Count active and trashed dependencies before entity deletion and track tour undo ownership per show. | Deletion and undo must preserve relationships and intervening reassignment. | Verified against upgraded fixtures in Phase 2. |
 | Resolve upstream runtime targets and pin one WordPress patch per line for each matrix run. | Compatibility evidence must test consistent versions across PHP branches. | Six supported runtime cells pass in Phase 2; exact versions and image IDs are recorded. |
-
 | Keep raw received correction values separate from normalized writes and reuse completed related-record IDs on retry. | Failed saves must remain correctable without duplicate related records. | Implemented and accepted in Phase 3. |
 | Bind trash confirmation to the owner and exact selected IDs, then report verified per-ID outcomes. | Filtering must not expand selection; Cancel must change nothing. | Implemented and accepted in Phase 3. |
 | Keep six settings groups immediately visible and preserve protected, unknown, nested and falsey stored values. | Clear settings navigation must retain existing site configuration and semantics. | Implemented and accepted in Phase 3. |
