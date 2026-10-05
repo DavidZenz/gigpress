@@ -8,7 +8,7 @@ function gigpress_public_html_seed($fixture) {
 	$migrationPath = WP_PLUGIN_DIR . '/gigpress/tests/compat/fixtures/upgrade-preservation/1.4.php';
 	$migrationFixture = is_readable($migrationPath) ? require $migrationPath : null;
 	$validTicketUrl = $migrationFixture['shows'][0]['show_tix_url'] ?? '';
-	$artistText = substr($fixture['values']['long_unicode_unbroken']['artist_name'], 0, 125) . ' The Script </script><script id="injected">alert(1)</script> & ' . $hostile['text'];
+	$artistText = substr($fixture['values']['long_unicode_unbroken']['artist_name'], 0, 55) . ' <a href="javascript:alert(8)" onclick="alert(9)">unsafe link</a><img src=x onerror=alert(10)><script id="injected">alert(1)</script> & ' . $hostile['text'];
 	$venueText = substr($fixture['values']['long_unicode_unbroken']['venue_name'], 0, 125) . ' <b>unsafe</b> & ' . $hostile['text'];
 	$rows = array(
 		'artist' => array('artist_id' => 891, 'artist_name' => $artistText, 'artist_alpha' => 'hostile html artist', 'artist_order' => 1, 'artist_url' => 'javascript:alert(1)'),
@@ -61,6 +61,7 @@ function gigpress_public_html_case($case) {
 	$gpo['relatedlink_notes'] = 1;
 	$gpo['relatedlink_city'] = 1;
 	$gpo['rss_title'] = 'Feed " title & <svg onload=alert(3)>';
+	$gpo['display_subscriptions'] = 1;
 	$gpo['artist_label'] = 'Acts "quoted" & <img src=x onerror=alert(4)>';
 	$gpo['related_heading'] = 'Related "heading" & <svg onload=alert(5)>';
 	$gpo['related'] = 'More "information" & <img src=x onerror=alert(6)>';
@@ -118,7 +119,8 @@ function gigpress_public_html_case($case) {
 	$checks['subscription_partial_escapes_titles_and_keeps_feed_destinations'] = $footerLinks && $footerLinks->length === 2 && $footerTitleOk
 		&& strpos($footerLinks->item(0)->getAttribute('href'), '?feed=gigpress') !== false
 		&& strpos($footerLinks->item(1)->getAttribute('href'), 'gigpress-ical') !== false;
-	$checks['hostile_main_labels_are_inert'] = $document && !$document->getElementsByTagName('img')->length && !$document->getElementsByTagName('svg')->length;
+	$checks['hostile_main_labels_are_inert'] = $document && !$document->getElementsByTagName('img')->length && !$document->getElementsByTagName('svg')->length
+		&& !$document->getElementById('injected') && !$document->getElementById('notes-injected');
 	$groupedHtml = do_shortcode('[gigpress_shows scope="upcoming" group_artists="yes" artist_order="custom"]');
 	$groupedDocument = gigpress_public_html_parse($groupedHtml);
 	$groupedScripts = $groupedDocument ? $groupedDocument->getElementsByTagName('script') : array();
@@ -128,6 +130,22 @@ function gigpress_public_html_case($case) {
 	if (is_array($groupedJson)) foreach ($groupedJson as $candidate) if (($candidate['performers']['name'] ?? null) === $seed['artist_text']) $groupedEvent = $candidate;
 	$checks['grouped_main_json_branch_has_exact_fixture_event'] = $groupedDocument && $groupedJson && is_array($groupedEvent)
 		&& $groupedEvent['performers']['name'] === $seed['artist_text'] && count($groupedDocument->getElementsByTagName('script')) === 1;
+	$groupedXPath = $groupedDocument ? new DOMXPath($groupedDocument) : null;
+	$groupedSubscriptionLinks = $groupedXPath ? $groupedXPath->query('//h3[contains(concat(" ", normalize-space(@class), " "), " gigpress-artist-heading ")]//span[contains(concat(" ", normalize-space(@class), " "), " gigpress-artist-subscriptions ")]/a[contains(@href, "artist=891")]') : array();
+	$groupedTitlesAndDestinationsSafe = $groupedSubscriptionLinks && $groupedSubscriptionLinks->length === 2
+		&& $groupedSubscriptionLinks->item(0)->getAttribute('title') === html_entity_decode(wptexturize($seed['artist_text']), ENT_QUOTES, 'UTF-8') . ' RSS'
+		&& $groupedSubscriptionLinks->item(1)->getAttribute('title') === html_entity_decode(wptexturize($seed['artist_text']), ENT_QUOTES, 'UTF-8') . ' iCalendar'
+		&& $groupedSubscriptionLinks->item(0)->getAttribute('href') === GIGPRESS_RSS . '&artist=891'
+		&& $groupedSubscriptionLinks->item(1)->getAttribute('href') === GIGPRESS_WEBCAL . '&artist=891';
+	$groupedBogusAttributes = false;
+	if ($groupedDocument) foreach ($groupedDocument->getElementsByTagName('*') as $element) {
+		foreach ($element->attributes as $attribute) if (str_starts_with(strtolower($attribute->name), 'on') || $attribute->name === 'async') $groupedBogusAttributes = true;
+	}
+	$checks['grouped_artist_subscription_titles_and_urls_are_safe'] = $groupedTitlesAndDestinationsSafe && !$groupedBogusAttributes;
+	$checks['grouped_hostile_artist_markup_remains_inert'] = $groupedDocument && !$groupedDocument->getElementById('injected')
+		&& !$groupedDocument->getElementsByTagName('svg')->length && $groupedDocument->getElementsByTagName('img')->length === 2 * $groupedXPath->query('//h3[contains(concat(" ", normalize-space(@class), " "), " gigpress-artist-heading ")]')->length
+		&& $groupedXPath->query('//a[@onclick or starts-with(translate(@href,"JAVASCRIPT","javascript"),"javascript:")]')->length === 0
+		&& $groupedXPath->query('//img[@src="x" or @onerror]')->length === 0;
 	$post = get_post((int) $relatedPostId);
 	$is_excerpt = false;
 	$related = gigpress_show_related(array('scope' => 'upcoming'), '<p>Caller placement marker</p>');
@@ -172,6 +190,38 @@ function gigpress_public_html_case($case) {
 	$widgetRow = $widgetXPath ? $widgetXPath->query('//li[contains(concat(" ", normalize-space(@class), " "), " active ")]')->item(0) : null;
 	$checks['sidebar_partial_keeps_compact_status_and_saved_destination'] = $widgetRow instanceof DOMElement
 		&& strpos($widgetRow->textContent, 'Buy & <Tickets>') !== false && $widgetDocument->getElementsByTagName('a')->length > 0;
+	$gpo['shows_page'] = 'javascript:alert(20)';
+	$unsafeLinkText = 'More "hostile" <img src=x onerror=alert(21)>';
+	ob_start();
+	$widget->widget(array('before_widget' => '<aside>', 'after_widget' => '</aside>', 'before_title' => '<h2>', 'after_title' => '</h2>'), array('title' => 'Feed Widget', 'scope' => 'upcoming', 'limit' => 20, 'group_artists' => 'no', 'show_feeds' => 'yes', 'link_text' => $unsafeLinkText));
+	$feedWidgetHtml = ob_get_clean();
+	$feedWidgetDocument = gigpress_public_html_parse($feedWidgetHtml);
+	$feedWidgetXPath = $feedWidgetDocument ? new DOMXPath($feedWidgetDocument) : null;
+	$feedLinks = $feedWidgetXPath ? $feedWidgetXPath->query('//p[contains(concat(" ", normalize-space(@class), " "), " gigpress-subscribe ")]/a') : array();
+	$feedTitleSafe = $feedLinks && $feedLinks->length === 2
+		&& $feedLinks->item(0)->getAttribute('title') === html_entity_decode(wptexturize($gpo['rss_title']), ENT_QUOTES, 'UTF-8') . ' RSS'
+		&& $feedLinks->item(1)->getAttribute('title') === html_entity_decode(wptexturize($gpo['rss_title']), ENT_QUOTES, 'UTF-8') . ' iCalendar';
+	$feedUrlsSafe = $feedLinks && $feedLinks->item(0)->getAttribute('href') === GIGPRESS_RSS
+		&& $feedLinks->item(1)->getAttribute('href') === GIGPRESS_WEBCAL;
+	$moreLink = $feedWidgetXPath ? $feedWidgetXPath->query('//p[contains(concat(" ", normalize-space(@class), " "), " gigpress-sidebar-more ")]/a')->item(0) : null;
+	$safeLinkText = html_entity_decode(wptexturize($unsafeLinkText), ENT_QUOTES, 'UTF-8');
+	$checks['sidebar_hostile_feed_titles_and_urls_are_safe'] = $feedWidgetDocument && $feedTitleSafe && $feedUrlsSafe
+		&& $moreLink instanceof DOMElement && $moreLink->getAttribute('href') === ''
+		&& $moreLink->getAttribute('title') === $safeLinkText && $moreLink->textContent === $safeLinkText;
+	ob_start();
+	$widget->widget(array('before_widget' => '<aside>', 'after_widget' => '</aside>', 'before_title' => '<h2>', 'after_title' => '</h2>'), array('title' => 'Artist Feed Widget', 'scope' => 'upcoming', 'limit' => 20, 'group_artists' => 'no', 'artist' => 891, 'show_feeds' => 'yes'));
+	$artistFeedWidgetHtml = ob_get_clean();
+	$artistFeedWidgetDocument = gigpress_public_html_parse($artistFeedWidgetHtml);
+	$artistFeedXPath = $artistFeedWidgetDocument ? new DOMXPath($artistFeedWidgetDocument) : null;
+	$artistFeedLinks = $artistFeedXPath ? $artistFeedXPath->query('//p[contains(concat(" ", normalize-space(@class), " "), " gigpress-subscribe ")]/a') : array();
+	$artistFeedTitlesSafe = $artistFeedLinks && $artistFeedLinks->length === 2
+		&& $artistFeedLinks->item(0)->getAttribute('title') === html_entity_decode(wptexturize($seed['artist_text']), ENT_QUOTES, 'UTF-8') . ' RSS'
+		&& $artistFeedLinks->item(1)->getAttribute('title') === html_entity_decode(wptexturize($seed['artist_text']), ENT_QUOTES, 'UTF-8') . ' iCalendar';
+	$artistFeedUrlsSafe = $artistFeedLinks && $artistFeedLinks->item(0)->getAttribute('href') === GIGPRESS_RSS . '&artist=891'
+		&& $artistFeedLinks->item(1)->getAttribute('href') === GIGPRESS_WEBCAL . '&artist=891'
+		&& !$artistFeedWidgetDocument->getElementById('injected') && !$artistFeedXPath->query('//a[@onclick]')->length;
+	$checks['sidebar_hostile_artist_feed_titles_are_safe'] = $artistFeedTitlesSafe;
+	$checks['sidebar_hostile_artist_feed_urls_and_ids_are_safe'] = $artistFeedUrlsSafe;
 	$checks['related_and_widget_reads_leave_snapshots_unchanged'] = $before === gigpress_public_html_snapshot(array(891), $relatedPostId);
 	$gpo = $oldSettings;
 	return array('case' => 'html-json', 'checks' => $checks, 'expected_event' => array('artist' => $seed['artist_text'], 'venue' => $seed['venue_text']), 'actual_event' => $event, 'related_event' => $relatedEvent, 'main_tag_counts' => array('img' => $document ? $document->getElementsByTagName('img')->length : null, 'svg' => $document ? $document->getElementsByTagName('svg')->length : null, 'free' => $document ? $document->getElementsByTagName('free')->length : null), 'grouped_json_event_count' => is_array($groupedJson) ? count($groupedJson) : null, 'grouped_has_event' => is_array($groupedEvent), 'script_count' => count($scripts));

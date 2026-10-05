@@ -337,7 +337,6 @@ if ($mode === 'seed') {
     $writes = array();
     foreach ($fixture['structural'] as $template) $writes[] = public_fixture_write_override($child, $template, $fixture['files'][$template], 'child');
     foreach ($fixture['structural'] as $template) $writes[] = public_fixture_write_override($parent, $template, $fixture['files'][$template], 'parent');
-    foreach ($fixture['structural'] as $template) $writes[] = public_fixture_write_override($mixedContent, $template, $fixture['files'][$template], 'wp-content');
     foreach (array($emptyChild, $emptyParent) as $path) {
         if (!is_dir($path) && !mkdir($path, 0775, true) && !is_dir($path)) $writes[] = false;
     }
@@ -348,7 +347,6 @@ if ($mode === 'seed') {
     }
     $writes[] = public_fixture_write_override($mixedChild, 'shows-list-start', $fixture['files']['shows-list-start'], 'child');
     $writes[] = public_fixture_write_override($mixedParent, 'shows-list', $fixture['files']['shows-list'], 'parent');
-    $writes[] = public_fixture_write_override($mixedContent, 'shows-list-end', $fixture['files']['shows-list-end'], 'wp-content');
     if (in_array(false, $writes, true)) throw new RuntimeException('Could not create public override fixtures');
 
     $pages = array(
@@ -401,11 +399,36 @@ add_action('init', function () {
         if ($mode === 'mixed') { $child = $themeRoot . '/gigpress-public-mixed-child'; $parent = $themeRoot . '/gigpress-public-mixed-parent'; }
         $childFilter = function ($directory) use ($child) { return $child; };
         $parentFilter = function ($directory) use ($parent) { return $parent; };
-        add_filter('stylesheet_directory', $childFilter, 99, 1);
-        add_filter('template_directory', $parentFilter, 99, 1);
-        $html = do_shortcode('[gigpress_shows scope="upcoming" group_artists="no"]');
-        remove_filter('stylesheet_directory', $childFilter, 99);
-        remove_filter('template_directory', $parentFilter, 99);
+        $contentPath = WP_CONTENT_DIR . '/gigpress-templates';
+        $createdContentPath = false;
+        $temporaryFiles = array();
+        try {
+            if (in_array($mode, array('content', 'mixed'), true)) {
+                $overridePath = WP_PLUGIN_DIR . '/gigpress/tests/compat/fixtures/public-publishing/overrides.php';
+                $overrideFixture = is_readable($overridePath) ? require $overridePath : null;
+                if (!is_array($overrideFixture) || !isset($overrideFixture['files'], $overrideFixture['structural'])) throw new RuntimeException('Public override fixture is unavailable');
+                if (!is_dir($contentPath)) {
+                    if (!mkdir($contentPath, 0775, true) && !is_dir($contentPath)) throw new RuntimeException('Could not create temporary wp-content override directory');
+                    $createdContentPath = true;
+                }
+                $templates = $mode === 'content' ? $overrideFixture['structural'] : array('shows-list-end');
+                foreach ($templates as $template) {
+                    $path = $contentPath . '/' . $template . '.php';
+                    if (file_exists($path)) throw new RuntimeException('Temporary wp-content override path is occupied');
+                    $source = str_replace('__LOCATION__', 'wp-content', $overrideFixture['files'][$template]);
+                    if (file_put_contents($path, $source, LOCK_EX) === false) throw new RuntimeException('Could not write temporary wp-content override');
+                    $temporaryFiles[] = $path;
+                }
+            }
+            add_filter('stylesheet_directory', $childFilter, 99, 1);
+            add_filter('template_directory', $parentFilter, 99, 1);
+            $html = do_shortcode('[gigpress_shows scope="upcoming" group_artists="no"]');
+        } finally {
+            remove_filter('stylesheet_directory', $childFilter, 99);
+            remove_filter('template_directory', $parentFilter, 99);
+            foreach ($temporaryFiles as $path) if (is_file($path)) unlink($path);
+            if ($createdContentPath && is_dir($contentPath)) rmdir($contentPath);
+        }
         return $html;
     });
     add_shortcode('gigpress_public_compact_fixture', function () {
@@ -432,7 +455,8 @@ PHP;
         'migrated_show_available' => (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . GIGPRESS_SHOWS . ' WHERE show_id = 109') === 1,
         'supplemental_shows_available' => (int) $wpdb->get_var('SELECT COUNT(*) FROM ' . GIGPRESS_SHOWS . ' WHERE show_id IN (801,802,803)') === 3,
         'complete_override_files' => count(glob($complete . '/*.php')) === 3,
-        'mixed_override_files' => is_file($mixedChild . '/shows-list-start.php') && is_file($mixedParent . '/shows-list.php') && is_file($mixedContent . '/shows-list-end.php'));
+        'mixed_theme_override_files' => is_file($mixedChild . '/shows-list-start.php') && is_file($mixedParent . '/shows-list.php'),
+        'wp_content_override_not_persisted_after_seed' => !is_file($mixedContent . '/shows-list-start.php') && !is_file($mixedContent . '/shows-list.php') && !is_file($mixedContent . '/shows-list-end.php'));
     $themeWarmup = public_fixture_http('/');
     $checks['default_theme_navigation_initialized'] = $themeWarmup['status'] === 200
         && (int) $wpdb->get_var("SELECT COUNT(*) FROM " . $wpdb->posts . " WHERE post_type = 'wp_navigation' AND post_status = 'publish' AND post_name = 'navigation'") > 0;
@@ -447,15 +471,21 @@ PHP;
     $paths['rss'] = '/?feed=gigpress'; $paths['ical'] = '/?feed=gigpress-ical';
     $responses = array();
     foreach ($paths as $slug => $path) $responses[$slug] = public_fixture_http($path);
+    $listingXPath = browser_dom($responses['listing']['body']);
+    $listingBundledTables = $listingXPath->query('//table[contains(concat(" ", normalize-space(@class), " "), " gigpress-layout-bundled ")]');
+    $listingCompatTables = $listingXPath->query('//table[contains(concat(" ", normalize-space(@class), " "), " compat-override-start ")]');
+    $contentOverrideFiles = glob(WP_CONTENT_DIR . '/gigpress-templates/*.php') ?: array();
     $checks = array(
         'all_required_http_responses' => count($responses) === count($paths) && !array_filter($responses, function ($response) { return $response['status'] !== 200; }),
         'migrated_and_supplemental_details_rendered' => strpos($responses['listing']['body'], 'Archive Hall') !== false && strpos($responses['listing']['body'], 'LongVenue') !== false && strpos($responses['listing']['body'], 'Readable long detail') !== false,
+        'normal_listing_uses_bundled_structural_templates' => $listingBundledTables->length > 0 && $listingCompatTables->length === 0,
         'compact_widget_and_related_rendered' => strpos($responses['compact']['body'], 'gigpress-public-widget') !== false && strpos($responses['compact']['body'], 'gigpress-related-show') !== false,
         'child_override_resolves_and_remains_owner_controlled' => strpos($responses['child']['body'], 'compat-child-body') !== false && strpos($responses['child']['body'], 'gigpress-layout-bundled') === false,
         'parent_override_resolves_and_remains_owner_controlled' => strpos($responses['parent']['body'], 'compat-parent-body') !== false && strpos($responses['parent']['body'], 'gigpress-layout-bundled') === false,
         'wp_content_override_resolves_and_remains_owner_controlled' => strpos($responses['content']['body'], 'compat-wp-content-body') !== false && strpos($responses['content']['body'], 'gigpress-layout-bundled') === false,
         'complete_override_is_explicitly_adopted' => strpos($responses['complete']['body'], 'compat-complete-body') !== false && strpos($responses['complete']['body'], 'compat-override-start gigpress-layout-bundled') !== false,
         'mixed_override_remains_owner_controlled' => strpos($responses['mixed']['body'], 'compat-child-body') === false && strpos($responses['mixed']['body'], 'compat-parent-body') !== false && strpos($responses['mixed']['body'], 'compat-wp-content-end') !== false && strpos($responses['mixed']['body'], 'gigpress-layout-bundled') === false,
+        'temporary_wp_content_overrides_removed_after_render' => count($contentOverrideFiles) === 0,
         'anonymous_subscription_and_calendar_endpoints' => strpos($responses['rss']['body'], '<rss ') !== false && strpos($responses['ical']['body'], 'BEGIN:VCALENDAR') !== false,
     );
     $after = browser_snapshot();
