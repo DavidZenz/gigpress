@@ -134,6 +134,21 @@ function gigpress_administration_entry_control_checks($request) {
     gigpress_administration_entry_request(array(), true, array('gpaction' => 'killwelcome', '_gpwelcome_nonce' => wp_create_nonce('gigpress-dismiss-welcome')));
     $checks['welcome_dismissal_saves_only_welcome'] = get_option('gigpress_settings') === array_merge($settings, array('welcome' => 'no'));
     update_option('gigpress_settings', $settings);
+    $created = gigpress_administration_entry_request($request)['outcome'];
+    $corrected = gigpress_administration_entry_request(array_merge($request, array(
+        'gpaction' => 'update', 'show_id' => $created['show_id'],
+        'show_date' => 'not-a-date', 'show_date_picker' => '2032-06-08', 'replace_show_date' => '1',
+        'show_multi' => '1', 'show_end_date' => 'not-an-end-date',
+        'show_end_date_picker' => '2032-06-09', 'replace_show_end_date' => '1',
+        'gp_hh' => '00', 'gp_min' => '17', 'show_notes' => '  Corrected edit  '
+    )), true)['html'];
+    $saved = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . GIGPRESS_SHOWS . ' WHERE show_id = %d', $created['show_id']), ARRAY_A);
+    $checks['corrected_update_stored_dates'] = $saved && $saved['show_date'] === '2032-06-08' && $saved['show_expire'] === '2032-06-09';
+    $checks['corrected_update_renders_saved_start'] = preg_match('/type="date"[^>]*name="show_date"[^>]*value="2032-06-08"/', $corrected) === 1;
+    $checks['corrected_update_renders_saved_end'] = preg_match('/type="date"[^>]*name="show_end_date"[^>]*value="2032-06-09"/', $corrected) === 1;
+    $checks['corrected_update_removes_retry_controls'] = strpos($corrected, 'name="replace_show_date"') === false && strpos($corrected, 'name="replace_show_end_date"') === false;
+    $checks['corrected_update_retains_edit_identity'] = strpos($corrected, 'name="gpaction" value="update"') !== false && strpos($corrected, 'name="show_id" value="' . $created['show_id'] . '"') !== false;
+    $checks['corrected_update_renders_normalized_notes'] = strpos($corrected, '>Corrected edit</textarea>') !== false;
     return $checks;
 }
 
