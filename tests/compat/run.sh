@@ -1513,6 +1513,8 @@ run_public_fixture() {
   public_php() { compose_env exec -T -e COMPAT_BROWSER_MODE="$1" -e COMPAT_BROWSER_URL="$BROWSER_URL" -e COMPAT_EXPECTED_WP_VERSION="$WP_VERSION" -e COMPAT_BROWSER_PASSWORD="$BROWSER_PASSWORD" wordpress php /compat/browser-bootstrap.php; }
   output=$(public_php public-seed) || { printf '%s\n' "$output" >&2; fail "public WordPress site seed failed"; }
   printf '%s\n' "$output" | jq -e '.status == "PASS" and .checks.fresh_public_site_installed and .checks.exact_wp' >/dev/null || fail "public WordPress seed contract failed"
+  output=$(public_php public-probe-prepare) || { printf '%s\n' "$output" >&2; fail "public in-container HTTP probe setup failed"; }
+  printf '%s\n' "$output" | jq -e '.status == "PASS" and .checks.internal_loopback_canonical_url and .checks.siteurl_internal_loopback' >/dev/null || fail "public in-container HTTP probe URL is not loopback canonical"
   output=$(compose_env exec -T -e COMPAT_PURPOSE=public-publishing -e COMPAT_UPGRADE_CASE=all wordpress php /compat/probe.php) || { printf '%s\n' "$output" >&2; fail "nine-case migrated public registry failed in retained fixture"; }
   result=$(printf '%s\n' "$output" | tail -n 1)
   printf '%s\n' "$result" | jq -e '

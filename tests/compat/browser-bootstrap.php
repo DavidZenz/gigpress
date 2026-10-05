@@ -306,9 +306,14 @@ if ($mode === 'seed') {
     wp_install('Synthetic GigPress Public Fixture', 'public-admin', 'public-admin@example.test', true, '', getenv('COMPAT_BROWSER_PASSWORD'));
     update_option('home', $base); update_option('siteurl', $base);
     $checks = array('fresh_public_site_installed' => is_blog_installed(), 'exact_wp' => $wp_version === getenv('COMPAT_EXPECTED_WP_VERSION'));
+} elseif ($mode === 'public-probe-prepare') {
+    update_option('home', 'http://127.0.0.1'); update_option('siteurl', 'http://127.0.0.1');
+    $checks = array('internal_loopback_canonical_url' => home_url('/') === 'http://127.0.0.1/',
+        'siteurl_internal_loopback' => site_url('/') === 'http://127.0.0.1/');
 } elseif ($mode === 'public-pages') {
     global $wpdb, $gpo;
     if (!is_plugin_active('gigpress/gigpress.php') || !defined('GIGPRESS_SHOWS')) throw new RuntimeException('Migrated public fixture is not active');
+    update_option('home', $base); update_option('siteurl', $base);
     $settings = array_replace((array) get_option('gigpress_settings'), array(
         'buy_tickets_label' => 'Saved Label', 'display_subscriptions' => 1, 'display_country' => 1,
         'relatedlink_notes' => 1, 'disable_css' => 0, 'disable_js' => 0));
