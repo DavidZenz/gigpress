@@ -48,7 +48,7 @@ recorded: 2026-10-05T06:55:19.778Z
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| CR-01 | critical | fixed | Fixed dce65a5 after RED 2bd3377; exact legacy text fallback; settings-sections 175 PASS. Actual browser unchanged-legacy save remains a human check. |
+| CR-01 | critical | fixed | Fixed dce65a5 after RED 2bd3377; exact legacy text fallback; settings-sections 175 PASS. Actual browser unrelated save/reload and exact legacy storage read-back PASS; see 03-BROWSER.md. |
 | CR-02 | critical | fixed | Fixed dce65a5 after RED 2bd3377; POST/capability/action nonce/readiness, exact existing deduplicated IDs, constrained update and JSON. Settings-save 64 PASS; actual AJAX HTTP snapshots PASS. |
 | CR-03 | critical | fixed | Fixed dce65a5 after RED 2bd3377; esc_attr title and esc_url feed discovery URL; hostile title markup check PASS. |
 | CR-04 | critical | deferred | Deferred to Phase 05 CSV import notices; inherited workflow outside this administration slice. Required follow-up in .planning/CSV-REVIEW-FOLLOWUPS.md; remains unresolved. |
