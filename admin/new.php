@@ -85,6 +85,17 @@ function gigpress_add() {
 			$state['show_end_date'] = $outcome['raw_state']['show_end_date'] ?? gigpress_show_received_date($outcome['raw_state'], true);
 			$id = $outcome['show_id'] ?? 0;
 			$errors = $outcome['field_errors'];
+			/* A confirmed edit displays persisted values, not rejected retry text. */
+			if ($outcome['status'] === 'saved' && $mode === 'update') {
+				$saved = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . GIGPRESS_SHOWS . ' WHERE show_id = %d', $id), ARRAY_A);
+				if ($saved) {
+					$state = array_merge($defaults, $saved);
+					$state['show_end_date'] = $saved['show_expire'];
+					$time = explode(':', $saved['show_time']);
+					$state['gp_hh'] = ($time[2] ?? '') === '01' ? 'na' : $time[0];
+					$state['gp_min'] = ($time[2] ?? '') === '01' ? 'na' : $time[1];
+				}
+			}
 		}
 		if ($outcome['status'] !== 'saved') gigpress_show_outcome_notice($outcome);
 	} elseif (isset($_GET['gpaction']) && is_scalar($_GET['gpaction']) && in_array($_GET['gpaction'], array('edit', 'copy'), true)) {
