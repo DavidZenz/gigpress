@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 04
 current_phase_name: Public Publishing
 status: executing
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-10-05T10:52:07.999Z"
+stopped_at: Completed 04-04-PLAN.md
+last_updated: "2026-10-05T11:38:30.746Z"
 last_activity: 2026-10-05
 last_activity_desc: Phase 04 execution started
-state_head: ebc563bf130e62612e7afbbd855291832088670d
+state_head: 6e348937d7d16caae8854bc94c35bc9aa39d3bbb
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 18
-  completed_plans: 16
+  completed_plans: 17
   percent: 60
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-05)
 ## Current Position
 
 Phase: 04 (Public Publishing) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-10-05 — Phase 04 execution started
 
@@ -74,6 +74,7 @@ Progress: [██████░░░░] 60%
 | Phase 04 P01 | 20min | 2 tasks | 8 files |
 | Phase 04 P02 | 14min | 2 tasks | 7 files |
 | Phase 04 P03 | 23min | 3 tasks | 11 files |
+| Phase 04-public-publishing P04 | 36min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -115,6 +116,9 @@ Recent decisions affecting current work:
 - [Phase 04]: Keep final browser measurement and calendar-client acceptance in plan 04-05.
 - [Phase 04]: Keep legacy fragment keys and owner-template variables while adding plain prepared values for machine output.
 - [Phase 04]: Escape configured table labels and grouped artist headings at the output boundary after hostile fixture assertions exposed raw paths.
+- [Phase 04-public-publishing]: Preserve the feed endpoints, filter membership, event order, item identities, and UID construction while serializing from plain values.
+- [Phase 04-public-publishing]: Treat browser and calendar-client acceptance as a separate blocking gate for Plan 04-05; HTTP evidence does not set phase acceptance or Nyquist compliance.
+- [Phase 04-public-publishing]: Normalize equivalent HTML entities in subscription URL assertions before comparing saved destinations.
 
 ### Pending Todos
 
@@ -135,6 +139,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-05T10:52:07.965Z
-Stopped at: Completed 04-03-PLAN.md
+Last session: 2026-10-05T11:38:30.714Z
+Stopped at: Completed 04-04-PLAN.md
 Resume file: None
