@@ -4,6 +4,7 @@ Run from the repository root through OrbStack. No host PHP or package install is
 
 ```
 rtk proxy bash tests/compat/run.sh browser-fixture --action smoke --wp 7.1.2 --php 8.3 --case entry
+rtk proxy bash tests/compat/run.sh browser-fixture --action smoke --wp 7.1.2 --php 8.3 --case all
 rtk proxy bash tests/compat/run.sh browser-fixture --action start --wp 7.1.2 --php 8.3
 rtk proxy bash tests/compat/run.sh browser-fixture --action status --session /private/tmp/gigpress-browser-XXXXXX/session.json
 rtk proxy bash tests/compat/run.sh browser-fixture --action stop --session /private/tmp/gigpress-browser-XXXXXX/session.json
@@ -11,7 +12,7 @@ rtk proxy bash tests/compat/run.sh browser-fixture --action stop --session /priv
 
 Start emits a loopback URL and the private session path. The session file has mode 0600 inside a mode 0700 temporary directory. Read `admin_user`, `subscriber_user`, and `password` privately for login; never paste credentials into committed evidence. Only synthetic users and rows are seeded. Repository files are mounted read only. WordPress core is installed from the exact requested official archive before seeding.
 
-Smoke uses actual login cookies, rendered nonces and form POST, then independent database read-back. It always removes its owned services and volumes, including on failure or interruption. Start retains the session for browser interaction; the executor must stop it in final cleanup. Status and stop require private, same-user metadata tied to this repository, a restricted project prefix, and matching container ownership labels. Foreign metadata is rejected before Docker teardown.
+Smoke uses actual login cookies, rendered nonces and form POST, then independent database read-back. Cases are entry, settings, guards, and all; all requires every nonempty case. Settings exercises real options.php plus invalid nonce/subscriber requests and independent protected/unknown/falsey snapshots. Guards exercises exact selected IDs, preview/Cancel/Confirm, bypass, nonce, ownership, tampering and replay denial. It always removes its owned services and volumes, including on failure or interruption. Start retains the session for browser interaction; the executor must stop it in final cleanup. Status and stop require private, same-user metadata tied to this repository, a restricted project prefix, and matching container ownership labels. Foreign metadata is rejected before Docker teardown.
 
 Open `/wp-admin/admin.php?page=gigpress/gigpress.php`, `/wp-admin/admin.php?page=gigpress-shows`, and `/wp-admin/admin.php?page=gigpress-settings` after login. Record browser version, exact fixture runtime and source revision, actual actions, observed outcomes, and failed or pending checks. HTTP assertions alone do not certify keyboard, picker, focus or disabled scripts.
 
