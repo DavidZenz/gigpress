@@ -216,6 +216,29 @@ function browser_guards() {
     $entry = browser_form(browser_http($entryPage)['html'], '//form[.//input[@name="gpaction" and @value="add"]]');
     $denied = browser_http($entryPage,$entry,'subscriber');
     $checks['unauthorized_show_no_write'] = $denied['status'] === 403 && browser_snapshot() === $expected;
+    // Use the nonce delivered to the real authenticated administrator page.
+    $artist_page = browser_http('/wp-admin/admin.php?page=gigpress-artists');
+    preg_match('/var gigpressAdmin = (\{[^\n]+\});/', $artist_page['html'], $nonce_match);
+    $config = json_decode($nonce_match[1] ?? '{}', true);
+    $checks['artist_order_rendered_action_nonce'] = !empty($config['reorderNonce']);
+    $order_before = browser_snapshot();
+    $artist_ids = array_column($order_before['artists'], 'artist_id');
+    if (count($artist_ids) < 2 || empty($config['reorderNonce'])) return $checks + array('artist_order_http_fixture_available' => false);
+    $order = array('action' => 'gigpress_reorder_artists', '_ajax_nonce' => $config['reorderNonce'], 'artist' => array($artist_ids[1], $artist_ids[0], $artist_ids[1]));
+    $denied = browser_http('/wp-admin/admin-ajax.php', $order, 'subscriber');
+    $checks['artist_order_http_subscriber_no_write'] = $denied['status'] === 400 && browser_snapshot() === $order_before;
+    $denied = browser_http('/wp-admin/admin-ajax.php', array_merge($order, array('_ajax_nonce' => 'invalid')));
+    $checks['artist_order_http_invalid_nonce_no_write'] = $denied['status'] === 400 && browser_snapshot() === $order_before;
+    $denied = browser_http('/wp-admin/admin-ajax.php?' . http_build_query($order));
+    $checks['artist_order_http_get_no_write'] = $denied['status'] === 400 && browser_snapshot() === $order_before;
+    $response = browser_http('/wp-admin/admin-ajax.php', $order);
+    $json = json_decode($response['html'], true);
+    $order_expected = $order_before;
+    foreach ($order_expected['artists'] as &$row) {
+        if ($row['artist_id'] === $artist_ids[1]) $row['artist_order'] = '0';
+        if ($row['artist_id'] === $artist_ids[0]) $row['artist_order'] = '1';
+    } unset($row);
+    $checks['artist_order_http_json_exact_subset_snapshot'] = $response['status'] === 200 && ($json['success'] ?? false) === true && browser_snapshot() === $order_expected;
     return $checks;
 }
 
@@ -239,6 +262,7 @@ if ($mode === 'seed') {
     update_option('gigpress_settings', $settings);
     $wpdb->insert(GIGPRESS_ARTISTS, array('artist_name' => 'Browser Band', 'artist_alpha' => 'browser band', 'artist_url' => ''));
     $artist = (int) $wpdb->insert_id;
+    foreach (array(71, 72) as $order) $wpdb->insert(GIGPRESS_ARTISTS, array('artist_name' => 'Browser order ' . $order, 'artist_alpha' => 'browser order ' . $order, 'artist_url' => '', 'artist_order' => $order));
     $wpdb->insert(GIGPRESS_VENUES, array('venue_name' => 'Browser Hall', 'venue_city' => 'Vienna', 'venue_country' => 'AT'));
     $venue = (int) $wpdb->insert_id;
     $wpdb->insert(GIGPRESS_TOURS, array('tour_name' => 'Browser Tour', 'tour_status' => 'active')); $tour = (int) $wpdb->insert_id;
