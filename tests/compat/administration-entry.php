@@ -160,6 +160,10 @@ function gigpress_administration_entry_snapshot() {
     return $snapshot;
 }
 
+function gigpress_administration_entry_input_matches($html, $field, $value) {
+    return strpos($html, 'name="' . $field . '"') !== false && strpos($html, 'value="' . esc_attr($value) . '"') !== false;
+}
+
 function gigpress_administration_entry_recovery_checks($request, $bad, $hostile) {
     global $wpdb;
     $checks = array();
@@ -192,10 +196,22 @@ function gigpress_administration_entry_recovery_checks($request, $bad, $hostile)
         'venue_postal_code' => $hostile, 'venue_url' => $hostile, 'venue_phone' => $hostile, 'show_price' => $hostile,
         'show_tix_url' => $hostile, 'show_tix_phone' => $hostile, 'show_external_url' => $hostile,
         'show_date_picker' => '', 'replace_show_date' => '1'));
+    foreach (array('artist_name','artist_url','venue_name','venue_address','venue_city','venue_state','venue_postal_code','venue_url','venue_phone','tour_name','show_related_title','show_price','show_tix_url','show_tix_phone','show_external_url') as $field) {
+        $value = $field . ': ' . $hostile;
+        $received[$field] = $value;
+    }
     $recovered = gigpress_administration_entry_request($received, true);
     foreach ($received as $key => $value) $checks['raw_' . $key] = ($recovered['outcome']['raw_state'][$key] ?? null) === (string) $value;
-    foreach (array('artist_name','artist_url','venue_name','venue_address','venue_city','venue_state','venue_postal_code','venue_url','venue_phone','tour_name','show_related_title','show_price','show_tix_url','show_tix_phone','show_external_url') as $field)
-        $checks['escaped_' . $field] = strpos($recovered['html'], 'name="' . $field . '"') !== false && strpos($recovered['html'], 'value="' . esc_attr($hostile) . '"') !== false;
+    foreach (array('artist_name','artist_url','venue_name','venue_address','venue_city','venue_state','venue_postal_code','venue_url','venue_phone','tour_name','show_related_title','show_price','show_tix_url','show_tix_phone','show_external_url') as $field) {
+        $value = $received[$field];
+        $checks['escaped_' . $field] = gigpress_administration_entry_input_matches($recovered['html'], $field, $value);
+        // Another control contains the expected value: only the named control may satisfy the assertion.
+        $other = '<input name="another_' . $field . '" value="' . esc_attr($value) . '" />';
+        foreach (array('blank' => '', 'corrupt' => 'different value', 'unescaped' => $value) as $kind => $replacement) {
+            $fixture = '<input name="' . $field . '" value="' . $replacement . '" />' . $other;
+            $checks['escaping_rejects_' . $kind . '_' . $field] = !gigpress_administration_entry_input_matches($fixture, $field, $value);
+        }
+    }
 
     $created = gigpress_administration_entry_request($request)['outcome'];
     $id = $created['show_id'];
