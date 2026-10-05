@@ -22,9 +22,22 @@ function gigpress_public_layout_seed_supplemental() {
 		array('show_id' => 802, 'show_artist_id' => 701, 'show_venue_id' => 702, 'show_tour_id' => 0, 'show_date' => '2031-05-14', 'show_multi' => 0, 'show_time' => '00:00:00', 'show_expire' => '2031-05-14', 'show_price' => 'Free', 'show_tix_url' => '', 'show_tix_phone' => '', 'show_ages' => '', 'show_notes' => 'Sold-out details remain visible.', 'show_related' => 0, 'show_status' => 'soldout', 'show_external_url' => '', 'show_tour_restore' => 0, 'show_address' => '1 Public Way', 'show_locale' => 'Graz', 'show_country' => 'AT', 'show_venue' => 'Status Hall', 'show_venue_url' => '', 'show_venue_phone' => ''),
 		array('show_id' => 803, 'show_artist_id' => 702, 'show_venue_id' => 702, 'show_tour_id' => 0, 'show_date' => '2031-05-16', 'show_multi' => 0, 'show_time' => '00:00:01', 'show_expire' => '2031-05-16', 'show_price' => '15.00', 'show_tix_url' => '', 'show_tix_phone' => '', 'show_ages' => '', 'show_notes' => 'Cancelled details remain visible.', 'show_related' => 0, 'show_status' => 'cancelled', 'show_external_url' => '', 'show_tour_restore' => 0, 'show_address' => '1 Public Way', 'show_locale' => 'Graz', 'show_country' => 'AT', 'show_venue' => 'Status Hall', 'show_venue_url' => '', 'show_venue_phone' => ''),
 	);
-	foreach ($artistRows as $row) if ($wpdb->insert(GIGPRESS_ARTISTS, $row) === false) return false;
-	foreach ($venueRows as $row) if ($wpdb->insert(GIGPRESS_VENUES, $row) === false) return false;
-	foreach ($showRows as $row) if ($wpdb->insert(GIGPRESS_SHOWS, $row) === false) return false;
+	$seedRows = function ($table, $idColumn, $rows) use ($wpdb) {
+		foreach ($rows as $row) {
+			$existing = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table} WHERE {$idColumn} = %d", $row[$idColumn]), ARRAY_A);
+			if (is_array($existing)) {
+				foreach ($row as $column => $value) {
+					if (!array_key_exists($column, $existing) || (string) $existing[$column] !== (string) $value) return false;
+				}
+				continue;
+			}
+			if ($wpdb->insert($table, $row) === false) return false;
+		}
+		return true;
+	};
+	if (!$seedRows(GIGPRESS_ARTISTS, 'artist_id', $artistRows)) return false;
+	if (!$seedRows(GIGPRESS_VENUES, 'venue_id', $venueRows)) return false;
+	if (!$seedRows(GIGPRESS_SHOWS, 'show_id', $showRows)) return false;
 	return true;
 }
 
@@ -267,11 +280,12 @@ function gigpress_public_layout_case($case) {
 			&& strpos($css, 'content:') === false;
 	} elseif ($case === 'layout-compact') {
 		$compact = do_shortcode('[gigpress_shows scope="upcoming" artist="701"]');
+		$compactLinks = html_entity_decode($compact, ENT_QUOTES | ENT_HTML5, 'UTF-8');
 		$artistFilter = strpos($compact, 'artist=701') !== false;
 		$checks['subscription_setting_and_artist_filter'] = $artistFilter && strpos($compact, 'Subscribe:') !== false
 			&& strpos($compact, 'class="gigpress-rss"') !== false && strpos($compact, 'class="gigpress-ical"') !== false;
-		$checks['subscription_urls_and_visible_labels'] = strpos($compact, GIGPRESS_RSS . '&amp;artist=701') !== false
-			&& strpos($compact, GIGPRESS_WEBCAL . '&amp;artist=701') !== false && strpos($compact, '>RSS</a>') !== false && strpos($compact, '>iCal</a>') !== false;
+		$checks['subscription_urls_and_visible_labels'] = strpos($compactLinks, GIGPRESS_RSS . '&artist=701') !== false
+			&& strpos($compactLinks, GIGPRESS_WEBCAL . '&artist=701') !== false && strpos($compact, '>RSS</a>') !== false && strpos($compact, '>iCal</a>') !== false;
 		$widget = '';
 		if (class_exists('Gigpress_widget')) {
 			ob_start();

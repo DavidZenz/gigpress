@@ -32,7 +32,6 @@ function gigpress_public_migrated_http_reads($urls) {
 			'error' => curl_error($handle),
 		);
 		curl_multi_remove_handle($multi, $handle);
-		curl_close($handle);
 	}
 	curl_multi_close($multi);
 	return $results;

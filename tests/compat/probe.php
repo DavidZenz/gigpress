@@ -488,7 +488,7 @@ if ($purpose === 'upgrade-preservation' || $purpose === 'public-publishing') {
     if (!upgrade_preservation_seed($upgradeFixture)) {
         $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Upgrade fixture did not receive its nondefault prefix', 'file' => __FILE__, 'line' => __LINE__);
     }
-    if ($purpose === 'public-publishing' && $upgradeCase === 'tracer-1.4') {
+    if ($purpose === 'public-publishing' && in_array($upgradeCase, array('tracer-1.4', 'all'), true)) {
         require_once WP_PLUGIN_DIR . '/gigpress/tests/compat/upgrade-preservation-migrations.php';
         $GLOBALS['gigpress_public_source_snapshot'] = gigpress_upgrade_preservation_snapshot();
     }

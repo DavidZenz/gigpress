@@ -32,7 +32,6 @@ function gigpress_public_feeds_http($urls) {
 			'error' => curl_error($handle),
 		);
 		curl_multi_remove_handle($multi, $handle);
-		curl_close($handle);
 	}
 	curl_multi_close($multi);
 	return $results;
@@ -251,19 +250,26 @@ function gigpress_public_feeds_case($case) {
 	if ($case === 'ical-contract') {
 		$icalBase = 'http://127.0.0.1/?feed=gigpress-ical';
 		$filterReads = gigpress_public_feeds_http(array($icalBase . '&artist=1891', $icalBase . '&tour=1891', $icalBase . '&venue=1891'));
+		$repeatReads = gigpress_public_feeds_http(array_fill(0, 4, $icalBase . '&artist=1891'));
 		$selectedReads = array();
 		foreach (array(1891, 1892, 1893, 1894) as $id) $selectedReads[$id] = gigpress_public_feeds_http(array($icalBase . '&show_id=' . $id))[0] ?? array('body' => '', 'status' => 0, 'content_type' => '', 'error' => 'missing response');
 		$filterParsed = array_map(function ($response) { return gigpress_public_feeds_parse_ical($response['body']); }, $filterReads);
 		$selectedParsed = array();
 		foreach ($selectedReads as $id => $response) $selectedParsed[$id] = gigpress_public_feeds_parse_ical($response['body']);
 		$expectedIds = array(1891, 1892, 1893, 1894);
-		$allHttp = count($filterReads) === 3 && count($selectedReads) === 4;
-		foreach (array_merge($filterReads, array_values($selectedReads)) as $response) {
+		$allHttp = count($filterReads) === 3 && count($repeatReads) === 4 && count($selectedReads) === 4;
+		foreach (array_merge($filterReads, $repeatReads, array_values($selectedReads)) as $response) {
 		$allHttp = $allHttp && $response['status'] === 200 && strpos(strtolower($response['content_type']), 'text/calendar') === 0 && $response['error'] === '';
 		}
 		$filterIds = array_map('gigpress_public_feeds_ical_ids', $filterParsed);
+		$repeatBodies = array_map(function ($response) { return preg_replace('/^DTSTAMP:[^\r\n]+/m', 'DTSTAMP:normalized', $response['body']); }, $repeatReads);
+		$repeatComplete = count(array_unique($repeatBodies)) === 1;
+		foreach ($repeatReads as $response) {
+			$repeated = gigpress_public_feeds_parse_ical($response['body']);
+			$repeatComplete = $repeatComplete && $repeated['valid_envelope'] && count($repeated['events']) === 4 && gigpress_public_feeds_ical_ids($repeated) === array(1891, 1892, 1893, 1894);
+		}
 		$formatChecks = true;
-		foreach (array_merge($filterReads, array_values($selectedReads)) as $response) {
+		foreach (array_merge($filterReads, $repeatReads, array_values($selectedReads)) as $response) {
 			$parsed = gigpress_public_feeds_parse_ical($response['body']);
 			$formatChecks = $formatChecks && $parsed['valid_envelope'] && $parsed['crlf_only'] && $parsed['within_limits'] && $parsed['valid_utf8_lines'];
 		}
@@ -312,7 +318,8 @@ function gigpress_public_feeds_case($case) {
 		$checks['ical_utc_stamps_are_valid_and_timezone_is_not_misapplied'] = $timeStampsValid && $noTZID;
 		$after = gigpress_public_feeds_snapshot();
 		$checks['ical_public_reads_leave_migrated_rows_settings_schema_and_links_unchanged'] = $before === $after;
-		$evidence = array('expected_ids' => $expectedIds, 'filter_ids' => $filterIds, 'event_count' => count($events), 'folded' => $parsedAll['has_fold'] ?? false, 'decoded' => array('summary' => $firstSummary, 'expected_summary' => $expectedSummary, 'description' => $firstDescription, 'expected_description' => $expectedDescription, 'location' => $firstLocation, 'expected_location' => $expectedLocation, 'uid' => $firstUid, 'expected_uid' => $expectedStart . '-1891-' . get_bloginfo('admin_email'), 'url' => $first['URL']['value'] ?? null, 'expected_url' => get_bloginfo('url')), 'no_time' => array('start' => $noTimeStart, 'end' => $noTimeEnd), 'midnight' => array('start' => $midnightStart, 'dtend_count' => $midnightEndCount), 'timed_multi' => array('start' => $multiStart, 'end' => $multiEnd), 'snapshot_unchanged' => $before === $after);
+		$checks['ical_repeated_and_concurrent_reads_are_complete'] = $repeatComplete && count($repeatReads) === 4;
+		$evidence = array('expected_ids' => $expectedIds, 'filter_ids' => $filterIds, 'event_count' => count($events), 'folded' => $parsedAll['has_fold'] ?? false, 'repeated_responses' => count($repeatReads), 'repeated_complete' => $repeatComplete, 'decoded' => array('summary' => $firstSummary, 'expected_summary' => $expectedSummary, 'description' => $firstDescription, 'expected_description' => $expectedDescription, 'location' => $firstLocation, 'expected_location' => $expectedLocation, 'uid' => $firstUid, 'expected_uid' => $expectedStart . '-1891-' . get_bloginfo('admin_email'), 'url' => $first['URL']['value'] ?? null, 'expected_url' => get_bloginfo('url')), 'no_time' => array('start' => $noTimeStart, 'end' => $noTimeEnd), 'midnight' => array('start' => $midnightStart, 'dtend_count' => $midnightEndCount), 'timed_multi' => array('start' => $multiStart, 'end' => $multiEnd), 'snapshot_unchanged' => $before === $after);
 	}
 
 	if ($case === 'empty-contracts') {

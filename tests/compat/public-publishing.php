@@ -43,6 +43,25 @@ function gigpress_public_publishing_case_dispatch($case) {
 		$byCase = array();
 		foreach ($registry as $entry) $byCase[$entry['case']] = $entry;
 		foreach ($requiredCases as $required) {
+			/* The migration contract deliberately visits every source version and
+			 * leaves 1.6 as its final state. Layout contracts start from the 1.4
+			 * tracer baseline, so restore that owned fixture at the boundary. */
+			if ($required === 'layout-main') {
+				$migrationModule = WP_PLUGIN_DIR . '/gigpress/tests/compat/upgrade-preservation-migrations.php';
+				$fixturePath = WP_PLUGIN_DIR . '/gigpress/tests/compat/fixtures/upgrade-preservation/1.4.php';
+				if (is_readable($migrationModule)) require_once $migrationModule;
+				$fixture = is_readable($fixturePath) ? require $fixturePath : null;
+				if (!function_exists('upgrade_preservation_seed') || !is_array($fixture) || !upgrade_preservation_seed($fixture)) {
+					$results[] = array('case' => $required, 'status' => 'FAIL', 'checks' => array(), 'reason' => 'layout baseline fixture could not be restored');
+					continue;
+				}
+				unset($GLOBALS['gigpress_db_bootstrap_result']);
+				$ready = function_exists('gigpress_db_bootstrap') ? gigpress_db_bootstrap() : array('status' => 'blocked');
+				if (($ready['status'] ?? '') !== 'ready') {
+					$results[] = array('case' => $required, 'status' => 'FAIL', 'checks' => array(), 'reason' => 'layout baseline migration could not be restored');
+					continue;
+				}
+			}
 			$entry = $byCase[$required] ?? null;
 			if (!$entry || !is_readable($entry['module'])) {
 				$results[] = array('case' => $required, 'status' => 'FAIL', 'checks' => array(), 'reason' => 'required public case module is unreadable');
@@ -61,7 +80,13 @@ function gigpress_public_publishing_case_dispatch($case) {
 			$results[] = gigpress_public_publishing_validate_record($required, $record, $callbackOutput);
 		}
 		$passed = count($results) === count($requiredCases) && !array_filter($results, function ($result) { return ($result['status'] ?? '') !== 'PASS'; });
-		return array('case' => 'all', 'status' => $passed ? 'PASS' : 'FAIL', 'checks' => array('exact_case_set' => count($results) === count($requiredCases)), 'cases' => $results, 'required_cases' => $requiredCases);
+		$aggregateChecks = array(
+			'exact_case_set' => count($results) === count($requiredCases),
+			'all_required_cases_pass' => $passed,
+		);
+		return array('case' => 'all', 'status' => $passed ? 'PASS' : 'FAIL', 'checks' => $aggregateChecks,
+			'assertion_count' => count($aggregateChecks), 'output_empty' => true, 'checks_boolean' => true,
+			'cases' => $results, 'required_cases' => $requiredCases);
 	}
 	$selected = null;
 	foreach ($registry as $entry) if ($entry['case'] === $case) $selected = $entry;
