@@ -457,8 +457,13 @@ PHP;
     );
     $after = browser_snapshot();
     $checks['snapshots_unchanged'] = $before === $after;
+    $changedSnapshotKeys = array();
+    foreach ($before as $key => $value) {
+        if ($value !== ($after[$key] ?? null)) $changedSnapshotKeys[] = $key;
+    }
     $extra = array('pages' => array_map(function ($path) use ($base) { return $base . $path; }, $paths),
-        'http_statuses' => array_map(function ($r) { return $r['status']; }, $responses), 'content_types' => array_map(function ($r) { return $r['content_type']; }, $responses));
+        'http_statuses' => array_map(function ($r) { return $r['status']; }, $responses), 'content_types' => array_map(function ($r) { return $r['content_type']; }, $responses),
+        'changed_snapshot_keys' => $changedSnapshotKeys);
     $httpErrors = is_file('/tmp/gigpress-public-errors.log') ? file('/tmp/gigpress-public-errors.log', FILE_IGNORE_NEW_LINES) : array();
     $checks['no_plugin_http_errors'] = !$httpErrors;
 } elseif ($mode === 'smoke') {
