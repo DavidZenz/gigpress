@@ -173,6 +173,21 @@ These three items were passed through installed `probe-core.cjs` `projectProhibi
 
 ## Discovery and Active Contributions
 
+## Validation Audit 2026-10-05
+
+The active validate-phase hook cross-referenced all four completed PLAN/SUMMARY pairs and eleven tasks against the actual eight-case modules, real HTTP dispatcher and source-bound matrix. ADMIN-01, ADMIN-02 and ADMIN-03 have positive integration/HTTP checks; UX-01 has positive semantics/data checks and the actual browser subset in 03-BROWSER.md, with complete interactive acceptance PARTIAL. No missing automated implementation test is inferred from a browser-only observation. No new tests or implementation changes were required by this audit.
+
+| Metric | Count |
+|--------|-------|
+| Tasks mapped | 11 |
+| Required administration cases | 8 |
+| Passing supported scenario cells | 18 |
+| Administration assertions | 5376 |
+| Actual evidence control/corruption checks | 21 |
+| Pending grouped browser procedures | 3 |
+
+Manual-only acceptance is the exact three groups in 03-BROWSER.md: genuinely disabled JavaScript entry/list; full keyboard traversal/automatic notice focus; complete new-choice/radio/no-time/midnight/mixed browser outcomes. The ADMIN-03 unclassified edge and descriptor-less prohibitions remain flagged-unverified for review. Per the explicit 03-04 evidence contract, status remains draft and nyquist_compliant=false while these required items remain unresolved; wave_0_complete=true reflects the delivered positive registry/case infrastructure. This is a partial audit, not a compliance certification. The generic workflow's validated status is not used to erase the stricter plan's missing-evidence boundary.
+
 Existing source-pattern/official-documentation discovery is current in 03-RESEARCH/03-PATTERNS; no new dependency choice is required. Historical digest selected Phase 01 harness and Phase 02 preservation/lifecycle patterns; graph status was disabled. Project skill directories/AGENTS.md were absent on disk; user-supplied RTK and workflow rules applied. Estimate calibration measured factor 1, sample_count 0, confidence low for every plan. No tests or production changes occurred during planning.
 
 The real assumption-delta query returned detected=true for optional; 03-01 records no-change because show identity remains show_id and time was already optional with 00:00:01. No ORM/schema paths or schema push are scoped. The real installed api-coverage.cjs detector examined the final four plans plus the registered roadmap phase section and returned detected=true from the existing WordPress Settings API surface. Scope inspection confirms a false external-integration signal: local WordPress option registration/save and synthetic loopback HTTP validation introduce no external API/service. Parent owns the required reasoned COVERAGE.md non-integration declaration; no capability matrix is fabricated.
