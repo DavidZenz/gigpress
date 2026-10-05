@@ -122,6 +122,10 @@ function gigpress_public_html_case($case) {
 	$checks['main_note_markup_keeps_rich_formatting_and_source_line_breaks'] = $mainNotes instanceof DOMElement
 		&& $mainNotes->getElementsByTagName('strong')->length > 0
 		&& strpos(str_replace(array("\r\n", "\r"), "\n", $mainNotes->textContent), "First line\nBEGIN:VEVENT") !== false;
+	$stylesheetPath = dirname(__DIR__, 2) . '/css/gigpress.css';
+	$stylesheet = is_readable($stylesheetPath) ? file_get_contents($stylesheetPath) : false;
+	$checks['compact_rich_notes_keep_block_flow_before_links'] = is_string($stylesheet)
+		&& preg_match('/\.gigpress-layout-bundled\\s+\.gigpress-notes\\s*\\{[^}]*display\\s*:\\s*block\\s*;/s', $stylesheet) === 1;
 	$checks['main_google_calendar_values_are_readable_plain_text'] = isset($googleCalendar['text'], $googleCalendar['location'], $googleCalendar['details'])
 		&& strpos($googleCalendar['text'], '<a') === false && strpos($googleCalendar['text'], 'javascript:') === false
 		&& strpos($googleCalendar['location'], '<img') === false && strpos($googleCalendar['location'], 'onerror=') === false

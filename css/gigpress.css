@@ -189,6 +189,11 @@ a.gigpress-address {
 	overflow-wrap: anywhere;
 }
 
+/* Rich note content must keep its own line ahead of the following links. */
+.gigpress-layout-bundled .gigpress-notes {
+	display: block;
+}
+
 .gigpress-layout-bundled .gigpress-calendar-actions {
 	font-weight: bold;
 }
