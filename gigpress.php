@@ -235,18 +235,12 @@ function gigpress_prepare($show, $scope = 'public') {
 	$showdata = array();
 	
 	$showdata['address_plain'] = (!empty($show->venue_address)) ? wptexturize($show->venue_address) : '';
-	$showdata['address_url'] = (!empty($show->venue_address)) ? 'http://maps.google.com/maps?&amp;q='.
-		urlencode($show->venue_address).','.
-		urlencode($show->venue_city) : '';	
-	if(!empty($show->venue_state))
-	{
-		$showdata['address_url'] .= ','.urlencode($show->venue_state);
+	$map_query_parts = array();
+	foreach (array($show->venue_address, $show->venue_city, $show->venue_state, $show->venue_postal_code, $show->venue_country) as $map_part) {
+		$map_part = trim(preg_replace('/\s+/', ' ', (string) $map_part));
+		if ($map_part !== '') $map_query_parts[] = $map_part;
 	}
-	if(!empty($show->venue_postal_code))
-	{
-		$showdata['address_url'] .= ','.urlencode($show->venue_postal_code);
-	}
-	$showdata['address_url'] .= ','.urlencode($show->venue_country);
+	$showdata['address_url'] = (!empty($show->venue_address)) ? 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode(implode(', ', $map_query_parts)) : '';
 	$showdata['address'] = (!empty($show->venue_address)) ? '<a href="' . esc_url($showdata['address_url']) . '" class="gigpress-address"' . gigpress_target($showdata['address_url']) . '>' . gigpress_public_text_fragment($show->venue_address) . '</a>' : '';
 	$showdata['city'] = (!empty($show->show_related) && !empty($gpo['relatedlink_city']) && $scope == 'public') ? '<a href="' . esc_url(gigpress_related_link($show->show_related, "url")) . '">' . gigpress_public_text_fragment($show->venue_city) . '</a>' : gigpress_public_text_fragment($show->venue_city);
 	$showdata['city_plain'] = wptexturize($show->venue_city);	
@@ -303,7 +297,10 @@ function gigpress_prepare($show, $scope = 'public') {
 		$showdata['id'] = $show->show_id;
 		$showdata['iso_date'] = $show->show_date."T".$show->show_time;
 		$showdata['iso_end_date'] = $show->show_expire."T".$show->show_time;
-		$showdata['notes'] = wp_kses_post(wptexturize($show->show_notes));
+		$notes = wptexturize($show->show_notes);
+		// Block tags already create visual breaks; keep source line breaks inside plain text only.
+		$notes = preg_replace('~(<(?:p|div|ul|ol|li|blockquote|pre|h[1-6]|br)\b[^>]*>)\h*\R+|(<\/(?:p|div|ul|ol|li|blockquote|pre|h[1-6])>)\h*\R+~i', '$1$2', $notes);
+		$showdata['notes'] = wp_kses_post($notes);
 		$showdata['price'] = gigpress_public_text_fragment($show->show_price);
 		$showdata['related_id'] = (!empty($show->show_related)) ? $show->show_related : 0;
 		$showdata['related_url'] = (!empty($show->show_related)) ? esc_url_raw(gigpress_related_link($show->show_related, 'url')) : '';

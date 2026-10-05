@@ -13,7 +13,7 @@ function gigpress_public_html_seed($fixture) {
 	$rows = array(
 		'artist' => array('artist_id' => 891, 'artist_name' => $artistText, 'artist_alpha' => 'hostile html artist', 'artist_order' => 1, 'artist_url' => 'https://artists.example.test/hostile'),
 		'venue' => array('venue_id' => 891, 'venue_name' => $venueText, 'venue_address' => '1 <img src=x onerror=alert(1)> Public Way', 'venue_city' => 'Wien & <script>city</script>', 'venue_state' => 'AT', 'venue_postal_code' => '1010', 'venue_country' => 'AT', 'venue_url' => 'javascript:alert(2)', 'venue_phone' => '+43 555 0199'),
-		'show' => array('show_id' => 891, 'show_artist_id' => 891, 'show_venue_id' => 891, 'show_tour_id' => 0, 'show_date' => '2031-06-10', 'show_multi' => 0, 'show_time' => '19:30:00', 'show_expire' => '2031-06-10', 'show_price' => '24 & <free>', 'show_tix_url' => $validTicketUrl, 'show_tix_phone' => '', 'show_ages' => 'All ages & <12', 'show_notes' => $rich . $hostile['calendar_text'] . "\n<![CDATA[</script>]]>\n</script><script id=\"notes-injected\">alert(2)</script>", 'show_related' => 0, 'show_status' => 'active', 'show_external_url' => $hostile['url'], 'show_tour_restore' => 0, 'show_address' => '', 'show_locale' => '', 'show_country' => '', 'show_venue' => '', 'show_venue_url' => '', 'show_venue_phone' => ''),
+		'show' => array('show_id' => 891, 'show_artist_id' => 891, 'show_venue_id' => 891, 'show_tour_id' => 0, 'show_date' => '2031-06-10', 'show_multi' => 0, 'show_time' => '19:30:00', 'show_expire' => '2031-06-10', 'show_price' => '24 & <free>', 'show_tix_url' => $validTicketUrl, 'show_tix_phone' => '', 'show_ages' => 'All ages & <12', 'show_notes' => $rich . "\r\n" . $hostile['calendar_text'] . "\n<![CDATA[</script>]]>\n</script><script id=\"notes-injected\">alert(2)</script>", 'show_related' => 0, 'show_status' => 'active', 'show_external_url' => $hostile['url'], 'show_tour_restore' => 0, 'show_address' => '', 'show_locale' => '', 'show_country' => '', 'show_venue' => '', 'show_venue_url' => '', 'show_venue_phone' => ''),
 	);
 	foreach (array('artist' => GIGPRESS_ARTISTS, 'venue' => GIGPRESS_VENUES, 'show' => GIGPRESS_SHOWS) as $kind => $table) {
 		if ($wpdb->insert($table, $rows[$kind]) === false) return false;
@@ -106,8 +106,19 @@ function gigpress_public_html_case($case) {
 	$mainXPath = $document ? new DOMXPath($document) : null;
 	$fixtureRow = $mainXPath ? $mainXPath->query('//tr[@data-show-id="891" and contains(concat(" ", normalize-space(@class), " "), " active ")]')->item(0) : null;
 	$ticketAnchor = $mainXPath ? $mainXPath->query('//tr[@data-show-id="891"]/following-sibling::tr[1]//a[contains(concat(" ", normalize-space(@class), " "), " gigpress-tickets-link ")]')->item(0) : null;
+	$addressAnchor = $mainXPath ? $mainXPath->query('//tr[@data-show-id="891"]/following-sibling::tr[1]//a[contains(concat(" ", normalize-space(@class), " "), " gigpress-address ")]')->item(0) : null;
 	$calendarAnchors = $mainXPath ? $mainXPath->query('//tr[@data-show-id="891"]/following-sibling::tr[1]//span[contains(concat(" ", normalize-space(@class), " "), " gigpress-calendar-actions ")]/a') : array();
 	$mainNotes = $mainXPath ? $mainXPath->query('//tr[@data-show-id="891"]/following-sibling::tr[1]//div[contains(concat(" ", normalize-space(@class), " "), " gigpress-notes ")]')->item(0) : null;
+	$addressUrl = $addressAnchor instanceof DOMElement ? wp_parse_url($addressAnchor->getAttribute('href')) : array();
+	$addressParams = array();
+	if (isset($addressUrl['query'])) parse_str($addressUrl['query'], $addressParams);
+	$expectedAddressParts = array();
+	foreach (array($seed['rows']['venue']['venue_address'], $seed['rows']['venue']['venue_city'], $seed['rows']['venue']['venue_state'], $seed['rows']['venue']['venue_postal_code'], $seed['rows']['venue']['venue_country']) as $addressPart) {
+		$addressPart = trim(preg_replace('/\s+/', ' ', (string) $addressPart));
+		if ($addressPart !== '') $expectedAddressParts[] = $addressPart;
+	}
+	$expectedAddressQuery = implode(', ', $expectedAddressParts);
+	$mainNotesMarkup = $mainNotes instanceof DOMElement ? $document->saveHTML($mainNotes) : '';
 	$googleCalendar = array();
 	if ($calendarAnchors && $calendarAnchors->length) parse_str((string) wp_parse_url($calendarAnchors->item(0)->getAttribute('href'), PHP_URL_QUERY), $googleCalendar);
 	$footerLinks = $mainXPath ? $mainXPath->query('//p[contains(concat(" ", normalize-space(@class), " "), " gigpress-subscribe ")]/a') : array();
@@ -122,6 +133,16 @@ function gigpress_public_html_case($case) {
 	$checks['main_note_markup_keeps_rich_formatting_and_source_line_breaks'] = $mainNotes instanceof DOMElement
 		&& $mainNotes->getElementsByTagName('strong')->length > 0
 		&& strpos(str_replace(array("\r\n", "\r"), "\n", $mainNotes->textContent), "First line\nBEGIN:VEVENT") !== false;
+	$checks['main_note_block_boundaries_do_not_add_redundant_source_breaks'] = $mainNotes instanceof DOMElement
+		&& strpos($mainNotesMarkup, '</ul>First line') !== false
+		&& strpos($mainNotesMarkup, "</ul>\nFirst line") === false;
+	$checks['main_address_uses_encoded_https_google_maps_search'] = $addressAnchor instanceof DOMElement
+		&& ($addressUrl['scheme'] ?? '') === 'https'
+		&& ($addressUrl['host'] ?? '') === 'www.google.com'
+		&& ($addressUrl['path'] ?? '') === '/maps/search/'
+		&& ($addressParams['api'] ?? '') === '1'
+		&& ($addressParams['query'] ?? '') === $expectedAddressQuery
+		&& strpos($addressAnchor->getAttribute('href'), 'onerror=') === false;
 	$stylesheetPath = dirname(__DIR__, 2) . '/css/gigpress.css';
 	$stylesheet = is_readable($stylesheetPath) ? file_get_contents($stylesheetPath) : false;
 	$checks['compact_rich_notes_keep_block_flow_before_links'] = is_string($stylesheet)
