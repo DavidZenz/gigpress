@@ -114,6 +114,111 @@ function browser_entry() {
     return $checks;
 }
 
+function browser_settings() {
+    $checks = array('authenticated_admin_login' => browser_login('browser-admin','admin'));
+    $page = '/wp-admin/admin.php?page=gigpress-settings';
+    $form = browser_http($page);
+    $post = browser_form($form['html'], '//form[@action="options.php"]');
+    $before = browser_snapshot(); $baseline = $before['settings'];
+    $checks['real_settings_fields'] = !empty($post['_wpnonce']) && ($post['option_page'] ?? '') === 'gigpress' && ($post['action'] ?? '') === 'update';
+    $checks['explicit_unchecked_flags'] = isset($post['gigpress_settings']['relatedlink_date']) && $post['gigpress_settings']['relatedlink_date'] === '0';
+    $post['gigpress_settings']['artist_label'] = 'HTTP Performers';
+    $post['gigpress_settings']['default_date'] = '1900-01-01';
+    $post['gigpress_settings']['db_version'] = '0';
+    $post['gigpress_settings']['unknown_nested'] = array('forged' => true);
+    $expected = $baseline; $expected['artist_label'] = 'HTTP Performers';
+    $response = browser_http('/wp-admin/options.php', $post);
+    $after = browser_snapshot();
+    $checks['actual_options_post_saved'] = $response['status'] === 200 && strpos($response['url'], 'settings-updated=true') !== false && $after['settings'] === $expected;
+    $reload = browser_http($page);
+    $values = browser_form($reload['html'], '//form[@action="options.php"]');
+    $checks['reload_editable_choice'] = $values['gigpress_settings']['artist_label'] === 'HTTP Performers';
+    foreach (array('country_view','related_position','output_schema_json','related_category') as $key)
+        $checks['unchanged_unknown_choice_' . $key] = $values['gigpress_settings'][$key] === (string) $baseline[$key];
+    $checks['protected_unknown_falsey_exact'] = $after['settings'] === $expected;
+    foreach (array('shows','artists','venues','tours','posts') as $table) $checks['no_other_write_' . $table] = $before[$table] === $after[$table];
+    $invalid = $values; $invalid['_wpnonce'] = 'invalid'; $invalid['gigpress_settings']['artist_label'] = 'Forbidden nonce label';
+    $denied = browser_http('/wp-admin/options.php', $invalid);
+    $checks['invalid_nonce_denied_no_snapshot_change'] = $denied['status'] === 403 && browser_snapshot() === $after;
+    $checks['real_subscriber_login'] = browser_login('browser-subscriber','subscriber');
+    $unauthorized = browser_http('/wp-admin/options.php', $values, 'subscriber');
+    $checks['unauthorized_post_denied_no_snapshot_change'] = $unauthorized['status'] === 403 && browser_snapshot() === $after;
+    $unchecked = $values;
+    $flags = array('alternate_clock','display_country','artist_link','target_blank','autocreate_post','category_exclude','relatedlink_date','relatedlink_city','relatedlink_notes','rss_head','display_subscriptions','load_jquery','disable_css','disable_js');
+    foreach ($flags as $flag) {
+        $unchecked['gigpress_settings'][$flag] = '0';
+        if (!empty($expected[$flag])) $expected[$flag] = 0;
+    }
+    browser_http('/wp-admin/options.php', $unchecked);
+    $checks['actual_unchecked_save_preserves_other_values'] = browser_snapshot()['settings'] === $expected;
+    return $checks;
+}
+
+function browser_guards() {
+    global $wpdb;
+    $checks = array('authenticated_admin_login' => browser_login('browser-admin','admin'));
+    $page = '/wp-admin/admin.php?page=gigpress-shows&scope=all&sort=asc&limit=10';
+    $form = browser_http($page);
+    $xpath = browser_dom($form['html']); $ids = array();
+    foreach ($xpath->query('//input[@name="show_id[]" and @type="checkbox"]') as $node) $ids[] = $node->getAttribute('value');
+    $checks['explicit_rendered_selection_available'] = count($ids) === 10 && count(array_unique($ids)) === 10;
+    if (count($ids) < 4) return $checks;
+    $post = browser_form($form['html'], '//form[.//input[@name="trash_stage"]]');
+    $post['show_id'] = array($ids[1]); $post['trash_single_id'] = $ids[0];
+    $baseline = browser_snapshot();
+    $preview = browser_http($page, $post);
+    $confirm = browser_form($preview['html'], '//form[.//input[@name="trash_token"]]');
+    $checks['single_preview_no_write_and_exact_clicked_id'] = browser_snapshot() === $baseline && ($confirm['show_id'] ?? null) === array($ids[0]) && strpos($preview['html'], '1 selected show') !== false;
+    $checks['issued_intent_and_nonces'] = !empty($confirm['trash_token']) && !empty($confirm['_wpnonce']) && !empty($confirm['trash_cancel_nonce']);
+    $cancel = array_merge($confirm, array('trash_stage' => 'cancel'));
+    $response = browser_http($page, $cancel);
+    $checks['single_cancel_no_write_and_text'] = browser_snapshot() === $baseline && strpos($response['html'], 'Canceled. No shows were changed') !== false;
+    $confirm['trash_stage'] = 'confirm'; browser_http($page, $confirm);
+    $checks['cancel_consumes_intent'] = browser_snapshot() === $baseline;
+    $direct = array_merge($post, array('trash_stage' => 'confirm', 'trash_token' => ''));
+    browser_http($page, $direct);
+    $checks['direct_bypass_no_write'] = browser_snapshot() === $baseline;
+    $preview = browser_http($page, $post);
+    $confirm = browser_form($preview['html'], '//form[.//input[@name="trash_token"]]'); $confirm['trash_stage'] = 'confirm';
+    $invalid = array_merge($confirm, array('_wpnonce' => 'invalid')); browser_http($page, $invalid);
+    $checks['invalid_confirm_nonce_no_write'] = browser_snapshot() === $baseline;
+    $tampered = array_merge($confirm, array('show_id' => array($ids[1]))); browser_http($page, $tampered);
+    $checks['tampered_selection_no_write'] = browser_snapshot() === $baseline;
+    browser_http($page . '&' . http_build_query($confirm));
+    $checks['get_confirm_no_write'] = browser_snapshot() === $baseline;
+    $checks['subscriber_login'] = browser_login('browser-subscriber','subscriber');
+    $unauthorized = browser_http($page, $confirm, 'subscriber');
+    $checks['unauthorized_confirm_no_write'] = $unauthorized['status'] === 403 && browser_snapshot() === $baseline;
+    $response = browser_http($page, $confirm);
+    $expected = $baseline;
+    foreach ($expected['shows'] as &$row) if ($row['show_id'] === $ids[0]) $row['show_status'] = 'deleted'; unset($row);
+    $checks['single_confirm_status_only_exact_snapshot'] = browser_snapshot() === $expected && strpos($response['html'], '1 shows moved to trash') !== false;
+    browser_http($page, $confirm); $checks['single_replay_no_write'] = browser_snapshot() === $expected;
+    $post = browser_form(browser_http($page)['html'], '//form[.//input[@name="trash_stage"]]');
+    $post['show_id'] = array($ids[1],$ids[2]);
+    $preview = browser_http($page, $post);
+    $bulk = browser_form($preview['html'], '//form[.//input[@name="trash_token"]]');
+    $checks['bulk_preview_exact_count_ids_no_write'] = ($bulk['show_id'] ?? null) === array($ids[1],$ids[2]) && strpos($preview['html'], '2 selected show') !== false && browser_snapshot() === $expected;
+    browser_http($page, array_merge($bulk,array('trash_stage'=>'cancel')));
+    $checks['bulk_cancel_no_write'] = browser_snapshot() === $expected;
+    $preview = browser_http($page, $post); $bulk = browser_form($preview['html'], '//form[.//input[@name="trash_token"]]');
+    $bulk['trash_stage'] = 'confirm'; $response = browser_http($page, $bulk);
+    foreach ($expected['shows'] as &$row) if (in_array($row['show_id'],array($ids[1],$ids[2]),true)) $row['show_status'] = 'deleted'; unset($row);
+    $checks['bulk_confirm_selected_only_status_snapshot'] = browser_snapshot() === $expected && strpos($response['html'], '2 shows moved to trash') !== false;
+    // Actual unauthorized/nonce-invalid show submission uses the rendered add form too.
+    $entryPage = '/wp-admin/admin.php?page=gigpress/gigpress.php';
+    $entry = browser_form(browser_http($entryPage)['html'], '//form[.//input[@name="gpaction" and @value="add"]]');
+    $entry['show_notes'] = 'Forbidden HTTP show'; $entry['_wpnonce'] = 'invalid';
+    $denied = browser_http($entryPage,$entry);
+    // Admin output precedes check_admin_referer here, so core's explicit denial can carry HTTP 200.
+    $checks['invalid_show_nonce_no_write'] = in_array($denied['status'], array(200,403), true)
+        && strpos($denied['html'], 'link you followed has expired') !== false && browser_snapshot() === $expected;
+    $entry = browser_form(browser_http($entryPage)['html'], '//form[.//input[@name="gpaction" and @value="add"]]');
+    $denied = browser_http($entryPage,$entry,'subscriber');
+    $checks['unauthorized_show_no_write'] = $denied['status'] === 403 && browser_snapshot() === $expected;
+    return $checks;
+}
+
 if ($mode === 'seed') {
     if (is_blog_installed()) throw new RuntimeException('Seed requires a fresh disposable database');
     wp_install('Synthetic GigPress Browser Fixture', 'browser-admin', 'browser-admin@example.test', true, '', getenv('COMPAT_BROWSER_PASSWORD'));
@@ -149,13 +254,21 @@ if ($mode === 'seed') {
     $checks = array('plugin_active' => is_plugin_active('gigpress/gigpress.php'), 'readiness' => $ready['status'] === 'ready', 'synthetic_rows' => count($ids) === 26, 'exact_wp' => $wp_version === getenv('COMPAT_EXPECTED_WP_VERSION'));
 } elseif ($mode === 'smoke') {
     $case = getenv('COMPAT_BROWSER_CASE') ?: 'entry';
-    $checks = browser_entry();
-    $checks['required_case_entry'] = $case === 'entry';
+    $required = $case === 'all' ? array('entry','settings','guards') : array($case);
+    if (array_diff($required,array('entry','settings','guards'))) throw new RuntimeException('Unknown HTTP case');
+    $cases = array(); $checks = array();
+    foreach ($required as $name) {
+        $started = microtime(true); $values = call_user_func('browser_' . $name);
+        $passed = count($values) > 0 && !in_array(false,$values,true);
+        $cases[] = array('case'=>$name,'status'=>$passed?'PASS':'FAIL','checks'=>$values,'assertion_count'=>count($values),'elapsed_seconds'=>round(microtime(true)-$started,4));
+        foreach ($values as $key=>$value) $checks[$name . '.' . $key] = $value;
+    }
+    $checks['required_http_case_set'] = array_column($cases,'case') === $required && count(array_unique($required)) === count($required);
 } elseif ($mode === 'snapshot') {
     echo json_encode(browser_snapshot(), JSON_UNESCAPED_SLASHES) . PHP_EOL; exit;
 } else throw new RuntimeException('Unknown browser bootstrap mode');
 $httpErrors = is_file('/tmp/gigpress-browser-errors.log') ? file('/tmp/gigpress-browser-errors.log', FILE_IGNORE_NEW_LINES) : array();
 $ok = $checks && !in_array(false, $checks, true) && !$errors && !$httpErrors;
 echo json_encode(array('status' => $ok ? 'PASS' : 'FAIL', 'wordpress_version' => $wp_version, 'php_version' => PHP_VERSION,
-    'checks' => $checks, 'assertion_count' => count($checks), 'errors' => $errors, 'http_errors' => $httpErrors), JSON_UNESCAPED_SLASHES) . PHP_EOL;
+    'checks' => $checks, 'assertion_count' => count($checks), 'cases' => $cases ?? array(), 'errors' => $errors, 'http_errors' => $httpErrors), JSON_UNESCAPED_SLASHES) . PHP_EOL;
 exit($ok ? 0 : 1);
