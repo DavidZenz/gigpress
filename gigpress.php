@@ -247,13 +247,13 @@ function gigpress_prepare($show, $scope = 'public') {
 		$showdata['address_url'] .= ','.urlencode($show->venue_postal_code);
 	}
 	$showdata['address_url'] .= ','.urlencode($show->venue_country);
-	$showdata['address'] = (!empty($show->venue_address)) ? '<a href="' . $showdata['address_url'] . '" class="gigpress-address"' . gigpress_target($showdata['address_url']) . '>' . wptexturize($show->venue_address) . '</a>' : '';
-	$showdata['city'] = (!empty($show->show_related) && !empty($gpo['relatedlink_city']) && $scope == 'public') ? '<a href="' . gigpress_related_link($show->show_related, "url") . '">' . wptexturize($show->venue_city) . '</a>' : wptexturize($show->venue_city);	
+	$showdata['address'] = (!empty($show->venue_address)) ? '<a href="' . esc_url($showdata['address_url']) . '" class="gigpress-address"' . gigpress_target($showdata['address_url']) . '>' . gigpress_public_text_fragment($show->venue_address) . '</a>' : '';
+	$showdata['city'] = (!empty($show->show_related) && !empty($gpo['relatedlink_city']) && $scope == 'public') ? '<a href="' . esc_url(gigpress_related_link($show->show_related, "url")) . '">' . gigpress_public_text_fragment($show->venue_city) . '</a>' : gigpress_public_text_fragment($show->venue_city);
 	$showdata['city_plain'] = wptexturize($show->venue_city);	
 	$showdata['state'] = (!empty($show->venue_state)) ? $show->venue_state : '';
 	$showdata['postal_code'] = (!empty($show->venue_postal_code)) ? $show->venue_postal_code : '';
-	$showdata['country'] = (!empty($gpo['country_view'])) ? wptexturize($gp_countries[$show->venue_country]) : $show->venue_country;
-	$showdata['venue'] = (!empty($show->venue_url)) ? '<a href="' . esc_url($show->venue_url) . '"' . gigpress_target($show->venue_url) . '>' . wptexturize($show->venue_name) . '</a>' : wptexturize($show->venue_name);
+	$showdata['country'] = (!empty($gpo['country_view'])) ? gigpress_public_text_fragment($gp_countries[$show->venue_country]) : gigpress_public_text_fragment($show->venue_country);
+	$showdata['venue'] = (!empty($show->venue_url)) ? '<a href="' . esc_url($show->venue_url) . '"' . gigpress_target($show->venue_url) . '>' . gigpress_public_text_fragment($show->venue_name) . '</a>' : gigpress_public_text_fragment($show->venue_name);
 	$showdata['venue_id'] = $show->venue_id;
 	$showdata['venue_plain'] = wptexturize($show->venue_name);
 	$showdata['venue_phone'] = wptexturize($show->venue_phone);
@@ -263,7 +263,7 @@ function gigpress_prepare($show, $scope = 'public') {
 	if($scope != 'venue') {
 		$timeparts = explode(':', $show->show_time);
 		$showdata['admittance'] = (!empty($show->show_ages) && $show->show_ages != 'Not sure') ? wptexturize($show->show_ages) : '';
-		$showdata['artist'] = (!empty($show->artist_url) && !empty($gpo['artist_link']) && $scope != 'admin') ? '<a href="' . esc_url($show->artist_url) . '"' . gigpress_target($show->artist_url) . '>' . wptexturize($show->artist_name) . '</a>' : wptexturize($show->artist_name);
+		$showdata['artist'] = (!empty($show->artist_url) && !empty($gpo['artist_link']) && $scope != 'admin') ? '<a href="' . esc_url($show->artist_url) . '"' . gigpress_target($show->artist_url) . '>' . gigpress_public_text_fragment($show->artist_name) . '</a>' : gigpress_public_text_fragment($show->artist_name);
 		$showdata['artist_plain'] = wptexturize($show->artist_name);
 		$showdata['artist_id'] = $show->artist_id;
 		$showdata['artist_url'] = (!empty($show->artist_url)) ? esc_url($show->artist_url) : '';
@@ -300,7 +300,7 @@ function gigpress_prepare($show, $scope = 'public') {
 		$showdata['id'] = $show->show_id;
 		$showdata['iso_date'] = $show->show_date."T".$show->show_time;
 		$showdata['iso_end_date'] = $show->show_expire."T".$show->show_time;
-		$showdata['notes'] = wptexturize($show->show_notes);
+		$showdata['notes'] = wp_kses_post(wptexturize($show->show_notes));
 		$showdata['price'] = wptexturize($show->show_price);
 		$showdata['related_id'] = (!empty($show->show_related)) ? $show->show_related : 0;
 		$showdata['related_url'] = (!empty($show->show_related)) ? gigpress_related_link($show->show_related, 'url') : '';
@@ -309,7 +309,7 @@ function gigpress_prepare($show, $scope = 'public') {
 		$showdata['rss_date'] = mysql2date('D, d M Y', $show->show_date, false). " ". $show->show_time." " . gigpress_get_O_offset(get_option('gmt_offset'));
 		$showdata['status'] = $show->show_status;
 		switch($showdata['status']) {
-			case 'active': $showdata['ticket_link'] = ($show->show_tix_url && $show->show_expire >= GIGPRESS_NOW) ? '<a href="' . esc_url($show->show_tix_url)  . '"' . gigpress_target($show->show_tix_url) . ' class="gigpress-tickets-link">' . wptexturize($gpo['buy_tickets_label']) . '</a>' : '';
+			case 'active': $showdata['ticket_link'] = ($show->show_tix_url && $show->show_expire >= GIGPRESS_NOW) ? '<a href="' . esc_url($show->show_tix_url)  . '"' . gigpress_target($show->show_tix_url) . ' class="gigpress-tickets-link">' . gigpress_public_text_fragment($gpo['buy_tickets_label']) . '</a>' : '';
 			break;
 			case 'soldout' : $showdata['ticket_link'] = '<strong class="gigpress-soldout">' . __("Sold Out", "gigpress") . '</strong>';
 			break;
@@ -335,9 +335,40 @@ function gigpress_prepare($show, $scope = 'public') {
 			. '&amp;details=' . urlencode($showdata['calendar_details'])
 			. '&amp;trp=true;'
 			. '"' . gigpress_target() . '>' . __("Add to Google Calendar", "gigpress") . '</a>';	
+		$showdata['plain'] = gigpress_prepare_plain_values($show);
 	}
 		
 	return $showdata;
+}
+
+/** Return unformatted destination values without changing the source show row. */
+function gigpress_prepare_plain_values($show) {
+	global $gpo;
+	return array(
+		'artist' => (string) $show->artist_name,
+		'venue' => (string) $show->venue_name,
+		'city' => (string) $show->venue_city,
+		'country' => (string) $show->venue_country,
+		'address' => (string) $show->venue_address,
+		'notes' => wp_strip_all_tags((string) $show->show_notes),
+		'ticket_label' => (string) ($gpo['buy_tickets_label'] ?? ''),
+		'ticket_url' => esc_url_raw((string) $show->show_tix_url),
+		'calendar_title' => (string) $show->artist_name . ' ' . __('at', 'gigpress') . ' ' . (string) $show->venue_name,
+		'calendar_description' => wp_strip_all_tags((string) $show->show_notes),
+		'calendar_location' => (string) $show->venue_name . ', ' . (string) $show->venue_address . ', ' . (string) $show->venue_city . ', ' . (string) $show->venue_country,
+		'tour' => (string) $show->tour_name,
+		'price' => (string) $show->show_price,
+		'admittance' => ((string) $show->show_ages !== 'Not sure') ? (string) $show->show_ages : '',
+		'ticket_phone' => (string) $show->show_tix_phone,
+		'venue_phone' => (string) $show->venue_phone,
+		'state' => (string) $show->venue_state,
+		'postal_code' => (string) $show->venue_postal_code,
+	);
+}
+
+/** Text fragments remain HTML-compatible while escaping untrusted text. */
+function gigpress_public_text_fragment($value) {
+	return wptexturize(esc_html((string) $value));
 }
 
 

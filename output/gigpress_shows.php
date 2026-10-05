@@ -222,17 +222,7 @@ function gigpress_shows($filter = null, $content = null) {
 			include gigpress_template('shows-list-footer');
 			if(!empty($shows_markup))
 			{
-				echo '<script type="application/ld+json">';
-				if (!defined("JSON_UNESCAPED_SLASHES"))
-				{
-					require_once(WP_PLUGIN_DIR . '/gigpress/lib/upgrade.php');
-					echo up_json_encode($shows_markup, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-				}
-				else
-				{
-					echo json_encode($shows_markup, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-				}
-				echo '</script>';
+				echo gigpress_json_ld_script($shows_markup);
 			}			
 		} else {	
 			// No shows from any artist
@@ -285,17 +275,7 @@ function gigpress_shows($filter = null, $content = null) {
 
 			if(!empty($shows_markup))
 			{
-				echo '<script type="application/ld+json">';
-				if (!defined("JSON_UNESCAPED_SLASHES"))
-				{
-					require_once(WP_PLUGIN_DIR . '/gigpress/lib/upgrade.php');
-					echo up_json_encode($shows_markup, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-				}
-				else
-				{
-					echo json_encode($shows_markup, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-				}
-				echo '</script>';
+				echo gigpress_json_ld_script($shows_markup);
 			}
 			
 		} else {
@@ -423,11 +403,16 @@ function gigpress_has_upcoming($filter = null)
 
 function gigpress_json_ld($showdata)
 {
+	$plain = isset($showdata['plain']) && is_array($showdata['plain']) ? $showdata['plain'] : array();
+	$plain_value = function ($key, $legacy) use ($plain, $showdata) {
+		return array_key_exists($key, $plain) ? $plain[$key] : ($showdata[$legacy] ?? '');
+	};
+
 	// Start array for single event
 	$show_markup = array("@context" => "http://schema.org", "@type" => "Event");
 	
 	// Add show level attributes
-	$show_markup['name'] = (!empty($showdata['tour'])) ? $showdata['tour'] : $showdata['artist_plain'];
+	$show_markup['name'] = (!empty($showdata['tour'])) ? $plain_value('tour', 'tour') : $plain_value('artist', 'artist_plain');
 	$show_markup['startDate'] = $showdata['iso_date'];
 	if(!empty($showdata['related_url']))
 	{
@@ -438,15 +423,16 @@ function gigpress_json_ld($showdata)
 		$show_markup['url'] = $showdata['external_url'];
 	}
 	if(!empty($showdata['iso_end_date']) && $showdata['iso_end_date'] != $showdata['iso_date']) { $show_markup['endDate'] = $showdata['iso_end_date']; }
-	if(!empty($showdata['notes'])) { $show_markup['description'] = $showdata['notes']; }
+	if(!empty($plain_value('notes', 'notes'))) { $show_markup['description'] = $plain_value('notes', 'notes'); }
 	if(!empty($showdata['status']) && $showdata['status'] == "cancelled") { $show_markup['eventStatus'] = "EventCancelled"; }
-	if(!empty($showdata['admittance'])) { $show_markup['typicalAgeRange'] = $showdata['admittance']; }
+	$plain_admittance = $plain_value('admittance', 'admittance');
+	if(!empty($plain_admittance)) { $show_markup['typicalAgeRange'] = $plain_admittance; }
 
 	// Create performer
 	$performer_markup = array("@type" => "Organization");
 	
 	// Add performer attributes
-	$performer_markup['name'] = $showdata['artist_plain'];
+	$performer_markup['name'] = $plain_value('artist', 'artist_plain');
 	if(!empty($showdata['artist_url'])) { $performer_markup['url'] = $showdata['artist_url']; }
 	
 	// Merge performer into show
@@ -456,19 +442,23 @@ function gigpress_json_ld($showdata)
 	$location_markup = array("@type" => "Place");
 	
 	//Add venue attributes
-	$location_markup['name'] = $showdata['venue_plain'];
+	$location_markup['name'] = $plain_value('venue', 'venue_plain');
 	if(!empty($showdata['venue_url'])) { $location_markup['url'] = $showdata['venue_url']; }
-	if(!empty($showdata['venue_phone'])) { $location_markup['telephone'] = $showdata['venue_phone']; }
+	$plain_venue_phone = $plain_value('venue_phone', 'venue_phone');
+	if(!empty($plain_venue_phone)) { $location_markup['telephone'] = $plain_venue_phone; }
 
 	// Create venue address
 	$address_markup = array("@type" => "PostalAddress");
 	
 	//Add address attributes
-	if(!empty($showdata['address_plain'])) { $address_markup['streetAddress'] = $showdata['address_plain']; }
-	$address_markup['addressLocality'] = $showdata['city'];
-	if(!empty($showdata['state'])) { $address_markup['addressRegion'] = $showdata['state']; }
-	if(!empty($showdata['postal_code'])) { $address_markup['postalCode'] = $showdata['postal_code']; }
-	if(!empty($showdata['country'])) { $address_markup['addressCountry'] = $showdata['country']; }
+	if(!empty($plain_value('address', 'address_plain'))) { $address_markup['streetAddress'] = $plain_value('address', 'address_plain'); }
+	$address_markup['addressLocality'] = $plain_value('city', 'city_plain');
+	$plain_state = $plain_value('state', 'state');
+	$plain_postal_code = $plain_value('postal_code', 'postal_code');
+	if(!empty($plain_state)) { $address_markup['addressRegion'] = $plain_state; }
+	if(!empty($plain_postal_code)) { $address_markup['postalCode'] = $plain_postal_code; }
+	$plain_country = $plain_value('country', 'country');
+	if(!empty($plain_country)) { $address_markup['addressCountry'] = $plain_country; }
 
 	// Merge address into venue
 	$location_markup['address'] = $address_markup;
@@ -480,9 +470,12 @@ function gigpress_json_ld($showdata)
 	$offer_markup = array("@type" => "Offer");
 
 	// Add offer attributes
-	if(!empty($showdata['price'])) { $offer_markup['price'] = $showdata['price']; }
-	if(!empty($showdata['ticket_url'])) { $offer_markup['url'] = $showdata['ticket_url']; }
-	if(!empty($showdata['ticket_phone'])) { $offer_markup['seller'] = array("@type" => "Organization", "telephone" => $showdata['ticket_phone']); }
+	$plain_price = $plain_value('price', 'price');
+	if(!empty($plain_price)) { $offer_markup['price'] = $plain_price; }
+	$plain_ticket_url = $plain_value('ticket_url', 'ticket_url');
+	if(!empty($plain_ticket_url)) { $offer_markup['url'] = $plain_ticket_url; }
+	$plain_ticket_phone = $plain_value('ticket_phone', 'ticket_phone');
+	if(!empty($plain_ticket_phone)) { $offer_markup['seller'] = array("@type" => "Organization", "telephone" => $plain_ticket_phone); }
 	if(!empty($showdata['status']) && $showdata['status'] == "soldout") { $offer_markup['availability'] = "SoldOut"; }
 
 	// Merge offer into show (if any fields were added)
@@ -491,4 +484,11 @@ function gigpress_json_ld($showdata)
 	}
 	
 	return $show_markup;
+}
+
+/** Serialize structured data without allowing stored values to terminate its script element. */
+function gigpress_json_ld_script($payload) {
+	$json = wp_json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+	if ($json === false) return '';
+	return '<script type="application/ld+json">' . $json . '</script>';
 }
