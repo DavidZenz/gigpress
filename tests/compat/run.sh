@@ -92,10 +92,6 @@ for index, (name, down, inventory, leftover, initial, retained) in enumerate(cas
         directory = pathlib.Path(root) / 'gigpress-browser-unit'
         directory.mkdir(mode=0o700)
         (directory / 'session.json').write_text('{}')
-        script = """BROWSER_DIR=$1; PROJECT=gigpress_browser_unit; BROWSER_RETAIN=false
-compose_env() { echo synthetic-cleanup-log; return "$2"; }
-docker() { printf '%s' "$3"; return "$4"; }
-"""
         # Functions receive their own arguments, so put controlled outcomes in distinct globals.
         script = """BROWSER_DIR=$1; PROJECT=gigpress_browser_unit; BROWSER_RETAIN=false
 DOWN_RESULT=$2; INVENTORY_RESULT=$3; LEFTOVER=$4; INITIAL_RESULT=$5
@@ -1069,25 +1065,36 @@ run_browser_fixture() {
   }
   browser_cleanup() {
     local status=$?
+    local cleanup_failed=false containers='' volumes=''
     trap - EXIT INT TERM
     if [[ "$BROWSER_RETAIN" != true ]]; then
-      if ! compose_env down --volumes --remove-orphans >"$BROWSER_DIR/cleanup.log" 2>&1; then cat "$BROWSER_DIR/cleanup.log" >&2; status=1; fi
-      if [[ -n "$(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT")" || -n "$(docker volume ls -q --filter "label=com.docker.compose.project=$PROJECT")" ]]; then status=1; fi
-      [[ "$status" == 0 ]] && printf '{"cleanup":"PASS","owned_project":"%s","services_removed":true,"volumes_removed":true}\n' "$PROJECT"
-      rm -rf -- "$BROWSER_DIR"
+      if ! compose_env down --volumes --remove-orphans >"$BROWSER_DIR/cleanup.log" 2>&1; then cat "$BROWSER_DIR/cleanup.log" >&2; cleanup_failed=true; fi
+      if ! containers=$(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT" 2>>"$BROWSER_DIR/cleanup.log"); then cleanup_failed=true; fi
+      if ! volumes=$(docker volume ls -q --filter "label=com.docker.compose.project=$PROJECT" 2>>"$BROWSER_DIR/cleanup.log"); then cleanup_failed=true; fi
+      [[ -z "$containers" && -z "$volumes" ]] || cleanup_failed=true
+      if [[ "$cleanup_failed" == true ]]; then
+        status=1
+        printf 'Browser cleanup is unconfirmed; private recovery files retained at %s\n' "$BROWSER_DIR" >&2
+        if [[ -f "$BROWSER_DIR/session.json" ]]; then printf 'Retry: bash tests/compat/run.sh browser-fixture --action stop --session %q\n' "$BROWSER_DIR/session.json" >&2; fi
+      else
+        printf '{"cleanup":"PASS","owned_project":"%s","services_removed":true,"volumes_removed":true}\n' "$PROJECT"
+        rm -rf -- "$BROWSER_DIR"
+      fi
     fi
     exit "$status"
   }
   BROWSER_RETAIN=false
   if [[ "$action" == status || "$action" == stop ]]; then
-    local id found=0
+    local id found=0 owned_ids=''
+    owned_ids=$(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT") || fail "cannot inspect owned browser services"
     while IFS= read -r id; do
       [[ -n "$id" ]] || continue
       [[ "$(docker inspect --format '{{index .Config.Labels "gigpress.browser.owner"}}' "$id")" == "$BROWSER_OWNER" ]] || fail "not an owned private browser session"
       found=$((found+1))
-    done < <(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT")
-    [[ "$found" == 2 ]] || fail "owned browser session must have exactly two services"
+    done <<< "$owned_ids"
+    [[ "$found" -le 2 ]] || fail "owned browser session has unexpected services"
     if [[ "$action" == stop ]]; then trap browser_cleanup EXIT; return 0; fi
+    [[ "$found" == 2 ]] || fail "owned browser session must have exactly two services"
     jq '{status:"PASS",session:$session,url,wordpress_version:.wp,php_branch:.php,source_revision,image_id,project}' --arg session "$session" "$session"
     return 0
   fi
