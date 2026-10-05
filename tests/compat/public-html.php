@@ -11,7 +11,7 @@ function gigpress_public_html_seed($fixture) {
 	$artistText = substr($fixture['values']['long_unicode_unbroken']['artist_name'], 0, 55) . ' <a href="javascript:alert(8)" onclick="alert(9)">unsafe link</a><img src=x onerror=alert(10)><script id="injected">alert(1)</script> & ' . $hostile['text'];
 	$venueText = substr($fixture['values']['long_unicode_unbroken']['venue_name'], 0, 125) . ' <b>unsafe</b> & ' . $hostile['text'];
 	$rows = array(
-		'artist' => array('artist_id' => 891, 'artist_name' => $artistText, 'artist_alpha' => 'hostile html artist', 'artist_order' => 1, 'artist_url' => 'javascript:alert(1)'),
+		'artist' => array('artist_id' => 891, 'artist_name' => $artistText, 'artist_alpha' => 'hostile html artist', 'artist_order' => 1, 'artist_url' => 'https://artists.example.test/hostile'),
 		'venue' => array('venue_id' => 891, 'venue_name' => $venueText, 'venue_address' => '1 <img src=x onerror=alert(1)> Public Way', 'venue_city' => 'Wien & <script>city</script>', 'venue_state' => 'AT', 'venue_postal_code' => '1010', 'venue_country' => 'AT', 'venue_url' => 'javascript:alert(2)', 'venue_phone' => '+43 555 0199'),
 		'show' => array('show_id' => 891, 'show_artist_id' => 891, 'show_venue_id' => 891, 'show_tour_id' => 0, 'show_date' => '2031-06-10', 'show_multi' => 0, 'show_time' => '19:30:00', 'show_expire' => '2031-06-10', 'show_price' => '24 & <free>', 'show_tix_url' => $validTicketUrl, 'show_tix_phone' => '', 'show_ages' => 'All ages & <12', 'show_notes' => $rich . $hostile['calendar_text'] . "\n<![CDATA[</script>]]>\n</script><script id=\"notes-injected\">alert(2)</script>", 'show_related' => 0, 'show_status' => 'active', 'show_external_url' => $hostile['url'], 'show_tour_restore' => 0, 'show_address' => '', 'show_locale' => '', 'show_country' => '', 'show_venue' => '', 'show_venue_url' => '', 'show_venue_phone' => ''),
 	);
@@ -131,6 +131,15 @@ function gigpress_public_html_case($case) {
 	$checks['grouped_main_json_branch_has_exact_fixture_event'] = $groupedDocument && $groupedJson && is_array($groupedEvent)
 		&& $groupedEvent['performers']['name'] === $seed['artist_text'] && count($groupedDocument->getElementsByTagName('script')) === 1;
 	$groupedXPath = $groupedDocument ? new DOMXPath($groupedDocument) : null;
+	$groupedArtistLink = $groupedXPath ? $groupedXPath->query('//h3[@id="artist-891"]/a[@href="https://artists.example.test/hostile"]')->item(0) : null;
+	$checks['grouped_artist_link_renders_with_safe_destination'] = $groupedArtistLink instanceof DOMElement
+		&& $groupedArtistLink->getAttribute('href') === 'https://artists.example.test/hostile';
+	$checks['grouped_artist_link_escapes_artist_markup'] = $groupedArtistLink instanceof DOMElement
+		&& $groupedArtistLink->getElementsByTagName('a')->length === 0
+		&& strpos($groupedArtistLink->textContent, '<a href') !== false;
+	$checks['grouped_artist_link_has_no_unsafe_descendants'] = $groupedXPath
+		&& $groupedXPath->query('//h3[@id="artist-891"]//a[@onclick or starts-with(translate(@href,"JAVASCRIPT","javascript"),"javascript:")]')->length === 0
+		&& !$groupedDocument->getElementById('injected');
 	$groupedSubscriptionLinks = $groupedXPath ? $groupedXPath->query('//h3[contains(concat(" ", normalize-space(@class), " "), " gigpress-artist-heading ")]//span[contains(concat(" ", normalize-space(@class), " "), " gigpress-artist-subscriptions ")]/a[contains(@href, "artist=891")]') : array();
 	$groupedTitlesAndDestinationsSafe = $groupedSubscriptionLinks && $groupedSubscriptionLinks->length === 2
 		&& $groupedSubscriptionLinks->item(0)->getAttribute('title') === html_entity_decode(wptexturize($seed['artist_text']), ENT_QUOTES, 'UTF-8') . ' RSS'
