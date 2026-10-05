@@ -61,17 +61,7 @@ function gigpress_show_related($args = array(), $content = '') {
 			
 			if(!empty($shows_markup))
 			{
-				$output .= '<script type="application/ld+json">';
-				if (!defined("JSON_UNESCAPED_SLASHES"))
-				{
-					require_once(WP_PLUGIN_DIR . '/gigpress/lib/upgrade.php');
-					$output .= up_json_encode($shows_markup, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-				}
-				else
-				{
-					$output .= json_encode($shows_markup, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-				}
-				$output .= '</script>';
+				$output .= gigpress_json_ld_script($shows_markup);
 			}
 			
 			return $output;
