@@ -1,15 +1,15 @@
 ---
-status: testing
+status: complete
 phase: 04-public-publishing
 source: [04-01-SUMMARY.md, 04-02-SUMMARY.md, 04-03-SUMMARY.md, 04-04-SUMMARY.md, 04-05-SUMMARY.md]
 started: 2026-10-06T12:03:57+02:00
-updated: 2026-10-06T13:54:08+02:00
+updated: 2026-10-06T14:38:08+02:00
 ---
 
 ## Current Test
 <!-- OVERWRITE each test - shows where we are -->
 
-21. Refreshed final-source browser and calendar acceptance (source `af7feea`).
+[testing complete]
 
 ## Tests
 
@@ -143,17 +143,17 @@ coverage_id: D5
 
 ### 21. Recheck refreshed final-source browser and calendar behavior
 expected: On source revision `af7feea`, the 320px and wide listing, compact/theme inheritance, all child/parent/wp-content/complete/mixed overrides, keyboard links with JavaScript disabled, and Apple Calendar import for no-time, actual-midnight, and all-day multi-day dates all pass. After approval, the retained fixture recheck passes and its owned resources are removed.
-result: pending
+result: pass
 source: user_reported
-evidence: .planning/phases/04-public-publishing/04-BROWSER.md#refreshed-human-checkpoint
+evidence: .planning/phases/04-public-publishing/04-BROWSER.md#refreshed-final-source-fixture-recheck-and-cleanup
 coverage_id: D4
 
 ## Summary
 
 total: 21
-passed: 20
+passed: 21
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 
