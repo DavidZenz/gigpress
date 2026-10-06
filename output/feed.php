@@ -1,15 +1,22 @@
 <?php
 
+/** Remove characters forbidden by XML 1.0 while preserving legal whitespace. */
+function gigpress_feed_xml_chars($value) {
+	$value = wp_check_invalid_utf8((string) $value, true);
+	$clean = preg_replace('/[^\x{9}\x{A}\x{D}\x{20}-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]/u', '', $value);
+	return is_string($clean) ? $clean : '';
+}
+
 /** Encode a value for XML text or an XML quoted attribute. */
 function gigpress_feed_xml($value) {
 	$charset = get_bloginfo('charset');
-	$encoded = htmlspecialchars((string) $value, ENT_QUOTES | ENT_XML1, $charset ? $charset : 'UTF-8');
+	$encoded = htmlspecialchars(gigpress_feed_xml_chars($value), ENT_QUOTES | ENT_XML1, $charset ? $charset : 'UTF-8');
 	return str_replace("\r", '&#13;', $encoded);
 }
 
 /** Keep rich notes as a safe HTML fragment while protecting the enclosing CDATA. */
 function gigpress_feed_cdata($value) {
-	$value = str_replace(']]>', ']]]]><![CDATA[>', (string) $value);
+	$value = str_replace(']]>', ']]]]><![CDATA[>', gigpress_feed_xml_chars($value));
 	$value = str_replace("\r", ']]>&#13;<![CDATA[', $value);
 	return '<![CDATA[' . $value . ']]>';
 }
@@ -37,14 +44,14 @@ function gigpress_feed_description($showdata, $show) {
 	if (!empty($plain['ticket_url'])) {
 		$html .= '<li><a href="' . esc_url($plain['ticket_url']) . '">' . esc_html($plain['ticket_label'] ?? '') . '</a></li>';
 	}
-	if (!empty($show->show_external_url)) {
-		$html .= '<li><a href="' . esc_url($show->show_external_url) . '">' . esc_html($GLOBALS['gpo']['external_link_label']) . '</a></li>';
+	if (!empty($showdata['external_url'])) {
+		$html .= '<li><a href="' . esc_url($showdata['external_url']) . '">' . esc_html($GLOBALS['gpo']['external_link_label']) . '</a></li>';
 	}
 	if (!empty($show->show_notes)) {
 		$html .= '<li><strong>' . esc_html__('Notes', 'gigpress') . ':</strong> ' . wp_kses_post((string) $show->show_notes) . '</li>';
 	}
-	if (!empty($plain['related_url'])) {
-		$html .= '<li><a href="' . esc_url($plain['related_url']) . '">' . esc_html($GLOBALS['gpo']['related']) . '</a></li>';
+	if (!empty($showdata['related_url'])) {
+		$html .= '<li><a href="' . esc_url($showdata['related_url']) . '">' . esc_html($GLOBALS['gpo']['related']) . '</a></li>';
 	}
 	$calendarStart = (string) ($showdata['calendar_start'] ?? '');
 	$calendarEnd = (string) ($showdata['calendar_end'] ?? '');
@@ -107,7 +114,7 @@ function gigpress_feed() {
 		echo "<item>\n";
 		echo '<title>' . gigpress_feed_xml($itemTitle) . "</title>\n";
 		echo '<description>' . gigpress_feed_cdata($description) . "</description>\n";
-		$itemUrl = !empty($plain['related_url']) ? $plain['related_url'] : (!empty($gpo['shows_page']) ? $gpo['shows_page'] : get_bloginfo('url'));
+		$itemUrl = !empty($showdata['related_url']) ? $showdata['related_url'] : (!empty($gpo['shows_page']) ? $gpo['shows_page'] : get_bloginfo('url'));
 		echo '<link>' . gigpress_feed_xml(esc_url_raw($itemUrl)) . "</link>\n";
 		echo '<guid isPermaLink="false">' . gigpress_feed_xml('#show-' . (int) $show->show_id) . "</guid>\n";
 		echo '<pubDate>' . gigpress_feed_xml($showdata['rss_date'] ?? '') . "</pubDate>\n";

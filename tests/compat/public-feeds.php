@@ -47,7 +47,7 @@ function gigpress_public_feeds_seed() {
 	$notes = "<p>Doors <strong>open</strong> &amp; music</p>\r\nCDATA closer: ]]>\nBEGIN:VEVENT\nX-Injected: no\nBackslash \\route, commas ; semicolons.\nEnd.";
 	$shows = array(
 		array('show_id' => 1891, 'show_artist_id' => 1891, 'show_venue_id' => 1891, 'show_tour_id' => 1891, 'show_date' => '2031-06-10', 'show_multi' => 0, 'show_time' => '19:30:00', 'show_expire' => '2031-06-10', 'show_price' => '24 & <free>', 'show_tix_url' => 'https://tickets.example.test/1891?a=1&b=2', 'show_tix_phone' => '+43 "box"', 'show_ages' => 'All ages & <12', 'show_notes' => $notes, 'show_related' => 0, 'show_status' => 'active', 'show_external_url' => 'https://events.example.test/1891?a=1&b=2', 'show_tour_restore' => 0, 'show_address' => '1 & <2> "Way"', 'show_locale' => 'Wien & <City>', 'show_country' => 'AT', 'show_venue' => 'Hall & <Room>', 'show_venue_url' => 'https://venues.example.test/feed', 'show_venue_phone' => '+43 & 555'),
-		array('show_id' => 1892, 'show_artist_id' => 1891, 'show_venue_id' => 1891, 'show_tour_id' => 1891, 'show_date' => '2031-06-11', 'show_multi' => 1, 'show_time' => '00:00:01', 'show_expire' => '2031-06-13', 'show_price' => '31', 'show_tix_url' => '', 'show_tix_phone' => '', 'show_ages' => '', 'show_notes' => 'Second item & <ordered>', 'show_related' => 0, 'show_status' => 'active', 'show_external_url' => '', 'show_tour_restore' => 0, 'show_address' => '1 & <2> "Way"', 'show_locale' => 'Wien & <City>', 'show_country' => 'AT', 'show_venue' => 'Hall & <Room>', 'show_venue_url' => 'https://venues.example.test/feed', 'show_venue_phone' => '+43 & 555'),
+		array('show_id' => 1892, 'show_artist_id' => 1891, 'show_venue_id' => 1891, 'show_tour_id' => 1891, 'show_date' => '2031-06-11', 'show_multi' => 1, 'show_time' => '00:00:01', 'show_expire' => '2031-06-13', 'show_price' => '31', 'show_tix_url' => '', 'show_tix_phone' => '', 'show_ages' => '', 'show_notes' => 'Second item & <ordered>', 'show_related' => 0, 'show_status' => 'active', 'show_external_url' => 'javascript:alert(1)', 'show_tour_restore' => 0, 'show_address' => '1 & <2> "Way"', 'show_locale' => 'Wien & <City>', 'show_country' => 'AT', 'show_venue' => 'Hall & <Room>', 'show_venue_url' => 'https://venues.example.test/feed', 'show_venue_phone' => '+43 & 555'),
 		array('show_id' => 1893, 'show_artist_id' => 1891, 'show_venue_id' => 1891, 'show_tour_id' => 1891, 'show_date' => '2031-06-14', 'show_multi' => 0, 'show_time' => '00:00:00', 'show_expire' => '2031-06-14', 'show_price' => '32', 'show_tix_url' => '', 'show_tix_phone' => '', 'show_ages' => '', 'show_notes' => 'Actual midnight & <kept>', 'show_related' => 0, 'show_status' => 'active', 'show_external_url' => '', 'show_tour_restore' => 0, 'show_address' => '1 & <2> "Way"', 'show_locale' => 'Wien & <City>', 'show_country' => 'AT', 'show_venue' => 'Hall & <Room>', 'show_venue_url' => 'https://venues.example.test/feed', 'show_venue_phone' => '+43 & 555'),
 		array('show_id' => 1894, 'show_artist_id' => 1891, 'show_venue_id' => 1891, 'show_tour_id' => 1891, 'show_date' => '2031-06-15', 'show_multi' => 1, 'show_time' => '20:00:00', 'show_expire' => '2031-06-17', 'show_price' => '33', 'show_tix_url' => '', 'show_tix_phone' => '', 'show_ages' => '', 'show_notes' => 'Timed multi-day & <kept>', 'show_related' => 0, 'show_status' => 'active', 'show_external_url' => '', 'show_tour_restore' => 0, 'show_address' => '1 & <2> "Way"', 'show_locale' => 'Wien & <City>', 'show_country' => 'AT', 'show_venue' => 'Hall & <Room>', 'show_venue_url' => 'https://venues.example.test/feed', 'show_venue_phone' => '+43 & 555'),
 	);
@@ -167,13 +167,25 @@ function gigpress_public_feeds_case($case) {
 	if (!$seed) return array('case' => $case, 'checks' => array('feed_fixture_seeded' => false), 'reason' => 'hostile feed fixture could not be seeded');
 	$oldSettings = $gpo;
 	$storedSettings = get_option('gigpress_settings');
-	$storedRssTitle = is_array($storedSettings) ? (string) ($storedSettings['rss_title'] ?? '') : '';
-	$gpo['rss_title'] = 'Festival & "Friends" <Shows>';
+	$rssBaseTitle = is_array($storedSettings) ? (string) ($storedSettings['rss_title'] ?? '') : '';
+	$gpo['rss_title'] = $rssBaseTitle;
 	$gpo['rss_limit'] = 100;
 	$gpo['artist_label'] = 'Acts & <Artists>';
 	$gpo['tour_label'] = 'Tour & <Route>';
 	$gpo['external_link_label'] = 'More & <Events>';
 	$gpo['related'] = 'Related & <Post>';
+	$relatedPostSeeded = true;
+	if ($case === 'rss-contract') {
+		$relatedPostId = wp_insert_post(array('post_title' => 'Related public show', 'post_status' => 'publish', 'post_type' => 'post'), true);
+		$relatedPostSeeded = !is_wp_error($relatedPostId) && (int) $relatedPostId > 0
+			&& $wpdb->update(GIGPRESS_SHOWS, array('show_related' => (int) $relatedPostId), array('show_id' => 1891)) === 1;
+		if (!$relatedPostSeeded) return array('case' => $case, 'checks' => array('related_post_fixture_seeded' => false));
+		$seed['shows'][0]['show_related'] = (int) $relatedPostId;
+	}
+	$controlArtistName = $seed['artist']['artist_name'] . "\x01";
+	$controlArtistSeeded = $case !== 'rss-contract' || $wpdb->update(GIGPRESS_ARTISTS, array('artist_name' => $controlArtistName), array('artist_id' => 1891)) === 1;
+	$controlNotes = $seed['notes'] . "\x01";
+	$controlNotesSeeded = $case !== 'rss-contract' || $wpdb->update(GIGPRESS_SHOWS, array('show_notes' => $controlNotes), array('show_id' => 1891)) === 1;
 	$before = gigpress_public_feeds_snapshot();
 	$base = 'http://127.0.0.1/?feed=gigpress';
 	$filterUrls = array(
@@ -201,6 +213,8 @@ function gigpress_public_feeds_case($case) {
 		$items = $firstDocument ? $firstDocument->getElementsByTagName('item') : array();
 		$firstItem = $items && $items->length ? $items->item(0) : null;
 		$firstDescription = $firstItem instanceof DOMElement ? $firstItem->getElementsByTagName('description')->item(0)->textContent : '';
+		$secondItem = $items && $items->length > 1 ? $items->item(1) : null;
+		$secondDescription = $secondItem instanceof DOMElement ? $secondItem->getElementsByTagName('description')->item(0)->textContent : '';
 		$descriptionDom = new DOMDocument('1.0', 'UTF-8');
 		$descriptionPrev = libxml_use_internal_errors(true);
 		$descriptionParsed = $descriptionDom->loadHTML('<?xml encoding="UTF-8">' . $firstDescription, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
@@ -227,20 +241,34 @@ function gigpress_public_feeds_case($case) {
 		$checks['rss_all_artist_tour_venue_filters_keep_exact_order'] = $exactIds === array($expectedIds, $expectedIds, $expectedIds, $expectedIds);
 		$checks['rss_real_anonymous_responses_have_valid_headers'] = $headersOk;
 		$checks['rss_independent_xml_parse_has_one_channel_and_exact_count'] = $allParsed && $firstDocument && $firstDocument->getElementsByTagName('channel')->length === 1 && $items->length === count($expectedIds);
-		$checks['rss_channel_text_and_self_url_are_xml_safe_and_exact'] = $channelTitle === $storedRssTitle . ': ' . $seed['artist']['artist_name'] && $channelDescription === $channelTitle && $selfHref === GIGPRESS_RSS . '&artist=1891';
-		$checks['rss_title_link_guid_and_hostile_unicode_values_decode_exactly'] = $firstTitle === $expectedItemTitle && $firstLink === get_bloginfo('url') && $guid === '#show-1891';
+		$checks['rss_related_post_fixture_seeded'] = $relatedPostSeeded;
+		$checks['rss_channel_text_and_self_url_are_xml_safe_and_exact'] = $channelTitle === $rssBaseTitle . ': ' . $seed['artist']['artist_name'] && $channelDescription === $channelTitle && $selfHref === GIGPRESS_RSS . '&artist=1891';
+		$relatedUrl = get_permalink((int) $seed['shows'][0]['show_related']);
+		$checks['rss_title_link_guid_and_hostile_unicode_values_decode_exactly'] = $firstTitle === $expectedItemTitle && $firstLink === $relatedUrl && $guid === '#show-1891';
 		$descriptionText = $descriptionParsed ? $descriptionDom->textContent : '';
 		$richTextPreserved = false;
 		if ($descriptionParsed) foreach ($descriptionDom->getElementsByTagName('strong') as $strong) if ($strong->textContent === 'open') $richTextPreserved = true;
 		$descriptionLinks = $descriptionDom->getElementsByTagName('a');
 		$ticketLink = $descriptionLinks->length ? $descriptionLinks->item(0)->getAttribute('href') : '';
 		$externalLink = $descriptionLinks->length > 1 ? $descriptionLinks->item(1)->getAttribute('href') : '';
-		$calendarLink = $descriptionLinks->length > 2 ? $descriptionLinks->item(2)->getAttribute('href') : '';
-		$icalLink = $descriptionLinks->length > 3 ? $descriptionLinks->item(3)->getAttribute('href') : '';
+		$relatedLink = $descriptionLinks->length > 2 ? $descriptionLinks->item(2)->getAttribute('href') : '';
+		$calendarLink = $descriptionLinks->length > 3 ? $descriptionLinks->item(3)->getAttribute('href') : '';
+		$icalLink = $descriptionLinks->length > 4 ? $descriptionLinks->item(4)->getAttribute('href') : '';
 		$calendarQuery = array();
 		if ($calendarLink !== '') parse_str((string) wp_parse_url($calendarLink, PHP_URL_QUERY), $calendarQuery);
+		$secondDescriptionDom = new DOMDocument('1.0', 'UTF-8');
+		$secondDescriptionPrev = libxml_use_internal_errors(true);
+		$secondDescriptionParsed = $secondDescriptionDom->loadHTML('<?xml encoding="UTF-8">' . $secondDescription, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
+		libxml_clear_errors();
+		libxml_use_internal_errors($secondDescriptionPrev);
+		$unsafeExternalLabelPresent = false;
+		foreach ($secondDescriptionDom->getElementsByTagName('a') as $descriptionLink) {
+			if ($descriptionLink->textContent === 'More & <Events>') $unsafeExternalLabelPresent = true;
+		}
 		$checks['rss_rich_notes_are_safe_and_cdata_terminator_round_trips'] = $descriptionParsed && strpos($descriptionText, ']]>') !== false && $richTextPreserved && !$descriptionDom->getElementsByTagName('script')->length && strpos($descriptionText, 'X-Injected: no') !== false;
-		$checks['rss_description_links_keep_saved_destinations_and_calendar_identity'] = $ticketLink === $seed['shows'][0]['show_tix_url'] && $externalLink === $seed['shows'][0]['show_external_url'] && strpos($calendarLink, 'http://www.google.com/calendar/event?action=TEMPLATE') === 0 && strpos($icalLink, GIGPRESS_ICAL . '&show_id=1891') === 0;
+		$checks['rss_description_links_keep_saved_destinations_and_calendar_identity'] = $ticketLink === $seed['shows'][0]['show_tix_url'] && $externalLink === $seed['shows'][0]['show_external_url'] && $relatedLink === $relatedUrl && strpos($calendarLink, 'http://www.google.com/calendar/event?action=TEMPLATE') === 0 && strpos($icalLink, GIGPRESS_ICAL . '&show_id=1891') === 0;
+		$checks['rss_unsafe_external_url_is_omitted'] = $secondDescriptionParsed && !$unsafeExternalLabelPresent && strpos($reads[0]['body'] ?? '', 'javascript:alert(1)') === false;
+		$checks['rss_xml_10_control_characters_are_removed_from_text_and_cdata'] = $controlArtistSeeded && $controlNotesSeeded && strpos($reads[0]['body'] ?? '', "\x01") === false && strpos($descriptionText, "\x01") === false;
 		$checks['rss_google_calendar_values_are_plain_text_with_readable_notes'] = isset($calendarQuery['text'], $calendarQuery['location'], $calendarQuery['details'])
 			&& strpos($calendarQuery['text'], '<Orchestra>') === false && strpos($calendarQuery['location'], '<Room>') === false
 			&& strpos($calendarQuery['details'], '<p>') === false && strpos($calendarQuery['details'], '<strong>') === false
@@ -250,7 +278,10 @@ function gigpress_public_feeds_case($case) {
 		$checks['rss_repeated_and_concurrent_reads_are_complete'] = count($repeat) === 4 && count(array_unique($repeatBodies)) === 1 && !array_filter($repeat, function ($response) { return $response['status'] !== 200 || $response['error'] !== ''; }) && gigpress_public_feeds_ids(gigpress_public_feeds_parse_xml($repeatBodies[0] ?? '')[0]) === $expectedIds;
 		$after = gigpress_public_feeds_snapshot();
 		$checks['rss_public_reads_leave_migrated_rows_settings_schema_and_links_unchanged'] = $before === $after;
-		$evidence = array('expected_ids' => $expectedIds, 'filter_ids' => $exactIds, 'channel_title' => $channelTitle, 'expected_channel_title' => $storedRssTitle . ': ' . $seed['artist']['artist_name'], 'item_title' => $firstTitle, 'description' => $firstDescription, 'description_strong_count' => $descriptionDom->getElementsByTagName('strong')->length, 'description_has_injection_marker' => strpos($firstDescription, 'X-Injected: no') !== false, 'concurrent_responses' => count($repeat), 'limited_ids' => $limitedIds, 'snapshot_unchanged' => $before === $after);
+		$evidence = array('expected_ids' => $expectedIds, 'filter_ids' => $exactIds, 'channel_title' => $channelTitle, 'expected_channel_title' => $rssBaseTitle . ': ' . $seed['artist']['artist_name'], 'item_title' => $firstTitle, 'description' => $firstDescription, 'description_strong_count' => $descriptionDom->getElementsByTagName('strong')->length, 'description_has_injection_marker' => strpos($firstDescription, 'X-Injected: no') !== false, 'related_url' => $relatedUrl, 'unsafe_external_link_omitted' => !$unsafeExternalLabelPresent, 'control_character_removed' => strpos($reads[0]['body'] ?? '', "\x01") === false, 'concurrent_responses' => count($repeat), 'limited_ids' => $limitedIds, 'snapshot_unchanged' => $before === $after);
+		$wpdb->update(GIGPRESS_SHOWS, array('show_notes' => $seed['notes']), array('show_id' => 1891));
+		$wpdb->update(GIGPRESS_SHOWS, array('show_related' => 0), array('show_id' => 1891));
+		$wpdb->update(GIGPRESS_ARTISTS, array('artist_name' => $seed['artist']['artist_name']), array('artist_id' => 1891));
 	}
 
 	if ($case === 'ical-contract') {

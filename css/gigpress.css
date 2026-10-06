@@ -237,14 +237,6 @@ p.gigpress-subscribe {
 	color: inherit;
 }
 
-p.gigpress-subscribe a,
-p.gigpress-subscribe a:hover {
-	width: auto;
-	margin: 0;
-	background: none;
-	text-indent: 0;
-}
-
 /* Compact surfaces inherit theme typography and wrap long owner-supplied values. */
 .gigpress-listing,
 .gigpress-listing li,
@@ -407,7 +399,7 @@ p.gigpress-subscribe a:hover {
 /* These are for the RSS/iCal subscribe links */
 p.gigpress-subscribe {
 	text-align: left;
-	color: #999;
+	color: inherit;
 }
 
 p.gigpress-subscribe a {
@@ -423,6 +415,26 @@ a.gigpress-rss, a.gigpress-rss:hover {
 
 a.gigpress-ical, a.gigpress-ical:hover {
 	background: transparent url(../images/icalendar-icon.gif) no-repeat left center;	
+}
+
+/* Bundled subscription labels override the legacy icon-only link treatment above. */
+p.gigpress-subscribe a,
+p.gigpress-subscribe a:hover {
+	display: inline-flex;
+	align-items: center;
+	min-height: 2.25em;
+	width: auto;
+	margin: 0;
+	padding: 0 0.15em;
+	background: none;
+	text-indent: 0;
+}
+
+.gigpress-layout-bundled a:focus-visible,
+.gigpress-listing a:focus-visible,
+p.gigpress-subscribe a:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
 }
 
 

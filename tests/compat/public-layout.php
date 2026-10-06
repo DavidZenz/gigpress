@@ -298,6 +298,13 @@ function gigpress_public_layout_case($case) {
 			&& strpos($compact, 'class="gigpress-rss"') !== false && strpos($compact, 'class="gigpress-ical"') !== false;
 		$checks['subscription_urls_and_visible_labels'] = strpos($compactLinks, GIGPRESS_RSS . '&artist=701') !== false
 			&& strpos($compactLinks, GIGPRESS_WEBCAL . '&artist=701') !== false && strpos($compact, '>RSS</a>') !== false && strpos($compact, '>iCal</a>') !== false;
+		$css = file_get_contents(WP_PLUGIN_DIR . '/gigpress/css/gigpress.css');
+		$iconOnlyIndent = is_string($css) ? strpos($css, 'text-indent: -9999px') : false;
+		$visibleLabelIndent = is_string($css) && $iconOnlyIndent !== false ? strpos($css, 'text-indent: 0;', $iconOnlyIndent) : false;
+		$checks['subscription_labels_override_legacy_icon_hiding_and_show_focus'] = is_string($css)
+			&& $iconOnlyIndent !== false && $visibleLabelIndent !== false && $visibleLabelIndent > $iconOnlyIndent
+			&& strpos($css, 'p.gigpress-subscribe a:focus-visible') !== false
+			&& strpos($css, "p.gigpress-subscribe {\n\ttext-align: left;\n\tcolor: inherit;") !== false;
 		$widget = '';
 		if (class_exists('Gigpress_widget')) {
 			ob_start();
