@@ -4,7 +4,7 @@
 
 On 2026-10-05, the user accepted the rendered-content/security review of the listing at the earlier fixture URL, http://127.0.0.1:32795/. That review covered escaped hostile content, emoji and feed icons, HTTPS Maps URLs, and the legacy Google Calendar endpoint. It did not cover final-source layout, disabled-JavaScript navigation, or calendar-client import.
 
-## Final-source fixture identity
+## Historical final-source fixture identity — superseded by refreshed source below
 
 | Property | Value |
 |---|---|
@@ -92,3 +92,42 @@ After the user approved the final-source browser and calendar-client observation
 - Stop command: `rtk proxy bash tests/compat/run.sh public-fixture --action stop --session /private/var/folders/1l/t8mktk5j58g75tthg0q79qhw0000gn/T/gigpress-public-esbPYB/session.json` — PASS; owned project `gigpress_public_32370_73331_1791273370`, services removed, volumes removed.
 
 **Checkpoint status:** all required final-source browser and calendar-client observations passed on 2026-10-06; final source recheck and owned cleanup also passed. Phase 04 acceptance is ready to record.
+
+## Refreshed final-source fixture — human approval pending
+
+The previous record above was bound to source revision `5efc01d5d21c24fc6abb4cbf599e2ec6c9aa0c8e`. A final compatibility hardening commit changed the public iCalendar TEXT serializer and invalid external-link rendering, so the old browser and calendar-client approvals do not apply to this source. Automated evidence and browser measurements below are bound to the refreshed source; the human checkpoint remains open until the user confirms every required observation.
+
+| Property | Value |
+|---|---|
+| Listing URL | http://127.0.0.1:32798/ |
+| Compact page | http://127.0.0.1:32798/?page_id=17 |
+| Child override | http://127.0.0.1:32798/?page_id=18 |
+| Parent override | http://127.0.0.1:32798/?page_id=19 |
+| wp-content override | http://127.0.0.1:32798/?page_id=20 |
+| Complete override | http://127.0.0.1:32798/?page_id=21 |
+| Mixed override | http://127.0.0.1:32798/?page_id=22 |
+| RSS feed | http://127.0.0.1:32798/?feed=gigpress |
+| iCalendar feed | http://127.0.0.1:32798/?feed=gigpress-ical |
+| WordPress / PHP | 7.1.2 / 8.3.35 |
+| Source revision | `af7feea686585e13920daadfa4e45d4e76c5d21a` |
+| Source fingerprint | `278aafb5dbd9f848701dc63691164add64a305a54ffcab9f6763226f65fed200` |
+| WordPress image | `sha256:736761c95c327cb21602ab9175ee4dba6e779b00f3f4895536a3e1af5ac4fe4c` |
+| Database image | `sha256:49117dcc565cf51aa57ac5fca59ab31213402ff0eae6ffc13c46a37b938f7e4b` |
+| Browser measurement | Playwright-controlled Chrome 154; `navigator.platform` reported `MacIntel` |
+
+### Refreshed viewport measurements
+
+At exactly 320 CSS pixels, document and body widths were both 320/320 px (client/scroll). The main content bounds were x=0 to 320 px. Five listing tables were each 260 px wide at x=30 to 290 px; no page-level horizontal overflow was present. The 320px screenshot is [here](/Users/davidzenz/gigpress/.playwright-mcp/page-2026-10-06T11-46-02-212Z.png).
+
+At 1280 CSS pixels, document and body widths were both 1280/1280 px (client/scroll). Five listing tables were each 645 px wide at x=317.5 to 962.5 px, with no page-level horizontal overflow. The computed body font was `Manrope, sans-serif`; the first main-content link inherited `rgb(17, 17, 17)`. The desktop screenshot is [here](/Users/davidzenz/gigpress/.playwright-mcp/page-2026-10-06T11-46-47-004Z.png).
+
+The updated hostile-value row contains no “More information” anchor for its rejected `javascript:` destination; its calendar, iCalendar, and map links remain present. The browser reported zero warnings. Fixture startup passed all nine HTTP endpoint checks with status 200, and no migrated snapshot keys or rows changed.
+
+### Refreshed human checkpoint
+
+- [ ] User confirms the 320px and wide listing on this source.
+- [ ] User confirms compact/theme inheritance and child, parent, wp-content, complete, and mixed override behavior on this source.
+- [ ] User confirms keyboard activation of the ticket, Google Calendar, iCalendar, RSS, and webcal links with browser JavaScript disabled.
+- [ ] User imports this source’s iCalendar feed and confirms no-time, actual-midnight, and all-day multi-day date behavior.
+
+The new retained fixture session is `/private/var/folders/1l/t8mktk5j58g75tthg0q79qhw0000gn/T/gigpress-public-b0scMT/session.json`. Its owned status check passed. Keep it running for the blocking human check. After approval, run its `public-fixture --action check --case all` recheck and then stop the owned fixture; only then record Phase 04 acceptance.

@@ -1,37 +1,47 @@
 ---
-phase: "04"
-status: passed
-checked: "2026-10-05"
-plans: 5
-tasks: 13
-iterations: 3
+phase: 04-public-publishing
+reviewed: 2026-10-06T11:38:42Z
+depth: standard
+files_reviewed: 6
+files_reviewed_list:
+  - gigpress.php
+  - output/ical.php
+  - tests/compat/browser-bootstrap.php
+  - tests/compat/public-feeds.php
+  - tests/compat/public-html.php
+  - tests/compat/run.sh
+findings:
+  critical: 0
+  warning: 0
+  info: 0
+  total: 0
+status: clean
 ---
 
-# Phase 04 — Plan Readiness
+# Phase 04: Code Review Report
 
-Independent typed `gsd-plan-checker` review returned **VERIFICATION PASSED** after two focused planner revisions. This is planning evidence; no implementation tests were run.
+**Reviewed:** 2026-10-06T11:38:42Z
+**Depth:** standard
+**Files Reviewed:** 6
+**Status:** clean
 
-| Check | Result |
-|---|---|
-| Requirements | PUB-01 and PUB-02 covered |
-| Locked decisions | D-01 through D-16 covered; canonical decision gate 16/16 |
-| Post-planning gap analysis | All 18 requirement/decision items covered |
-| Dependencies | Five sequential waves, acyclic, no same-wave file conflicts |
-| Actionable threat IDs | No duplicates; reserved T-04-SC exempt |
-| Automated failure directions | 24 commands, zero blockers/warnings |
-| Command path probe | Zero blockers/warnings; RTK shell forms are not_applicable, which does not establish command implementation |
-| Source-fingerprint ordering | Final matrix rebuilt after fingerprinted fixture changes and before browser acceptance |
-| Human evidence | Mandatory final-source checkpoint 04-05-02; Plan 04-05 autonomous:false |
+## Summary
 
-## Review Corrections
+The current six-file implementation has no actionable correctness, security, or robustness finding at standard depth. All earlier review items are resolved:
 
-- Moved browser and calendar-client acceptance after HTML/JSON-LD and feed changes.
-- Added a blocking checkpoint for actual 320px, keyboard, disabled-browser-JavaScript, theme/override and calendar-client observations.
-- Made early dispatch validate only selected implemented cases; final aggregate requires the complete nine-case registry.
-- Resolved four research questions as planning policies without claiming execution availability.
-- Reduced layout-plan file scope and corrected obsolete task/artifact references.
-- Required matrix regeneration after browser fixture source edits; later corrections invalidate automated and human evidence.
+- `wp_scrub_utf8()` is available on the declared WordPress 7.0+ floor because it was introduced in WordPress 6.9; it scrubs as UTF-8 without consulting `blog_charset`.
+- The iCalendar character filter preserves valid C1 Unicode, and the anonymous endpoint contract verifies that U+0085 survives while U+0001 is removed.
+- The malformed-byte contract now sets `blog_charset` to `ISO-8859-1`, calls the production TEXT-property serializer, asserts the U+FFFD replacement and CRLF result, and restores the prior option in `finally`.
+- Rejected external URLs no longer yield empty anchors, and the browser fixture avoids PHP 8.5's deprecated `curl_close()` call.
 
-## Execution Boundary
+No test commands were run, per review scope.
 
-NEW public scenario, fixture and evidence commands must be created before invocation. Real owned Docker runtime access is an execution precondition. Required browser/client observations must pass explicitly before phase acceptance; HTTP/source/parser checks cannot substitute. Live customer sites and custom templates were not supplied or tested.
+## Narrative Findings (AI reviewer)
+
+No findings.
+
+---
+
+_Reviewed: 2026-10-06T11:38:42Z_
+_Reviewer: the agent (gsd-code-reviewer)_
+_Depth: standard_
