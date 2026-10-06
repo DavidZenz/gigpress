@@ -93,9 +93,9 @@ After the user approved the final-source browser and calendar-client observation
 
 **Checkpoint status:** all required final-source browser and calendar-client observations passed on 2026-10-06; final source recheck and owned cleanup also passed. Phase 04 acceptance is ready to record.
 
-## Refreshed final-source fixture — human approval pending
+## Refreshed final-source fixture — PASS
 
-The previous record above was bound to source revision `5efc01d5d21c24fc6abb4cbf599e2ec6c9aa0c8e`. A final compatibility hardening commit changed the public iCalendar TEXT serializer and invalid external-link rendering, so the old browser and calendar-client approvals do not apply to this source. Automated evidence and browser measurements below are bound to the refreshed source; the human checkpoint remains open until the user confirms every required observation.
+The previous record above was bound to source revision `5efc01d5d21c24fc6abb4cbf599e2ec6c9aa0c8e`. A final compatibility hardening commit changed the public iCalendar TEXT serializer and invalid external-link rendering, so the old browser and calendar-client approvals do not apply to this source. Automated evidence and browser measurements below are bound to the refreshed source. The user approved the refreshed browser, keyboard, and calendar observations on 2026-10-06; the retained fixture recheck and owned cleanup also passed.
 
 | Property | Value |
 |---|---|
@@ -123,11 +123,27 @@ At 1280 CSS pixels, document and body widths were both 1280/1280 px (client/scro
 
 The updated hostile-value row contains no “More information” anchor for its rejected `javascript:` destination; its calendar, iCalendar, and map links remain present. The browser reported zero warnings. Fixture startup passed all nine HTTP endpoint checks with status 200, and no migrated snapshot keys or rows changed.
 
-### Refreshed human checkpoint
+### Fresh Playwright UI review — PASS
 
-- [ ] User confirms the 320px and wide listing on this source.
-- [ ] User confirms compact/theme inheritance and child, parent, wp-content, complete, and mixed override behavior on this source.
-- [ ] User confirms keyboard activation of the ticket, Google Calendar, iCalendar, RSS, and webcal links with browser JavaScript disabled.
-- [ ] User imports this source’s iCalendar feed and confirms no-time, actual-midnight, and all-day multi-day date behavior.
+On 2026-10-06, the retained `af7feea` fixture was re-opened in Playwright-controlled Chrome 154. The listing was rechecked at 320 × 1000 and 1280 × 1000 CSS pixels. At 320px, document/body widths were 320/320 px, the main content was 320 px wide, and five tables were 260 px wide at x=30–290 px. At 1280px, document/body widths were 1280/1280 px and five tables were 645 px wide at x=317.5–962.5 px. Neither viewport had horizontal page overflow.
 
-The new retained fixture session is `/private/var/folders/1l/t8mktk5j58g75tthg0q79qhw0000gn/T/gigpress-public-b0scMT/session.json`. Its owned status check passed. Keep it running for the blocking human check. After approval, run its `public-fixture --action check --case all` recheck and then stop the owned fixture; only then record Phase 04 acceptance.
+The compact/theme page and child, parent, wp-content, complete, and mixed override pages all rendered at 1280px without page overflow. The compact page inherited Manrope and its theme link color; the complete override exposed the bundled-layout opt-in marker. No browser warnings were reported.
+
+Fresh screenshots: [320px listing](/Users/davidzenz/gigpress/.playwright-mcp/page-2026-10-06T12-33-23-630Z.png), [1280px listing](/Users/davidzenz/gigpress/.playwright-mcp/page-2026-10-06T12-32-48-456Z.png), [compact/theme](/Users/davidzenz/gigpress/.playwright-mcp/page-2026-10-06T12-33-51-795Z.png), [child override](/Users/davidzenz/gigpress/.playwright-mcp/page-2026-10-06T12-33-58-321Z.png), [parent override](/Users/davidzenz/gigpress/.playwright-mcp/page-2026-10-06T12-34-06-881Z.png), [wp-content override](/Users/davidzenz/gigpress/.playwright-mcp/page-2026-10-06T12-34-18-429Z.png), [complete override](/Users/davidzenz/gigpress/.playwright-mcp/page-2026-10-06T12-34-25-788Z.png), [mixed override](/Users/davidzenz/gigpress/.playwright-mcp/page-2026-10-06T12-34-33-054Z.png).
+
+### Refreshed human checkpoint — PASS
+
+- [x] User confirms the 320px and wide listing on this source.
+- [x] User confirms compact/theme inheritance and child, parent, wp-content, complete, and mixed override behavior on this source.
+- [x] User confirms keyboard activation of the ticket, Google Calendar, iCalendar, RSS, and webcal links with browser JavaScript disabled.
+- [x] User imports this source’s iCalendar feed and confirms no-time, actual-midnight, and all-day multi-day date behavior.
+
+### Refreshed final-source fixture recheck and cleanup — PASS
+
+After the user approved the refreshed observations on 2026-10-06, the retained fixture was rechecked and stopped. The recheck used source revision `af7feea686585e13920daadfa4e45d4e76c5d21a` and fingerprint `278aafb5dbd9f848701dc63691164add64a305a54ffcab9f6763226f65fed200`.
+
+- Check command: `rtk proxy bash tests/compat/run.sh public-fixture --action check --session /private/var/folders/1l/t8mktk5j58g75tthg0q79qhw0000gn/T/gigpress-public-b0scMT/session.json --case all` — PASS, 13 assertions.
+- All nine page/feed endpoints returned HTTP 200; migrated snapshots were unchanged; no plugin HTTP errors were reported.
+- Stop command: `rtk proxy bash tests/compat/run.sh public-fixture --action stop --session /private/var/folders/1l/t8mktk5j58g75tthg0q79qhw0000gn/T/gigpress-public-b0scMT/session.json` — PASS; owned services and volumes removed.
+
+**Checkpoint status:** all refreshed final-source browser, keyboard, and calendar-client observations passed, followed by a passing retained-fixture recheck and cleanup. Phase 04 acceptance is ready to record.
