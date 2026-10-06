@@ -71,15 +71,24 @@ With JavaScript blocked, Tab and Enter were used on the final-source listing:
 
 The temporary JavaScript exception was removed after testing. Chrome’s JavaScript settings then showed no blocked-site entries. The 630-byte download was visible in Chrome’s download history, but its download-history label did not resolve to a file in the standard Downloads folder; a calendar-client import remains unverified.
 
-## Calendar-client import — skipped; checkpoint remains blocked
+## Calendar-client import — PASS
 
-Apple Calendar is installed, but its available calendar sources are iCloud, Google, and subscribed calendars; no isolated local calendar was present. Importing the synthetic fixture feed into one of those calendars could sync test events to the user’s account. No feed subscription or event import was created. On 2026-10-06, the user explicitly chose “Skip the import.” The plan’s required calendar-client import, including all-day multi-day, actual-midnight, and no-time confirmation, is therefore unverified and this blocking checkpoint cannot pass.
+Apple Calendar is installed. The user reported that Apple Calendar offered to import the final-source iCalendar file, then confirmed on 2026-10-06 that they imported it and checked all three required date cases: no-time, actual midnight, and all-day multi-day. The user accepted the result with “pass.” The agent did not inspect the destination account or alter the calendar.
 
 ## Blocking observations
 
 - [x] User confirmation of the final-source 320 CSS-pixel and wide listing views.
 - [x] User confirmation of compact/theme and template-override views.
 - [x] Keyboard focus/activation observed with JavaScript blocked for ticket, Google Calendar, iCalendar download, RSS, and webcal links; the webcal launch prompt was dismissed without subscribing.
-- [ ] Calendar-client import and confirmation of no-time, actual-midnight, and all-day multi-day meanings; explicitly skipped by the user on 2026-10-06, so this required observation remains unverified.
+- [x] User-reported Apple Calendar import and confirmation of no-time, actual-midnight, and all-day multi-day meanings; accepted with “pass” on 2026-10-06.
 
-**Checkpoint status:** blocked because the required calendar-client observation was skipped. The observed browser items above have been approved, but no overall phase approval or validation completion is recorded.
+## Final recheck and cleanup — PASS
+
+After the user approved the final-source browser and calendar-client observations, the retained fixture was checked again and stopped on 2026-10-06.
+
+- Final check command: `rtk proxy bash tests/compat/run.sh public-fixture --action check --session /private/var/folders/1l/t8mktk5j58g75tthg0q79qhw0000gn/T/gigpress-public-esbPYB/session.json --case all` — PASS, 13 assertions.
+- All nine page/feed endpoints returned HTTP 200; migrated snapshots were unchanged; there were no plugin HTTP errors.
+- The final check matched source revision `5efc01d5d21c24fc6abb4cbf599e2ec6c9aa0c8e` and fingerprint `1a27ce0c2c8207467824eff53386500621418e90b9194d6b65ad7b862587edf5` recorded for the approved observations.
+- Stop command: `rtk proxy bash tests/compat/run.sh public-fixture --action stop --session /private/var/folders/1l/t8mktk5j58g75tthg0q79qhw0000gn/T/gigpress-public-esbPYB/session.json` — PASS; owned project `gigpress_public_32370_73331_1791273370`, services removed, volumes removed.
+
+**Checkpoint status:** all required final-source browser and calendar-client observations passed on 2026-10-06; final source recheck and owned cleanup also passed. Phase 04 acceptance is ready to record.
