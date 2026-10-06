@@ -181,6 +181,23 @@ a.gigpress-address {
 	overflow-wrap: anywhere;
 }
 
+/* Keep short identifying columns readable when a long venue fills the wide table. */
+@media screen and (min-width: 42.0625em) {
+	.gigpress-layout-bundled th.gigpress-date,
+	.gigpress-layout-bundled td.gigpress-date {
+		min-width: 8.5ch;
+		overflow-wrap: normal;
+	}
+
+	.gigpress-layout-bundled th.gigpress-city,
+	.gigpress-layout-bundled td.gigpress-city,
+	.gigpress-layout-bundled th.gigpress-country,
+	.gigpress-layout-bundled td.gigpress-country {
+		min-width: 7ch;
+		overflow-wrap: normal;
+	}
+}
+
 .gigpress-layout-bundled .gigpress-info-item {
 	display: inline-block;
 	margin: 0 0.65em 0.35em 0;

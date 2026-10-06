@@ -282,6 +282,14 @@ function gigpress_public_layout_case($case) {
 			&& strpos($css, '.gigpress-layout-bundled th,') !== false
 			&& strpos($css, '.gigpress-layout-bundled-heading') !== false
 			&& strpos($main, 'class="gigpress-artist-heading gigpress-layout-bundled-heading"') !== false;
+		$checks['wide_date_city_and_country_columns_stay_readable'] = is_string($css)
+			&& strpos($css, '@media screen and (min-width: 42.0625em)') !== false
+			&& strpos($css, '.gigpress-layout-bundled td.gigpress-date') !== false
+			&& strpos($css, 'min-width: 8.5ch;') !== false
+			&& strpos($css, '.gigpress-layout-bundled td.gigpress-city') !== false
+			&& strpos($css, '.gigpress-layout-bundled td.gigpress-country') !== false
+			&& strpos($css, 'min-width: 7ch;') !== false
+			&& strpos($css, 'overflow-wrap: normal;') !== false;
 	} elseif ($case === 'layout-compact') {
 		$compact = do_shortcode('[gigpress_shows scope="upcoming" artist="701"]');
 		$compactLinks = html_entity_decode($compact, ENT_QUOTES | ENT_HTML5, 'UTF-8');
