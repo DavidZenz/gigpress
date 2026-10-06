@@ -338,8 +338,9 @@ run_self_test() {
   grep -Fq "update_option('siteurl', 'http://gigpress-compat.test')" "$COMPAT_DIR/probe.php" || fail "fresh installs do not seed a stable site URL for later recovery probes"
   grep -Fq 'menu_trace.menu_warnings | any(' "$COMPAT_DIR/run.sh" || fail "exact-key diagnostic does not require the WordPress warning"
   cleanup_paths=$(grep -v 'cleanup_paths=' "$COMPAT_DIR/run.sh" | grep -Fc 'compose_env down --volumes --remove-orphans')
-  [[ "$cleanup_paths" == 4 ]] || fail "all disposable Compose targets must use the configured cleanup environment"
-  printf '%s\n' '{"status":"PASS","self_test":"matrix ordering, per-line WordPress patch pinning, upstream PHP support-page parsing, diagnostic exclusion, recovery bootstrap, and Compose cleanup"}'
+  [[ "$cleanup_paths" == 5 ]] || fail "all disposable Compose targets must use the configured cleanup environment"
+  ! grep -Fq 'curl_close(' "$COMPAT_DIR/browser-bootstrap.php" || fail "PHP 8.5 browser fixture must not call deprecated curl_close"
+  printf '%s\n' '{"status":"PASS","self_test":"matrix ordering, per-line WordPress patch pinning, upstream PHP support-page parsing, diagnostic exclusion, recovery bootstrap, PHP 8.5 curl lifecycle, and Compose cleanup"}'
 }
 
 normalise_menu_cases() {

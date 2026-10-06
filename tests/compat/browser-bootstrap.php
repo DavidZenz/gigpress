@@ -67,7 +67,7 @@ function browser_http($path, $post = null, $jar = 'admin') {
     $html = curl_exec($handle);
     if ($html === false) throw new RuntimeException('Fixture HTTP transport failed: ' . curl_error($handle));
     $result = array('html' => $html, 'status' => curl_getinfo($handle, CURLINFO_RESPONSE_CODE), 'url' => curl_getinfo($handle, CURLINFO_EFFECTIVE_URL));
-    curl_close($handle);
+    unset($handle);
     return $result;
 }
 

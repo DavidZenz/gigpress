@@ -182,8 +182,9 @@ function gigpress_public_feeds_case($case) {
 		if (!$relatedPostSeeded) return array('case' => $case, 'checks' => array('related_post_fixture_seeded' => false));
 		$seed['shows'][0]['show_related'] = (int) $relatedPostId;
 	}
-	$controlArtistName = $seed['artist']['artist_name'] . "\x01";
-	$controlArtistSeeded = $case !== 'rss-contract' || $wpdb->update(GIGPRESS_ARTISTS, array('artist_name' => $controlArtistName), array('artist_id' => 1891)) === 1;
+	$controlArtistName = $seed['artist']['artist_name'] . "\x01" . ($case === 'ical-contract' ? "\xC2\x85" : '');
+	$controlArtistSeeded = !in_array($case, array('rss-contract', 'ical-contract'), true)
+		|| $wpdb->update(GIGPRESS_ARTISTS, array('artist_name' => $controlArtistName), array('artist_id' => 1891)) === 1;
 	$controlNotes = $seed['notes'] . "\x01";
 	$controlNotesSeeded = $case !== 'rss-contract' || $wpdb->update(GIGPRESS_SHOWS, array('show_notes' => $controlNotes), array('show_id' => 1891)) === 1;
 	$before = gigpress_public_feeds_snapshot();
@@ -306,10 +307,12 @@ function gigpress_public_feeds_case($case) {
 			$repeatComplete = $repeatComplete && $repeated['valid_envelope'] && count($repeated['events']) === 4 && gigpress_public_feeds_ical_ids($repeated) === array(1891, 1892, 1893, 1894);
 		}
 		$formatChecks = true;
-		foreach (array_merge($filterReads, $repeatReads, array_values($selectedReads)) as $response) {
+		$allIcalResponses = array_merge($filterReads, $repeatReads, array_values($selectedReads));
+		foreach ($allIcalResponses as $response) {
 			$parsed = gigpress_public_feeds_parse_ical($response['body']);
 			$formatChecks = $formatChecks && $parsed['valid_envelope'] && $parsed['crlf_only'] && $parsed['within_limits'] && $parsed['valid_utf8_lines'];
 		}
+		$controlCharacterResponses = array_filter($allIcalResponses, function ($response) { return strpos($response['body'] ?? '', "\x01") !== false; });
 		$parsedAll = $filterParsed[0] ?? array();
 		$events = $parsedAll['events'] ?? array();
 		$byId = array();
@@ -321,7 +324,8 @@ function gigpress_public_feeds_case($case) {
 		$noTime = $byId[1892] ?? array();
 		$midnight = $byId[1893] ?? array();
 		$multiTimed = $byId[1894] ?? array();
-		$expectedSummary = str_replace(array("\r\n", "\r"), "\n", $seed['artist']['artist_name']) . ' at ' . $seed['venue']['venue_name'];
+		$expectedArtistName = $seed['artist']['artist_name'] . ($case === 'ical-contract' ? "\xC2\x85" : '');
+		$expectedSummary = str_replace(array("\r\n", "\r"), "\n", $expectedArtistName) . ' at ' . $seed['venue']['venue_name'];
 		$expectedLocation = $seed['venue']['venue_name'] . ', ' . $seed['venue']['venue_address'] . ', ' . $seed['venue']['venue_city'] . ', ' . $seed['venue']['venue_country'];
 		$plainNotes = str_replace(array("\r\n", "\r"), "\n", wp_strip_all_tags($seed['notes']));
 		$expectedDescription = $oldSettings['tour_label'] . ': ' . $seed['tour']['tour_name'] . '. Price: ' . $seed['shows'][0]['show_price'] . '. Box office: ' . $seed['shows'][0]['show_tix_phone'] . '. Venue phone: ' . $seed['venue']['venue_phone'] . '. Notes: ' . $plainNotes . ' ' . $seed['shows'][0]['show_ages'];
@@ -347,6 +351,20 @@ function gigpress_public_feeds_case($case) {
 		$noInjection = count($events) === 4 && !isset($first['X-INJECTED']);
 		$checks['ical_real_anonymous_endpoints_and_all_filters_keep_exact_membership_order'] = $allHttp && $filterIds === array($expectedIds, $expectedIds, $expectedIds) && gigpress_public_feeds_ical_ids($selectedParsed[1891]) === array(1891) && gigpress_public_feeds_ical_ids($selectedParsed[1892]) === array(1892) && gigpress_public_feeds_ical_ids($selectedParsed[1893]) === array(1893) && gigpress_public_feeds_ical_ids($selectedParsed[1894]) === array(1894);
 		$checks['ical_independent_parser_confirms_crlf_envelope_types_folds_and_utf8'] = $formatChecks && count($events) === 4 && $parsedAll['has_fold'] && $parsedAll['valid_envelope'];
+		$checks['ical_text_removes_forbidden_control_characters'] = $controlArtistSeeded && count($controlCharacterResponses) === 0 && $firstSummary === $expectedSummary;
+		$checks['ical_text_preserves_valid_c1_unicode'] = strpos($firstSummary ?? '', "\xC2\x85") !== false;
+		$malformedSequence = chr(0xC3) . '(';
+		$malformedText = 'A' . $malformedSequence . 'B';
+		$previousCharset = get_option('blog_charset', 'UTF-8');
+		update_option('blog_charset', 'ISO-8859-1');
+		try {
+			$serializedMalformedText = gigpress_ical_property('SUMMARY', $malformedText, 'text');
+		} finally {
+			update_option('blog_charset', $previousCharset);
+		}
+		$expectedMalformedProperty = "SUMMARY:A\xEF\xBF\xBD(B\r\n";
+		$checks['ical_malformed_utf8_is_replaced_before_serialization_with_legacy_blog_charset'] = $serializedMalformedText === $expectedMalformedProperty
+			&& preg_match('//u', $serializedMalformedText) === 1 && strpos($serializedMalformedText, $malformedSequence) === false;
 		$checks['ical_decoded_text_uri_uid_and_filter_identity_are_exact'] = $firstSummary === $expectedSummary && $firstDescription === $expectedDescription && $firstLocation === $expectedLocation && $firstUid === $expectedStart . '-1891-' . get_bloginfo('admin_email') && ($first['URL']['value'] ?? null) === get_bloginfo('url') && gigpress_public_feeds_ical_ids($parsedAll) === $expectedIds;
 		$checks['ical_text_escapes_backslash_punctuation_and_newlines_without_injection'] = strpos($firstDescription ?? '', "CDATA closer: ]]>\nBEGIN:VEVENT\nX-Injected: no") !== false && strpos($firstDescription ?? '', 'Backslash \\route, commas ; semicolons.') !== false && $noInjection;
 		$checks['ical_date_only_exclusive_end_preserves_no_time_multi_day_range'] = $noTimeStart === '20310611' && $noTimeEnd === '20310614' && ($noTime['DTSTART;VALUE=DATE']['value_type'] ?? null) === 'DATE' && ($noTime['DTEND;VALUE=DATE']['value_type'] ?? null) === 'DATE';
@@ -357,6 +375,8 @@ function gigpress_public_feeds_case($case) {
 		$checks['ical_public_reads_leave_migrated_rows_settings_schema_and_links_unchanged'] = $before === $after;
 		$checks['ical_repeated_and_concurrent_reads_are_complete'] = $repeatComplete && count($repeatReads) === 4;
 		$evidence = array('expected_ids' => $expectedIds, 'filter_ids' => $filterIds, 'event_count' => count($events), 'folded' => $parsedAll['has_fold'] ?? false, 'repeated_responses' => count($repeatReads), 'repeated_complete' => $repeatComplete, 'decoded' => array('summary' => $firstSummary, 'expected_summary' => $expectedSummary, 'description' => $firstDescription, 'expected_description' => $expectedDescription, 'location' => $firstLocation, 'expected_location' => $expectedLocation, 'uid' => $firstUid, 'expected_uid' => $expectedStart . '-1891-' . get_bloginfo('admin_email'), 'url' => $first['URL']['value'] ?? null, 'expected_url' => get_bloginfo('url')), 'no_time' => array('start' => $noTimeStart, 'end' => $noTimeEnd), 'midnight' => array('start' => $midnightStart, 'dtend_count' => $midnightEndCount), 'timed_multi' => array('start' => $multiStart, 'end' => $multiEnd), 'snapshot_unchanged' => $before === $after);
+		$evidence['malformed_utf8'] = array('input_hex' => bin2hex($malformedText), 'serialized_property_hex' => bin2hex($serializedMalformedText), 'valid_utf8' => preg_match('//u', $serializedMalformedText) === 1, 'invalid_sequence_removed' => strpos($serializedMalformedText, $malformedSequence) === false, 'legacy_blog_charset' => 'ISO-8859-1');
+		$wpdb->update(GIGPRESS_ARTISTS, array('artist_name' => $seed['artist']['artist_name']), array('artist_id' => 1891));
 	}
 
 	if ($case === 'empty-contracts') {

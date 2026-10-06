@@ -57,6 +57,7 @@ function gigpress_public_html_case($case) {
 	$gpo['display_country'] = 1;
 	$gpo['output_schema_json'] = 'y';
 	$gpo['buy_tickets_label'] = 'Buy & <Tickets>';
+	$gpo['external_link_label'] = 'More & <Events>';
 	$gpo['related_position'] = 'before';
 	$gpo['relatedlink_notes'] = 1;
 	$gpo['relatedlink_city'] = 1;
@@ -80,8 +81,10 @@ function gigpress_public_html_case($case) {
 	$artistVisible = preg_replace('/\s+/', ' ', html_entity_decode(wptexturize(esc_html($seed['artist_text'])), ENT_QUOTES, 'UTF-8'));
 	$venueVisible = preg_replace('/\s+/', ' ', html_entity_decode(wptexturize(esc_html($seed['venue_text'])), ENT_QUOTES, 'UTF-8'));
 	$unsafeLinkFound = false;
+	$rejectedExternalLinkCount = 0;
 	if ($document) foreach ($document->getElementsByTagName('a') as $link) {
 		if (preg_match('/^\s*javascript\s*:/i', $link->getAttribute('href'))) $unsafeLinkFound = true;
+		if ($link->textContent === 'More & <Events>') $rejectedExternalLinkCount++;
 	}
 	$after = gigpress_public_html_snapshot(array(891), $relatedPostId);
 	$stream = fopen('php://memory', 'r');
@@ -99,6 +102,7 @@ function gigpress_public_html_case($case) {
 		'main_json_notes_are_plain' => is_array($event) && ($event['description'] ?? null) === wp_strip_all_tags($seed['rows']['show']['show_notes']) && strpos($jsonScripts[0]->textContent ?? '', '</script>') === false,
 		'main_html_displays_hostile_text_as_text' => strpos($visible, $artistVisible) !== false && strpos($visible, $venueVisible) !== false,
 		'main_html_rejects_unsafe_protocols' => $document && !$document->getElementsByTagName('img')->length && !$document->getElementsByTagName('svg')->length && !$document->getElementsByTagName('free')->length && !$unsafeLinkFound,
+		'main_html_omits_rejected_external_destination' => $rejectedExternalLinkCount === 0,
 		'main_allowed_note_formatting_retained' => $document && $document->getElementsByTagName('strong')->length > 0 && $document->getElementsByTagName('p')->length > 0,
 		'main_json_encoding_failure_is_handled' => $encodingFailureHandled,
 		'stored_rows_unchanged_during_public_read' => $before === $after,
@@ -195,6 +199,10 @@ function gigpress_public_html_case($case) {
 	$is_excerpt = false;
 	$related = gigpress_show_related(array('scope' => 'upcoming'), '<p>Caller placement marker</p>');
 	$relatedDocument = gigpress_public_html_parse($related);
+	$relatedRejectedExternalLinkCount = 0;
+	if ($relatedDocument) foreach ($relatedDocument->getElementsByTagName('a') as $link) {
+		if ($link->textContent === 'More & <Events>') $relatedRejectedExternalLinkCount++;
+	}
 	$relatedScripts = $relatedDocument ? $relatedDocument->getElementsByTagName('script') : array();
 	$relatedJsonScripts = array();
 	if ($relatedDocument) foreach ($relatedScripts as $script) if ($script->getAttribute('type') === 'application/ld+json') $relatedJsonScripts[] = $script;
@@ -206,6 +214,7 @@ function gigpress_public_html_case($case) {
 	$checks['related_linked_post_placement_and_safe_urls'] = strpos($related, '<p>Caller placement marker</p>') !== false
 		&& strpos($related, 'gigpress-related-show') !== false && strpos($related, 'gigpress-related-show') < strpos($related, '<p>Caller placement marker</p>')
 		&& $relatedDocument && !$relatedDocument->getElementsByTagName('img')->length && $relatedDocument->getElementsByTagName('script')->length === 1;
+	$checks['related_html_omits_rejected_external_destination'] = $relatedRejectedExternalLinkCount === 0;
 	$relatedXPath = $relatedDocument ? new DOMXPath($relatedDocument) : null;
 	$relatedSurface = $relatedXPath ? $relatedXPath->query('//ul[contains(concat(" ", normalize-space(@class), " "), " gigpress-related-show ") and contains(concat(" ", normalize-space(@class), " "), " active ")]')->item(0) : null;
 	$checks['related_partial_keeps_active_class_notes_and_inert_labels'] = $relatedSurface instanceof DOMElement

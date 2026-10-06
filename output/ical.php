@@ -2,7 +2,10 @@
 
 /** Escape one RFC 5545 TEXT property value. */
 function gigpress_ical_escape_text($value) {
-	$value = str_replace('\\', '\\\\', (string) $value);
+	$value = wp_scrub_utf8((string) $value);
+	$clean = preg_replace('/[^\x{9}\x{A}\x{D}\x{20}-\x{7E}\x{80}-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]/u', '', $value);
+	$value = is_string($clean) ? $clean : '';
+	$value = str_replace('\\', '\\\\', $value);
 	$value = str_replace(array("\r\n", "\r", "\n"), '\\n', $value);
 	return str_replace(array(';', ','), array('\\;', '\\,'), $value);
 }

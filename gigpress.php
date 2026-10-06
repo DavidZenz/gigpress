@@ -291,8 +291,8 @@ function gigpress_prepare($show, $scope = 'public') {
 		$showdata['end_date'] = ($show->show_date != $show->show_expire) ? gigpress_public_text_fragment(mysql2date($gpo['date_format'], $show->show_expire)) : '';
 		$showdata['end_date_long'] = ($show->show_date != $show->show_expire) ? mysql2date($gpo['date_format_long'], $show->show_expire) : '';
 		$showdata['end_date_mysql'] = $show->show_expire;		
-		$showdata['external_link'] = (!empty($show->show_external_url)) ? '<a href="'.esc_url($show->show_external_url).'"'.gigpress_target($show->show_external_url).'>' . gigpress_public_text_fragment($gpo['external_link_label']) . '</a>' : '';
-		$showdata['external_url'] = (!empty($show->show_external_url)) ? esc_url($show->show_external_url) : '';		
+		$showdata['external_url'] = (!empty($show->show_external_url)) ? esc_url($show->show_external_url) : '';
+		$showdata['external_link'] = ($showdata['external_url'] !== '') ? '<a href="'.esc_url($showdata['external_url']).'"'.gigpress_target($showdata['external_url']).'>' . gigpress_public_text_fragment($gpo['external_link_label']) . '</a>' : '';
 		$showdata['ical'] = '<a href="' . esc_url(GIGPRESS_ICAL . '&show_id=' . (int) $show->show_id) . '">' . esc_html__("Download iCal", "gigpress") . '</a>';
 		$showdata['id'] = $show->show_id;
 		$showdata['iso_date'] = $show->show_date."T".$show->show_time;
