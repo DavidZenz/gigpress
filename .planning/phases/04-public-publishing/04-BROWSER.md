@@ -69,7 +69,7 @@ With JavaScript blocked, Tab and Enter were used on the final-source listing:
 - The RSS subscription link received focus and Enter opened the XML feed.
 - The iCal webcal subscription link received focus and Enter raised Chrome’s “Open Calendar?” prompt. The prompt was dismissed without creating a subscription.
 
-The temporary JavaScript exception was removed after testing. Chrome’s JavaScript settings then showed no blocked-site entries. The 630-byte download was visible in Chrome’s download history, but its download-history label did not resolve to a file in the standard Downloads folder; a calendar-client import remains unverified.
+The temporary JavaScript exception was removed after testing. Chrome’s JavaScript settings then showed no blocked-site entries. The 630-byte download was visible in Chrome’s download history, but its download-history label did not resolve to a file in the standard Downloads folder. The user later reported importing the file in Apple Calendar and checking the required date cases, as recorded below.
 
 ## Calendar-client import — PASS
 
