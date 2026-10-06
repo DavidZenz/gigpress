@@ -62,3 +62,13 @@ No accepted risks.
 - [x] `status: verified` set in frontmatter
 
 **Approval:** verified 2026-10-06
+
+## Security Audit 2026-10-06 — Final-source acceptance recheck
+
+| Metric | Count |
+|--------|-------|
+| Threats found | 14 |
+| Closed | 14 |
+| Open | 0 |
+
+The refreshed-source public acceptance check passed against revision `af7feea686585e13920daadfa4e45d4e76c5d21a`; the fixture reported 13 passing assertions across all nine endpoints with unchanged snapshots, and its owned resources were removed afterward. No implementation changes followed that checked revision during this verification turn.
