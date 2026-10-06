@@ -1,9 +1,9 @@
 ---
 phase: "04"
 slug: "public-publishing"
-status: validated
-nyquist_compliant: true
-wave_0_complete: true
+status: in_progress
+nyquist_compliant: false
+wave_0_complete: false
 created: "2026-10-05"
 ---
 
@@ -44,9 +44,9 @@ Exact plan/task map. Every NEW command is created by the same task or an earlier
 | 04-04-01 RSS | PUB-01 | T-04-10, T-04-11 | `rss-contract` public cell with independent XML parser | None | Uses 04-01 registry; creates feed module/RSS case | PASS — RSS contract in all six final matrix cells |
 | 04-04-02 iCalendar and empty feeds | PUB-01 | T-04-10, T-04-11 | `ical-contract`, `empty-contracts` public cells with independent property/XML parsers | Final calendar-client item is satisfied in 04-05-02 | Uses 04-04-01 feed module | PASS — iCalendar and empty contracts in all six final matrix cells; client import accepted |
 | 04-04-03 supported matrix/evidence seal | PUB-01, PUB-02 | T-04-01, T-04-02, T-04-12 | Public matrix plus `public-evidence` build/validate/self-test and inherited preservation aggregate | Final-source evidence recorded in 04-BROWSER.md | Creates `public-evidence` actions before invocation; all nine cases created by prior tasks; Plan 04-05 refreshes report after its fingerprinted edits | PASS — six cells, nine cases per cell, 798 assertions, 22 corruption checks, 11 preservation cases |
-| 04-05-01 final-source public fixture | PUB-01, PUB-02 | T-04-13, T-04-14 | Exact supported `matrix --case all`, `public-evidence build`, `validate`, `self-test`, then `public-fixture --action start --case all` | Prepares retained fixture only; no acceptance inferred | Runs after 04-04 and all nine modules; refreshes 04-PUBLIC-MATRIX.md after fingerprinted runner/bootstrap/Compose edits | PASS — retained fixture source revision and fingerprint matched the rebuilt report |
-| 04-05-02 blocking final human acceptance | PUB-01, PUB-02 | T-04-14 | None; automated source/HTTP evidence is supporting context only | 320px/wide bounds, computed inheritance, complete/mixed overrides, keyboard with browser JS disabled, and calendar-client import | `checkpoint:human-verify gate=blocking-human`; unavailable evidence blocks phase acceptance | PASS — user approved final-source browser checks and reported importing/checking all three calendar date cases on 2026-10-06 |
-| 04-05-03 final recheck/cleanup/validation | PUB-01, PUB-02 | T-04-13, T-04-14 | `public-fixture check --case all` then owned `stop` | Consumes explicit 04-05-02 approval only | Runs after human approval against unchanged final source | PASS — 13 final assertions, unchanged snapshots, matching fingerprint; services and volumes removed |
+| 04-05-01 final-source public fixture | PUB-01, PUB-02 | T-04-13, T-04-14 | Exact supported `matrix --case all`, `public-evidence build`, `validate`, `self-test`, then `public-fixture --action start --case all` | Prepares retained fixture only; no acceptance inferred | Runs after 04-04 and all nine modules; refreshes 04-PUBLIC-MATRIX.md after fingerprinted runner/bootstrap/Compose edits | PASS — source `af7feea`, six cells, 852 assertions, 22 corruption checks, clean review; retained fixture fingerprint matches the report |
+| 04-05-02 blocking final human acceptance | PUB-01, PUB-02 | T-04-14 | None; automated source/HTTP evidence is supporting context only | 320px/wide bounds, computed inheritance, complete/mixed overrides, keyboard with browser JS disabled, and calendar-client import | `checkpoint:human-verify gate=blocking-human`; unavailable evidence blocks phase acceptance | PENDING — refreshed source `af7feea` is open for user review |
+| 04-05-03 final recheck/cleanup/validation | PUB-01, PUB-02 | T-04-13, T-04-14 | `public-fixture check --case all` then owned `stop` | Consumes explicit 04-05-02 approval only | Runs after human approval against unchanged final source | PENDING — run after refreshed-source approval |
 
 ## Wave 0 Requirements
 
@@ -57,8 +57,8 @@ Exact plan/task map. Every NEW command is created by the same task or an earlier
 - [x] 04-04-01/02 create independent RSS/XML and iCalendar property parsers for `rss-contract`, `ical-contract`, `empty-contracts`.
 - [x] 04-04-03 creates the exact pinned matrix and `public-evidence` build/validate/self-test, including named missing/duplicate/unknown/empty/failed/stale/source/runtime corruptions.
 - [x] 04-05-01 creates the owned loopback `public-fixture` lifecycle, then after every fingerprinted fixture-source edit reruns the exact supported matrix plus `public-evidence` build/validate/self-test and starts the retained fixture only when its identity matches the refreshed 04-PUBLIC-MATRIX.md.
-- [x] 04-05-02 blocks phase acceptance until every final-source browser/calendar-client observation is explicitly human-approved; all required observations passed.
-- [x] 04-05-03 rechecks the unchanged approved source, verifies cleanup and updates compliance status from actual evidence only.
+- [ ] 04-05-02 blocks phase acceptance until every refreshed final-source browser/calendar-client observation is explicitly human-approved.
+- [ ] 04-05-03 rechecks the unchanged approved source, verifies cleanup and updates compliance status from actual evidence only.
 - [x] No new test framework/package is required. Docker engine access remains an execution precondition; a denied research socket read is not evidence that OrbStack is unavailable.
 
 ## Manual-Only Verifications
@@ -67,10 +67,10 @@ All rows below are owned by blocking-human Task 04-05-02 after every fingerprint
 
 | Behavior | Requirement | Why manual/browser evidence | Instructions | Result |
 |---|---|---|---|---|
-| Main listing at exactly 320 CSS pixels and wide layout | PUB-02 | HTTP/source cannot establish readability or scroll bounds | Measure actual viewport and document/body scroll widths; inspect long labels, grouped shows, details, statuses, wide table and narrow theme containers | PASS — user confirmed final-source 320px and desktop views; see 04-BROWSER.md |
-| Keyboard with browser JavaScript disabled | PUB-02 | Plugin disable_js and HTTP checks do not disable browser scripts | Disable scripts in the browser, reload, Tab/Enter through date-area calendar links, ticket and subscriptions | PASS — ticket, Google Calendar, iCalendar download, RSS, and webcal keyboard activation observed; see 04-BROWSER.md |
-| Theme inheritance, compact widgets/related and custom/mixed overrides | PUB-02 | Source does not prove computed styles/layout | Observe computed fonts/link colors and complete/mixed override layouts at narrow/wide widths | PASS — user confirmed final-source review; see 04-BROWSER.md |
-| Downloaded iCalendar interoperability | PUB-01 | Parser success alone does not show client import | Open generated file in an available calendar client and record preserved date/time/no-time behavior | PASS — user reports importing in Apple Calendar and checking no-time, actual midnight, and all-day multi-day cases; see 04-BROWSER.md |
+| Main listing at exactly 320 CSS pixels and wide layout | PUB-02 | HTTP/source cannot establish readability or scroll bounds | Measure actual viewport and document/body scroll widths; inspect long labels, grouped shows, details, statuses, wide table and narrow theme containers | PENDING — machine bounds recorded; refreshed-source user review remains open |
+| Keyboard with browser JavaScript disabled | PUB-02 | Plugin disable_js and HTTP checks do not disable browser scripts | Disable scripts in the browser, reload, Tab/Enter through date-area calendar links, ticket and subscriptions | PENDING — prior-source observation is historical; repeat on `af7feea` |
+| Theme inheritance, compact widgets/related and custom/mixed overrides | PUB-02 | Source does not prove computed styles/layout | Observe computed fonts/link colors and complete/mixed override layouts at narrow/wide widths | PENDING — prior-source observation is historical; repeat on `af7feea` |
+| Downloaded iCalendar interoperability | PUB-01 | Parser success alone does not show client import | Open generated file in an available calendar client and record preserved date/time/no-time behavior | PENDING — prior-source import is historical; repeat the three date cases from `af7feea` |
 
 ## Validation Sign-Off
 
@@ -78,10 +78,10 @@ All rows below are owned by blocking-human Task 04-05-02 after every fingerprint
 - [x] No three consecutive implementation tasks lack automated verification.
 - [x] Every NEW command is created before use and fails on empty evidence.
 - [x] No watch flags; measured feedback latency recorded (final retained-fixture check: 7.7 seconds; matrix: 119 seconds across six cells).
-- [x] Actual browser evidence and populated migrated matrix completed.
-- [x] `nyquist_compliant: true` only after validation.
+- [ ] Refreshed-source browser evidence and calendar-client acceptance completed.
+- [ ] `nyquist_compliant: true` only after final recheck and cleanup.
 
-**Approval:** validated on 2026-10-06 after final-source user acceptance, unchanged-source fixture recheck, and owned-resource cleanup.
+**Approval:** pending refreshed-source human acceptance and unchanged-source fixture recheck/cleanup.
 
 ## Validation Audit 2026-10-06
 
