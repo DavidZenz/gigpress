@@ -1,15 +1,19 @@
 ---
-status: complete
+status: testing
 phase: 04-public-publishing
-source: [04-01-SUMMARY.md, 04-02-SUMMARY.md, 04-03-SUMMARY.md, 04-04-SUMMARY.md, 04-05-SUMMARY.md]
+source: [04-01-SUMMARY.md, 04-02-SUMMARY.md, 04-03-SUMMARY.md, 04-04-SUMMARY.md, 04-05-SUMMARY.md, 04-VERIFICATION.md]
 started: 2026-10-06T12:03:57+02:00
-updated: 2026-10-06T14:38:08+02:00
+updated: 2026-10-07T10:46:11+02:00
 ---
 
 ## Current Test
 <!-- OVERWRITE each test - shows where we are -->
 
-[testing complete]
+number: 22
+name: Resolve the PUB-01 privacy prohibition
+expected: |
+  Explicitly accept the static finding that the changed public production paths add no server-side outbound HTTP request or new external provider for feed/calendar output; Google Calendar and Maps URLs remain visitor-followed links. Alternatively, define a concrete network-level check and record its result.
+awaiting: user response
 
 ## Tests
 
@@ -148,12 +152,19 @@ source: user_reported
 evidence: .planning/phases/04-public-publishing/04-BROWSER.md#refreshed-final-source-fixture-recheck-and-cleanup
 coverage_id: D4
 
+### 22. Resolve the PUB-01 privacy prohibition
+expected: Explicitly accept the static finding that the changed public production paths add no server-side outbound HTTP request or new external provider for feed/calendar output; Google Calendar and Maps URLs remain visitor-followed links. Alternatively, define a concrete network-level check and record its result.
+result: [pending]
+source: user_reported
+evidence: .planning/phases/04-public-publishing/04-VERIFICATION.md#human-verification-required
+coverage_id: PUB-01-privacy
+
 ## Summary
 
-total: 21
+total: 22
 passed: 21
 issues: 0
-pending: 0
+pending: 1
 skipped: 0
 blocked: 0
 
