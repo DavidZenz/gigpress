@@ -97,7 +97,7 @@ Plans:
 
 ### Phase 4: Public Publishing
 
-**Goal**: Site owners can publish readable show listings while existing public displays, feeds, and theme customizations continue to work.
+**Goal**: As a site owner, I want to publish readable show listings while existing public displays, feeds, and theme customizations continue to work, so that visitors can find upcoming shows without breaking the site's existing integrations.
 **Mode:** mvp
 **Depends on**: Phase 2
 **Requirements**: PUB-01, PUB-02
