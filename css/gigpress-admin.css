@@ -179,14 +179,56 @@ p.gp-trash {
 	color: #F00;
 }
 
-.gp-import-panel {
-	width: 48%;
-	float: left;
+.gp-import-export .gp-csv-section {
+	clear: both;
+	max-width: 72em;
+	margin: 1.5em 0 2em;
+	padding: 0 0 1.5em;
+	border-bottom: 1px solid #c3c4c7;
 }
 
-.gp-export-panel {
-	width: 48%;
-	float: right;
+.gp-import-export .gp-csv-section h3 {
+	margin-top: 0;
+}
+
+.gp-import-export .gp-csv-section form p {
+	margin: 1em 0;
+}
+
+.gp-import-export .gp-csv-section select {
+	min-width: 14em;
+}
+
+.gp-import-export .gp-csv-help {
+	margin: 1.25em 0;
+	max-width: 60em;
+}
+
+.gp-import-export .gp-csv-help summary {
+	cursor: pointer;
+	font-weight: 600;
+}
+
+.gp-import-export .gp-csv-columns {
+	columns: 2;
+	max-width: 48em;
+}
+
+.gp-import-export .gp-csv-result-group {
+	margin: .75em 0;
+}
+
+.gp-import-export .gp-csv-result-group summary {
+	cursor: pointer;
+	font-weight: 600;
+}
+
+.gp-import-export .gp-csv-result-counts {
+	font-weight: 600;
+}
+
+.gp-import-export .gp-csv-spreadsheet-note {
+	max-width: 60em;
 }
 
 .optiontable th {

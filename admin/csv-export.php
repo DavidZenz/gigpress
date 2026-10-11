@@ -55,14 +55,15 @@ function gigpress_csv_export_selection(array $state): array {
 
 function gigpress_csv_export_encode(array $rows): string {
 	$lines = array();
-	$records = array_merge(array(gigpress_csv_columns()), $rows);
-	foreach ($records as $record) {
-		$cells = array();
-		foreach (gigpress_csv_columns() as $column) {
-			$value = array_key_exists($column, $record) && is_scalar($record[$column]) ? (string) $record[$column] : '';
-			$cells[] = '"' . str_replace('"', '""', $value) . '"';
-		}
-		$lines[] = implode(',', $cells);
+	$encode = function (array $values) {
+		return implode(',', array_map(function ($value) { return '"' . str_replace('"', '""', (string) $value) . '"'; }, $values));
+	};
+	$columns = gigpress_csv_columns();
+	$lines[] = $encode($columns);
+	foreach ($rows as $record) {
+		$values = array();
+		foreach ($columns as $column) $values[] = array_key_exists($column, $record) && is_scalar($record[$column]) ? (string) $record[$column] : '';
+		$lines[] = $encode($values);
 	}
 	return implode("\r\n", $lines) . "\r\n";
 }

@@ -55,7 +55,12 @@ function gigpress_csv_export_case($case) {
 			&& ($decoded['records'][1]['Time'] ?? null) === '00:00:00'
 			&& ($decoded['records'][0]['End date'] ?? null) === '';
 		$checks['legacy_status_zero_remains_literal'] = ($decoded['records'][2]['Status'] ?? null) === '0';
-		wp_set_current_user($admin->ID); $_GET = array(); $_POST = array();
+		wp_set_current_user($admin->ID); $_POST = array();
+		$wpdb->insert(GIGPRESS_ARTISTS, array('artist_name' => 'No Match Artist', 'artist_alpha' => 'No Match Artist'));
+		$emptyArtist = (int) $wpdb->insert_id;
+		$wpdb->insert(GIGPRESS_TOURS, array('tour_name' => 'No Match Tour', 'tour_status' => 'active'));
+		$emptyTour = (int) $wpdb->insert_id;
+		$_GET = array('artist_id' => (string) $emptyArtist, 'tour_id' => (string) $emptyTour, 'scope' => 'past', 'export_notice' => 'no_matches');
 		ob_start(); gigpress_import_export(); $page = ob_get_clean();
 		$importPos = strpos($page, 'gp-csv-import-heading'); $exportPos = strpos($page, 'gp-csv-export-heading');
 		$checks['stacked_visible_sections_and_exact_controls'] = $importPos !== false && $exportPos !== false && $importPos < $exportPos
@@ -64,18 +69,22 @@ function gigpress_csv_export_case($case) {
 			&& strpos($page, 'destination site') !== false;
 		$checks['native_disclosures_and_bounded_spreadsheet_guidance'] = strpos($page, '<details') !== false && strpos($page, '<summary') !== false
 			&& stripos($page, 'Data &gt; From Text/CSV') !== false && strpos($page, 'not universal') !== false;
+		$checks['empty_selection_notice_and_artist_retained'] = strpos($page, 'No shows match these export filters') !== false
+			&& preg_match('/<option value="' . $emptyArtist . '"[^>]*selected/', $page) === 1;
+		$checks['tour_and_scope_retained_with_reset_action'] = preg_match('/<option value="' . $emptyTour . '"[^>]*selected/', $page) === 1
+			&& preg_match('/<option value="past"[^>]*selected/', $page) === 1 && strpos($page, 'reset_filters=1') !== false;
 		$checks['status_zero_manual_attention_visible'] = strpos($page, 'Status 0') !== false && strpos($page, 'manual attention') !== false;
 		$result = array('counts' => array('imported' => 1, 'duplicate' => 1, 'rejected' => 1, 'failed' => 1, 'skipped' => 1), 'total' => 5,
-			'records' => array('imported' => array(), 'duplicate' => array(array('row' => 2, 'identity' => 'A — 2032-05-06 — Hall', 'reason' => 'Already exists', 'next_step' => 'Review the existing show.')),
+			'records' => array('imported' => array(array('row' => 1, 'identity' => 'Imported — 2032-05-05 — Hall', 'reason' => 'Saved')),
+				'duplicate' => array(array('row' => 2, 'identity' => 'A — 2032-05-06 — Hall', 'reason' => 'Already exists', 'next_step' => 'Review the existing show.')),
 				'rejected' => array(array('row' => 3, 'identity' => 'B — 2032-05-07 — Club', 'field' => 'Date', 'reason' => 'Invalid date', 'next_step' => 'Use YYYY-MM-DD.')),
 				'failed' => array(array('row' => 4, 'identity' => 'C — 2032-05-08 — Room', 'reason' => 'Database unavailable', 'next_step' => 'Retry after checking the database.')),
 				'skipped' => array(array('row' => 5, 'identity' => 'D — 2032-05-09 — Hall', 'reason' => 'Matching show already exists', 'next_step' => 'Correct source CSV and retry.'))));
 		$rendered = function_exists('gigpress_csv_render_import_result') ? gigpress_csv_render_import_result($result) : '';
-		$checks['truthful_results_and_recovery_actions'] = substr_count($rendered, 'duplicate') === 1 && strpos($rendered, '1 imported') !== false
-			&& strpos($rendered, '1 rejected') !== false && strpos($rendered, '1 failed') !== false && strpos($rendered, '1 skipped') === false
-			&& strpos($rendered, 'Row 3') !== false && strpos($rendered, 'Date') !== false
-			&& strpos($rendered, 'gigpress-shows') !== false && strpos($rendered, 'gp-import-file') !== false
-			&& strpos($rendered, 'not overwritten') !== false;
+		$checks['result_counts_map_skipped_once_to_duplicate'] = strpos($rendered, '1 imported') !== false && strpos($rendered, '2 duplicates') !== false
+			&& strpos($rendered, '1 rejected') !== false && strpos($rendered, '1 failed') !== false && strpos($rendered, '1 skipped') === false;
+		$checks['row_details_and_recovery_actions'] = strpos($rendered, 'Row 3') !== false && strpos($rendered, 'Date') !== false
+			&& strpos($rendered, 'gigpress-shows') !== false && strpos($rendered, 'gp-import-file') !== false && strpos($rendered, 'not overwritten') !== false;
 	}
 	$failed = !$checks['selected_case'] || !$checks || in_array(false, $checks, true);
 	return array('case' => $case, 'status' => $failed ? 'FAIL' : 'PASS', 'checks' => $checks,
