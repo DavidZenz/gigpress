@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 05
 current_phase_name: CSV Import/Export
 status: executing
-stopped_at: Completed 05-02-PLAN.md
-last_updated: "2026-10-11T11:32:55.679Z"
+stopped_at: Completed 05-03-PLAN.md
+last_updated: "2026-10-11T11:48:32.241Z"
 last_activity: 2026-10-11
 last_activity_desc: Phase 05 execution started
-state_head: 4a7e490f6284ecc68d8c10fb405fd200b6a944f9
+state_head: b68f5641536889caceb075565f2106c0b74bff7e
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 23
-  completed_plans: 20
+  completed_plans: 21
   percent: 80
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-11)
 ## Current Position
 
 Phase: 05 (CSV Import/Export) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute next Phase 05 plan
 Last activity: 2026-10-11 — Phase 05 execution started
 
@@ -81,6 +81,7 @@ Planned work: 19/23 plans complete (80% progress bar); 05-01 is complete and the
 | Phase 04 P05 | 1273min | 3 tasks | 14 files |
 | Phase 05 P01 | 23min | 2 tasks | 7 files |
 | Phase 05 P02 | 23min | 2 tasks | 8 files |
+| Phase 05 P03 | 14 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,9 @@ Phase 05 planning decisions:
 - [Phase 05]: Keep existing status 0 unchanged and identify it for manual correction per D-13.
 - [Phase 05]: Preserve exact decoded CSV values and provide spreadsheet text-import guidance per D-17.
 - [Phase 05]: Use actual authenticated multipart transport for upload-origin evidence; keep persistence fault injection in trusted in-process tests.
+- [Phase 05]: Drive export counts and rows from one normalized selection; use -1 for all dates and keep filters current-visit only.
+- [Phase 05]: Preserve exact formula-like and leading-plus CSV values and provide scoped Excel text-import guidance per D-17.
+- [Phase 05]: Map legacy skipped import rows to duplicate once and provide row-level recovery guidance.
 
 ### Pending Todos
 
@@ -157,6 +161,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-11T11:32:55.642Z
-Stopped at: Completed 05-02-PLAN.md
+Last session: 2026-10-11T11:48:32.202Z
+Stopped at: Completed 05-03-PLAN.md
 Resume file: None
