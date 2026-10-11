@@ -4,6 +4,13 @@ function gigpress_artists() {
 	require_once __DIR__ . '/handlers.php';
 
 	global $wpdb;
+	$conversionIntent = null;
+	$conversionResult = null;
+	if (isset($_POST['gpaction']) && in_array($_POST['gpaction'], array('tour-conversion-preview', 'tour-conversion-confirm', 'tour-conversion-cancel'), true)) {
+		$conversionOutcome = gigpress_tour_conversion_dispatch();
+		if (!empty($conversionOutcome['token'])) $conversionIntent = $conversionOutcome;
+		else $conversionResult = $conversionOutcome;
+	}
 	
 	if(isset($_POST['gpaction']) && $_POST['gpaction'] == "add") {
 		require_once('handlers.php');
@@ -21,9 +28,7 @@ function gigpress_artists() {
 	}
 
 	if(isset($_GET['gpaction']) && $_GET['gpaction'] == "import-tours") {
-		require_once('handlers.php');
-		check_admin_referer('gigpress-action');
-		gigpress_map_tours_to_artists();		
+		$conversionResult = array('status' => 'rejected', 'reason' => 'conversion_requires_confirmed_intent');
 	}
 	
 	$url_args = (isset($_GET['gp-page'])) ? '&amp;gp-page=' . sanitize_text_field($_GET['gp-page']) : '';	
@@ -33,7 +38,9 @@ function gigpress_artists() {
 	<div class="wrap gigpress gp-artists">
 
 	<?php screen_icon('gigpress'); ?>		
-	<h2><?php _e("Artists", "gigpress"); ?></h2>	
+	<h2><?php _e("Artists", "gigpress"); ?></h2>
+	<?php if ($conversionResult) gigpress_tour_conversion_render_result($conversionResult); ?>
+	<?php if ($conversionIntent) gigpress_tour_conversion_render_preview($conversionIntent); ?>
 	
 	<?php
 	if(isset($_GET['gpaction']) && $_GET['gpaction'] == "edit" || isset($result) && isset($result['editing']) ) {
@@ -183,6 +190,21 @@ function gigpress_artists() {
 <?php endif; ?>
 	
 	<div id="artist-sort-update"></div>	
+	<h3><?php esc_html_e("Convert tours to artists", "gigpress"); ?></h3>
+	<p><?php esc_html_e("Review every selected tour and its active and trashed show references before confirming. Successfully converted tours are removed after all relationships are verified.", "gigpress"); ?></p>
+	<?php $conversionTours = $wpdb->get_results("SELECT tour_id, tour_name FROM " . GIGPRESS_TOURS . " WHERE tour_status = 'active' ORDER BY tour_name ASC"); ?>
+	<?php if ($conversionTours) : ?>
+	<form method="post" action="<?php echo esc_url(admin_url('admin.php?page=gigpress-artists')); ?>">
+		<?php wp_nonce_field('gigpress-tour-conversion'); ?>
+		<input type="hidden" name="gpaction" value="tour-conversion-preview" />
+		<fieldset><legend class="screen-reader-text"><?php esc_html_e("Tours to convert", "gigpress"); ?></legend>
+		<?php foreach ($conversionTours as $conversionTour) : ?>
+			<label><input type="checkbox" name="tour_ids[]" value="<?php echo esc_attr((string) $conversionTour->tour_id); ?>" /> <?php echo esc_html($conversionTour->tour_name); ?></label><br />
+		<?php endforeach; ?>
+		</fieldset>
+		<p><button class="button" type="submit"><?php esc_html_e("Preview conversion", "gigpress"); ?></button></p>
+	</form>
+	<?php else : ?><p><?php esc_html_e("There are no active tours to convert.", "gigpress"); ?></p><?php endif; ?>
 	
 	</div>
 <?php }

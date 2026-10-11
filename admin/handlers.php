@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/tour-conversion.php';
 
 function gigpress_require_database_ready() {
 	$result = function_exists('gigpress_db_bootstrap') ? gigpress_db_bootstrap() : array('status' => 'blocked', 'code' => 'bootstrap_unavailable');
@@ -1020,26 +1021,6 @@ function gigpress_empty_trash() {
 // ==============================================
 
 function gigpress_map_tours_to_artists() {
-
-	global $wpdb;
-	check_admin_referer('gigpress-action');
-	if (!gigpress_require_database_ready()) return false;
-
-	$tours = $wpdb->get_results("SELECT tour_name, tour_id FROM " . GIGPRESS_TOURS . " WHERE tour_status = 'active'");
-	if($tours) {
-		foreach($tours as $tour) {
-			$insert = $wpdb->insert(GIGPRESS_ARTISTS, array('artist_name' => $tour->tour_name));
-			$update = $wpdb->update(GIGPRESS_SHOWS, array('show_artist_id' => $wpdb->insert_id, 'show_tour_id' => 0), array('show_tour_id' => $tour->tour_id));
-			$delete = $wpdb->query("DELETE FROM " . GIGPRESS_TOURS . " WHERE tour_id = " . $tour->tour_id . " LIMIT 1");
-		}
-		if($insert && $update && $delete) {
-			echo('<div id="message" class="updated fade"><p>' . __("All tours have been migrated into artists.", "gigpress") . '</p></div>');
-		} else {
-			echo('<div id="message" class="error fade"><p>' . __("There was an error migrating tours to artists. Sorry.", "gigpress") . '</p></div>');
-
-		}
-	} else {
-		echo('<div id="message" class="error fade"><p>' . __("There were no tours to migrate.", "gigpress") . '</p></div>');
-	}
+	return array('status' => 'rejected', 'reason' => 'conversion_requires_confirmed_intent');
 
 }

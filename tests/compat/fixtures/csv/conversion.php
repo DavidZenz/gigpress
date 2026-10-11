@@ -2,9 +2,9 @@
 /* Conversion identities and relationships for complete preview and retry tests. */
 return array(
 	'artists' => array(
-		array('artist_name' => 'Existing Exact Artist', 'artist_url' => 'https://example.test/existing'),
-		array('artist_name' => 'Ambiguous Artist', 'artist_url' => ''),
-		array('artist_name' => 'Ambiguous Artist', 'artist_url' => ''),
+		array('artist_name' => 'Existing Exact Artist', 'artist_alpha' => 'existing exact artist', 'artist_url' => 'https://example.test/existing'),
+		array('artist_name' => 'Ambiguous Artist', 'artist_alpha' => 'ambiguous artist', 'artist_url' => ''),
+		array('artist_name' => 'Ambiguous Artist', 'artist_alpha' => 'ambiguous artist', 'artist_url' => ''),
 	),
 	'tours' => array(
 		array('tour_name' => 'Existing Exact Artist', 'tour_status' => 'active'),

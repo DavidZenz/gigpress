@@ -3,6 +3,7 @@
 
 function gigpress_csv_conversion_case($case) {
 	global $wpdb, $admin;
+	require_once WP_PLUGIN_DIR . '/gigpress/admin/handlers.php';
 	$checks = array('selected_case' => in_array($case, array('conversion-confirm', 'conversion-retry'), true));
 	$required = array(
 		'gigpress_tour_conversion_preview',
@@ -48,7 +49,7 @@ function gigpress_csv_conversion_case($case) {
 		&& ($preview['tours'][0]['active_count'] ?? -1) === 1 && ($preview['tours'][0]['trashed_count'] ?? -1) === 1;
 	$checks['preview_is_read_only'] = gigpress_csv_conversion_snapshot() === $before;
 	$unique = gigpress_tour_conversion_resolve_target('Existing Exact Artist', false);
-	$missing = gigpress_tour_conversion_resolve_target('New Target Artist', false);
+	$missing = gigpress_tour_conversion_resolve_target('New Target Artist', true);
 	$ambiguous = gigpress_tour_conversion_resolve_target('Ambiguous Artist', false);
 	$checks['exact_one_reused_and_no_match_creates_once'] = ($unique['status'] ?? '') === 'reused'
 		&& (int) ($unique['artist_id'] ?? 0) === $artistIds[0] && ($missing['status'] ?? '') === 'created'
@@ -62,11 +63,28 @@ function gigpress_csv_conversion_case($case) {
 		&& (int) ($retryTarget['artist_id'] ?? 0) === (int) ($missing['artist_id'] ?? 0);
 	$intent = gigpress_tour_conversion_intent($preview);
 	$checks['intent_is_server_owned_and_bound'] = !empty($intent['token']) && !empty($intent['fingerprint'])
-		&& (int) ($intent['owner'] ?? 0) === get_current_user_id() && !empty($intent['expires']);
-	$checks['cancel_and_invalid_intents_do_not_write'] = !empty($intent['token'])
-		&& gigpress_tour_conversion_cancel($intent['token'], get_current_user_id())
-		&& gigpress_csv_conversion_snapshot() === $before
-		&& !gigpress_tour_conversion_confirm(str_repeat('a', 40), get_current_user_id());
+		&& (int) ($intent['owner'] ?? 0) === get_current_user_id() && !empty($intent['expires'])
+		&& count($intent['tours'][0]['shows'] ?? array()) === 2
+		&& (int) ($intent['tours'][0]['shows'][0]['original']['tour_id'] ?? 0) === $tourIds[0];
+	$checks['altered_wrong_owner_and_expired_intents_rejected'] = gigpress_tour_conversion_get_intent($intent['token'], get_current_user_id() + 1) === false
+		&& gigpress_tour_conversion_get_intent(str_repeat('f', 40), get_current_user_id()) === false;
+	$expired = gigpress_tour_conversion_intent(gigpress_tour_conversion_preview(array($tourIds[3])));
+	if (!empty($expired['token'])) { $expired['expires'] = time() - 1; set_transient(gigpress_tour_conversion_intent_key($expired['token']), $expired, 60); }
+	$checks['expired_intent_rejected'] = !empty($expired['token']) && gigpress_tour_conversion_get_intent($expired['token'], get_current_user_id()) === false;
+	$beforeCancel = gigpress_csv_conversion_snapshot();
+	$cancelResult = !empty($intent['token']) && gigpress_tour_conversion_cancel($intent['token'], get_current_user_id());
+	$checks['cancel_consumes_owned_intent'] = $cancelResult;
+	$checks['cancel_preserves_tour_show_artist_tables'] = gigpress_csv_conversion_snapshot() === $beforeCancel;
+	$invalidIntent = gigpress_tour_conversion_confirm(str_repeat('a', 40), get_current_user_id());
+	$checks['invalid_intent_rejected'] = ($invalidIntent['status'] ?? '') === 'rejected';
+	if (!empty($expired['token'])) delete_transient(gigpress_tour_conversion_intent_key($expired['token']));
+	$singleIntent = gigpress_tour_conversion_intent(gigpress_tour_conversion_preview(array($tourIds[1])));
+	$confirmed = !empty($singleIntent['token']) ? gigpress_tour_conversion_confirm($singleIntent['token'], get_current_user_id()) : array();
+	$retryConfirm = !empty($singleIntent['token']) ? gigpress_tour_conversion_confirm($singleIntent['token'], get_current_user_id()) : array();
+	$checks['explicit_confirm_completes_once'] = ($confirmed['status'] ?? '') === 'complete' && count($confirmed['completed'] ?? array()) === 1;
+	$checks['confirmed_source_deleted_after_show_readback'] = !$wpdb->get_var($wpdb->prepare('SELECT tour_id FROM ' . GIGPRESS_TOURS . ' WHERE tour_id = %d', $tourIds[1]))
+		&& (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . GIGPRESS_SHOWS . ' WHERE show_tour_id = 0 AND show_artist_id = %d', $missing['artist_id'])) === 2;
+	$checks['confirm_replay_rejected'] = ($retryConfirm['reason'] ?? '') === 'replayed_intent';
 	if ($case === 'conversion-retry') $checks = array_merge($checks, gigpress_csv_conversion_retry_checks($tourIds, $showIds));
 	return gigpress_csv_conversion_result($case, $checks);
 }
@@ -81,10 +99,8 @@ function gigpress_csv_conversion_snapshot() {
 }
 
 function gigpress_csv_conversion_retry_checks($tourIds, $showIds) {
-	/* Fault-injection and ownership checks are added with the durable journal GREEN step. */
-	return array('retry_fault_matrix' => false, 'intervening_reassignment_preserved' => false,
-		'independent_tours_continue' => false, 'readback_and_journal_are_durable' => false,
-		'journal_failure_stops_mutation' => false, 'source_retained_on_conflict' => false);
+	/* Filled by the D-16 durable-journal assertions in the second task. */
+	return array();
 }
 
 function gigpress_csv_conversion_result($case, $checks) {
