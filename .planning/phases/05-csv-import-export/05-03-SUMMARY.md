@@ -104,6 +104,8 @@ Each task was committed with RED and GREEN commits:
 
 **Measured plan commits:** 4 (`plan_head_before` through `plan_head_after` above).
 
+**Plan metadata:** `75ca4d2` (docs: complete plan)
+
 ## Files Created/Modified
 
 - `admin/csv-export.php` - normalized filter state, shared selection predicate, CSV encoding, and guarded response boundary.
