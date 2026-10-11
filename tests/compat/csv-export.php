@@ -42,7 +42,41 @@ function gigpress_csv_export_case($case) {
 			$checks['invalid_nonce_stops_before_export'] = $deniedResult === false && strpos($deniedOutput, 'not authorized') !== false;
 		}
 	}
-	if ($case === 'export-literals') $checks['literal_case_pending'] = false;
+	if ($case === 'export-literals') {
+		$fixture = require WP_PLUGIN_DIR . '/gigpress/tests/compat/fixtures/csv/export-literals.php';
+		$csv = function_exists('gigpress_csv_export_encode') ? gigpress_csv_export_encode($fixture['rows']) : '';
+		$decoded = $csv !== '' ? gigpress_csv_decode($csv) : array();
+		$checks['canonical_header_and_literal_round_trip'] = ($decoded['headers'] ?? array()) === gigpress_csv_columns()
+			&& count($decoded['records'] ?? array()) === 3
+			&& ($decoded['records'][0]['Notes'] ?? null) === $fixture['values']['formula_unicode']
+			&& ($decoded['records'][0]['Venue phone'] ?? null) === $fixture['values']['venue_phone']
+			&& ($decoded['records'][0]['Ticket phone'] ?? null) === $fixture['values']['ticket_phone'];
+		$checks['distinct_optional_time_and_blank_end_date'] = ($decoded['records'][0]['Time'] ?? null) === ''
+			&& ($decoded['records'][1]['Time'] ?? null) === '00:00:00'
+			&& ($decoded['records'][0]['End date'] ?? null) === '';
+		$checks['legacy_status_zero_remains_literal'] = ($decoded['records'][2]['Status'] ?? null) === '0';
+		wp_set_current_user($admin->ID); $_GET = array(); $_POST = array();
+		ob_start(); gigpress_import_export(); $page = ob_get_clean();
+		$importPos = strpos($page, 'gp-csv-import-heading'); $exportPos = strpos($page, 'gp-csv-export-heading');
+		$checks['stacked_visible_sections_and_exact_controls'] = $importPos !== false && $exportPos !== false && $importPos < $exportPos
+			&& strpos($page, 'Import shows') !== false && strpos($page, 'Download CSV') !== false
+			&& preg_match('/<input[^>]+name="include_related"[^>]*>/', $page, $checkbox) === 1 && strpos($checkbox[0], 'checked') === false
+			&& strpos($page, 'destination site') !== false;
+		$checks['native_disclosures_and_bounded_spreadsheet_guidance'] = strpos($page, '<details') !== false && strpos($page, '<summary') !== false
+			&& stripos($page, 'Data &gt; From Text/CSV') !== false && strpos($page, 'not universal') !== false;
+		$checks['status_zero_manual_attention_visible'] = strpos($page, 'Status 0') !== false && strpos($page, 'manual attention') !== false;
+		$result = array('counts' => array('imported' => 1, 'duplicate' => 1, 'rejected' => 1, 'failed' => 1, 'skipped' => 1), 'total' => 5,
+			'records' => array('imported' => array(), 'duplicate' => array(array('row' => 2, 'identity' => 'A — 2032-05-06 — Hall', 'reason' => 'Already exists', 'next_step' => 'Review the existing show.')),
+				'rejected' => array(array('row' => 3, 'identity' => 'B — 2032-05-07 — Club', 'field' => 'Date', 'reason' => 'Invalid date', 'next_step' => 'Use YYYY-MM-DD.')),
+				'failed' => array(array('row' => 4, 'identity' => 'C — 2032-05-08 — Room', 'reason' => 'Database unavailable', 'next_step' => 'Retry after checking the database.')),
+				'skipped' => array(array('row' => 5, 'identity' => 'D — 2032-05-09 — Hall', 'reason' => 'Matching show already exists', 'next_step' => 'Correct source CSV and retry.'))));
+		$rendered = function_exists('gigpress_csv_render_import_result') ? gigpress_csv_render_import_result($result) : '';
+		$checks['truthful_results_and_recovery_actions'] = substr_count($rendered, 'duplicate') === 1 && strpos($rendered, '1 imported') !== false
+			&& strpos($rendered, '1 rejected') !== false && strpos($rendered, '1 failed') !== false && strpos($rendered, '1 skipped') === false
+			&& strpos($rendered, 'Row 3') !== false && strpos($rendered, 'Date') !== false
+			&& strpos($rendered, 'gigpress-shows') !== false && strpos($rendered, 'gp-import-file') !== false
+			&& strpos($rendered, 'not overwritten') !== false;
+	}
 	$failed = !$checks['selected_case'] || !$checks || in_array(false, $checks, true);
 	return array('case' => $case, 'status' => $failed ? 'FAIL' : 'PASS', 'checks' => $checks,
 		'assertion_count' => count($checks), 'warning_count' => 0, 'fatal_count' => 0, 'plugin_error_count' => 0);
