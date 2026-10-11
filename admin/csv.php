@@ -34,7 +34,12 @@ function gigpress_csv_prepare_record(array $row, int $csv_row, bool $include_rel
 		foreach (array('Artist', 'Venue', 'City', 'Country') as $required) if ($values[$required] === '') return array('group' => 'rejected', 'row' => $csv_row, 'field' => $required, 'reason' => __('This field is required.', 'gigpress'));
 	}
 	$status = $values['Status'] === '' ? 'active' : $values['Status'];
-	if (!in_array($status, gigpress_csv_statuses(), true)) return array('group' => 'rejected', 'row' => $csv_row, 'field' => 'Status', 'reason' => __('Use Active, Sold Out, or Cancelled.', 'gigpress'));
+	if (!in_array($status, gigpress_csv_statuses(), true)) {
+		$reason = $status === '0'
+			? __('This legacy status needs manual correction to Active, Sold Out, or Cancelled before import.', 'gigpress')
+			: __('Use Active, Sold Out, or Cancelled.', 'gigpress');
+		return array('group' => 'rejected', 'row' => $csv_row, 'field' => 'Status', 'reason' => $reason);
+	}
 	$related = 0;
 	if ($include_related && $values['Related ID'] !== '' && ctype_digit($values['Related ID']) && (int) $values['Related ID'] > 0) {
 		$postId = (int) $values['Related ID'];

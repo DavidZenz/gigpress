@@ -24,8 +24,10 @@ function gigpress_csv_migrated_case($case) {
 		$parser = new parseCSV(); $parser->parse($csv);
 		$rows = is_array($parser->data) ? $parser->data : array();
 		$row = $rows[0] ?? array();
-		$projection = count($rows) === 1 && array_keys($row) === gigpress_csv_columns();
-		foreach ($want as $field => $value) if ($field !== 'show_id') $projection = $projection && array_key_exists($field, $row) && $row[$field] === $value;
+		$projection = count($rows) === (int) ($want['row_count'] ?? 1) && array_keys($row) === gigpress_csv_columns();
+		$mismatches = array();
+		foreach ($want as $field => $value) if (!in_array($field, array('show_id', 'row_count', 'additional'), true) && (!array_key_exists($field, $row) || $row[$field] !== $value)) { $projection = false; $mismatches[$field] = array('expected' => $value, 'actual' => $row[$field] ?? null); }
+		if (isset($want['additional'])) foreach ($want['additional'] as $field => $value) if (($rows[1][$field] ?? null) !== $value) { $projection = false; $mismatches['additional.' . $field] = array('expected' => $value, 'actual' => $rows[1][$field] ?? null); }
 		$sourceStable = $source && gigpress_upgrade_preservation_snapshot() === $source;
 		$prepared = $projection ? gigpress_csv_prepare_record($row, 2, false) : array();
 		$sameSite = $projection ? gigpress_csv_persist_record($prepared) : array();
@@ -41,12 +43,14 @@ function gigpress_csv_migrated_case($case) {
 			&& $stored['show_expire'] === (($want['End date'] ?? '') === '' ? ($want['Date'] ?? '') : ($want['End date'] ?? ''));
 		$freshSnapshot = array('shows' => $wpdb->get_results('SELECT * FROM ' . GIGPRESS_SHOWS . ' ORDER BY show_id', ARRAY_A), 'artists' => $wpdb->get_results('SELECT * FROM ' . GIGPRESS_ARTISTS . ' ORDER BY artist_id', ARRAY_A), 'venues' => $wpdb->get_results('SELECT * FROM ' . GIGPRESS_VENUES . ' ORDER BY venue_id', ARRAY_A), 'tours' => $wpdb->get_results('SELECT * FROM ' . GIGPRESS_TOURS . ' ORDER BY tour_id', ARRAY_A));
 	$retry = $projection ? gigpress_csv_persist_record($freshPrepared) : array();
-	$retrySnapshot = array('shows' => $wpdb->get_results('SELECT * FROM ' . GIGPRESS_SHOWS . ' ORDER BY show_id', ARRAY_A), 'artists' => $wpdb->get_results('SELECT * FROM ' . GIGPRESS_ARTISTS . ' ORDER BY artist_id', ARRAY_A), 'venues' => $wpdb->get_results('SELECT * FROM ' . GIGPRESS_VENUES . ' ORDER BY venue_id', ARRAY_A));
+		$retrySnapshot = array('shows' => $wpdb->get_results('SELECT * FROM ' . GIGPRESS_SHOWS . ' ORDER BY show_id', ARRAY_A), 'artists' => $wpdb->get_results('SELECT * FROM ' . GIGPRESS_ARTISTS . ' ORDER BY artist_id', ARRAY_A), 'venues' => $wpdb->get_results('SELECT * FROM ' . GIGPRESS_VENUES . ' ORDER BY venue_id', ARRAY_A), 'tours' => $wpdb->get_results('SELECT * FROM ' . GIGPRESS_TOURS . ' ORDER BY tour_id', ARRAY_A));
 		$relatedOff = $projection ? gigpress_csv_prepare_record($row, 2, false) : array();
 		$relatedOn = $projection ? gigpress_csv_prepare_record($row, 2, true) : array();
 		$relatedChoice = (int) ($relatedOff['related'] ?? -1) === 0 && (int) ($relatedOn['related'] ?? -1) === (int) ($row['Related ID'] ?? 0);
 		$retryStable = ($retry['group'] ?? '') === 'duplicate' && $freshSnapshot === $retrySnapshot;
-		$perVersion[$version] = array('projected' => $projection, 'source_preserved' => $sourceStable, 'same_site_duplicate' => $sameSiteStable, 'fresh_identity' => $freshIdentity, 'fresh_retry' => $retryStable, 'related_choices' => $relatedChoice);
+		$perVersion[$version] = array('projected' => $projection, 'row_count' => count($rows), 'source_preserved' => $sourceStable,
+			'same_site_duplicate' => $sameSiteStable, 'fresh_identity' => $freshIdentity, 'fresh_retry' => $retryStable,
+			'related_choices' => $relatedChoice, 'diagnostics' => $projection ? array() : array('mismatches' => $mismatches, 'rows' => $rows));
 		$allProjection = $allProjection && $projection;
 		$allSourcePreserved = $allSourcePreserved && $sourceStable;
 		$allSameSiteRetry = $allSameSiteRetry && $sameSiteStable;
@@ -54,10 +58,30 @@ function gigpress_csv_migrated_case($case) {
 		$allFreshRetry = $allFreshRetry && $retryStable;
 		$allRelatedChoices = $allRelatedChoices && $relatedChoice;
 	}
+	$legacyFixture = gigpress_upgrade_preservation_fixture('1.6');
+	$legacySeeded = is_array($legacyFixture) && upgrade_preservation_seed($legacyFixture);
+	unset($GLOBALS['gigpress_db_bootstrap_result']);
+	$legacyReady = $legacySeeded ? gigpress_db_bootstrap() : array('status' => 'blocked');
+	$legacyRow = null;
+	if ($legacyReady['status'] === 'ready') {
+		$wpdb->update(GIGPRESS_SHOWS, array('show_status' => '0'), array('show_id' => 161), array('%s'), array('%d'));
+		$legacyBefore = gigpress_upgrade_preservation_snapshot();
+		$_POST = array('_wpnonce' => wp_create_nonce('gigpress-action'), 'scope' => '-1', 'artist_id' => '-1', 'tour_id' => '-1'); $_REQUEST = $_POST;
+		ob_start(); gigpress_export(); $legacyCsv = ob_get_clean();
+		$legacyParser = new parseCSV(); $legacyParser->parse($legacyCsv);
+		foreach ((array) $legacyParser->data as $candidate) if (($candidate['Notes'] ?? '') === 'Current active source record') $legacyRow = $candidate;
+		$legacyRejected = is_array($legacyRow) ? gigpress_csv_prepare_record($legacyRow, 2, false) : array();
+		$legacyZeroPreserved = ($legacyRow['Status'] ?? null) === '0' && ($legacyRejected['group'] ?? '') === 'rejected'
+			&& ($legacyRejected['field'] ?? '') === 'Status' && strpos($legacyRejected['reason'] ?? '', 'manual correction') !== false
+			&& gigpress_upgrade_preservation_snapshot() === $legacyBefore;
+	} else $legacyZeroPreserved = false;
 	$checks['source_evidence_nonempty'] = count($perVersion) === 7;
 	$checks['every_recognized_projection'] = $allProjection;
 	$checks['same_site_source_preserved_and_duplicate'] = $allSourcePreserved && $allSameSiteRetry;
 	$checks['fresh_destination_identity_and_retry'] = $allFreshIdentity && $allFreshRetry;
 	$checks['related_post_opt_out_and_opt_in'] = $allRelatedChoices;
-	return array('case' => $case, 'checks' => $checks, 'versions' => $perVersion, 'assertion_count' => count($checks), 'warning_count' => 0, 'fatal_count' => 0, 'plugin_error_count' => 0);
+	$checks['legacy_zero_export_preserved_and_manual_correction_identified'] = $legacyZeroPreserved;
+	$failed = !$checks['selected_case'] || !$checks || in_array(false, $checks, true);
+	return array('case' => $case, 'status' => $failed ? 'FAIL' : 'PASS', 'checks' => $checks, 'versions' => $perVersion,
+		'assertion_count' => count($checks), 'warning_count' => 0, 'fatal_count' => 0, 'plugin_error_count' => 0);
 }
