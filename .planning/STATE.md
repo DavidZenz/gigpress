@@ -3,16 +3,16 @@ gsd_state_version: "1.0"
 current_phase: 05
 current_phase_name: CSV Import/Export
 status: executing
-stopped_at: Completed 05-03-PLAN.md
-last_updated: "2026-10-11T11:48:32.241Z"
+stopped_at: Completed 05-04-PLAN.md
+last_updated: "2026-10-11T12:04:26.464Z"
 last_activity: 2026-10-11
 last_activity_desc: Phase 05 execution started
-state_head: b68f5641536889caceb075565f2106c0b74bff7e
+state_head: b2fe6030365b21a33daea561611b1667b81c8e9e
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 23
-  completed_plans: 21
+  completed_plans: 22
   percent: 80
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-10-11)
 ## Current Position
 
 Phase: 05 (CSV Import/Export) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute next Phase 05 plan
 Last activity: 2026-10-11 — Phase 05 execution started
 
@@ -82,6 +82,7 @@ Planned work: 19/23 plans complete (80% progress bar); 05-01 is complete and the
 | Phase 05 P01 | 23min | 2 tasks | 7 files |
 | Phase 05 P02 | 23min | 2 tasks | 8 files |
 | Phase 05 P03 | 14 | 2 tasks | 7 files |
+| Phase 05 P04 | 16 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -141,6 +142,8 @@ Phase 05 planning decisions:
 - [Phase 05]: Drive export counts and rows from one normalized selection; use -1 for all dates and keep filters current-visit only.
 - [Phase 05]: Preserve exact formula-like and leading-plus CSV values and provide scoped Excel text-import guidance per D-17.
 - [Phase 05]: Map legacy skipped import rows to duplicate once and provide row-level recovery guidance.
+- [Phase 05]: Require an owner-bound preview and explicit confirmation before destructive tour conversion.
+- [Phase 05]: Retry only relationships still owned by the conversion; preserve intervening reassignment conflicts and retain the source tour.
 
 ### Pending Todos
 
@@ -161,6 +164,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-10-11T11:48:32.202Z
-Stopped at: Completed 05-03-PLAN.md
+Last session: 2026-10-11T12:04:26.425Z
+Stopped at: Completed 05-04-PLAN.md
 Resume file: None
