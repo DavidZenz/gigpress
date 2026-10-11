@@ -1,77 +1,160 @@
 ---
-phase: "05"
-slug: "csv-import-export"
+phase: 05-csv-import-export
 status: draft
 nyquist_compliant: false
 wave_0_complete: false
-created: "2026-10-11"
+requirements:
+  - CSV-01
+  - CSV-02
+  - SEC-01
+updated: 2026-10-11
 ---
 
-# Phase 05 — Validation Strategy
+# Phase 05 Validation Strategy
 
-> Planning contract; no Phase 05 implementation tests have run. Align task IDs and threat references with the checked plans before execution.
+This record maps every planned task to the evidence it must produce. It is intentionally draft: no Phase 05 command or human workflow is recorded as passed by planning, and `nyquist_compliant` remains false until the exact matrix, browser observations, assumptions, and threat mitigations are complete.
 
-## Test Infrastructure
+## Evidence policy
 
-| Property | Value |
-|---|---|
-| Framework | Existing real WordPress/PHP assertion harness, Compose database, E_ALL |
-| Config | `tests/compat/run.sh`, `tests/compat/compose.yaml`, `tests/compat/probe.php` |
-| Quick run | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.3 --php 8.3 --scenario csv-workflows --case tracer-1.4` after first-plan routing |
-| Full suite | `rtk proxy bash tests/compat/run.sh matrix --scenario csv-workflows --case all --wp-lines 7.0,7.1 --wp-patches latest --php-supported upstream --php-min 8.3 --error-reporting E_ALL` after required-case routing |
-| Estimated runtime | Unmeasured; measure retained-cell cases. Cold image resolution/startup is separate. |
+- A scenario file existing is not evidence that it ran.
+- Automated completion requires the exact command, zero exit status, resolved runtime/image identity, current source/result fingerprints, and the expected contract binding in `05-CSV-MATRIX.md`.
+- Human completion requires a named browser or spreadsheet client/version plus a per-row observation in `05-BROWSER.md`; unobserved rows remain pending.
+- `csv-evidence validate` must reject missing, extra, duplicate, stale, failed, mismatched, or corrupt records. Its self-test must corrupt only copies and leave the authoritative report unchanged.
+- Every executable task below defines the condition that makes its command fail; a failure cannot be converted into a prose pass.
+- Container-backed commands remain pending until the Task 05-01-01 read-only `rtk docker info` precondition succeeds. The planning-time OrbStack socket denial establishes no daemon/image availability result; execution requests sandbox escalation for that read-only probe when needed.
+- Any edit to a fingerprinted production, fixture, dispatcher, runner, or browser-bootstrap file makes affected reports provisional until their assigned producer rebuilds them and the final validator runs.
 
-## Sampling Rate
+## Wave and dependency map
 
-- After every task commit: changed PHP lint plus the task's selected CSV case.
-- After every wave: implemented CSV case aggregate; relevant administration, upgrade-preservation and public-publishing regressions for shared-helper changes.
-- Before verify-work: exact required CSV case set across one resolved, pinned supported matrix, source-bound evidence validation, no warnings/fatals/plugin errors.
-- Feedback target: retained-cell case assertions under 30 seconds; measure rather than claim a cold-cell bound. Report measured feedback latency in final evidence.
+| Wave | Plan | Depends on | User-visible capability |
+|------|------|------------|-------------------------|
+| 1 | 05-01 | none | One migrated 1.4 show crosses the real import/export path; all 1.0-1.6 migrated/fresh-destination contracts follow. |
+| 2 | 05-02 | 05-01 | Complete-row import validation, truthful outcomes, actual multipart guards, and retry behavior. |
+| 3 | 05-03 | 05-02 | Exact export selection/count/download plus the stacked Import/Export screen and literal guidance. |
+| 3 | 05-04 | 05-02 | Previewed, confirmed, exact-name, journaled, recoverable tour conversion. |
+| 4 | 05-05 | 05-03, 05-04 | Exact runtime matrix, corruption checks, owned browser fixture, and evidence-derived validation. |
 
-## Per-Task Verification Map
+Wave 3 is intentionally parallel: 05-03 and 05-04 have no overlapping modified files.
 
-The planner must replace this case-level seed with its exact task IDs, waves and threat references. These are proposed new cases, not currently runnable tests.
+## Per-task automated validation
 
-| Case | Requirement | Secure behavior / contract | Test type | Status |
-|---|---|---|---|---|
-| tracer-1.4 | CSV-01, SEC-01 | Populated migrated export/import/duplicate retry retains IDs and values; textual status/read-back | Real-WP integration | Pending first slice |
-| migrated-contracts | CSV-01 | Recognized 1.0–1.6 populated fixtures, same-site and fresh-destination round trips | Real-WP integration | Pending |
-| import-rows | CSV-01, CSV-02, SEC-01 | All columns, strict validation before writes, row accounting, encoded hostile notices, status/association choices | Integration and DOM | Pending |
-| import-retry | CSV-01, CSV-02, SEC-01 | Actual SQL failures and verified safe retry without duplicated entities or overwritten shows | Fault injection | Pending |
-| upload-guards | SEC-01 | Real multipart upload; capability/method/nonce/readiness before side effects; bounded parsing/cleanup | Authenticated HTTP | Pending |
-| export-filters | CSV-01, CSV-02, SEC-01 | Actual count/query equality, retained visit state, empty-result/reset, no database writes | HTTP and independent snapshots | Pending |
-| export-literals | CSV-01, SEC-01 | Exact CSV values and quoting, D-17 guidance, supported/legacy statuses, no silent formula transforms | Independent parser assertions | Pending |
-| conversion-confirm | CSV-02, SEC-01 | Reviewed counts/identities, Confirm/Cancel and stale/replayed intent rejection | HTTP and snapshots | Pending |
-| conversion-retry | CSV-01, CSV-02, SEC-01 | Early/late INSERT/UPDATE/DELETE faults, verified identities/relations/deletion, all outcomes, recovery retry | Fault injection | Pending |
+| Task | Req | Planned command | Failure signal | Producing artifact | Status |
+|------|-----|-----------------|----------------|--------------------|--------|
+| 05-01-01 | CSV-01, CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario csv-workflows --case tracer-1.4` | Nonzero exit, missing real boundary, column/value drift, guard failure, or round-trip mismatch | `tests/compat/csv-workflows.php` | Pending execution |
+| 05-01-02 | CSV-01, CSV-02 | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario csv-workflows --case migrated-contracts` | Nonzero exit, missing 1.0-1.6 fixture, source mutation, fresh-destination drift, or schema/version change | `tests/compat/csv-migrated.php` | Pending execution |
+| 05-02-01 | CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario csv-workflows --case import-rows` | Nonzero exit, partial-row write, wrong outcome/count/detail, duplicate overwrite, invalid UTF-8 handling, or status-rule drift | `tests/compat/csv-import.php` | Pending execution |
+| 05-02-02a | CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario csv-workflows --case upload-guards` | Nonzero exit, non-multipart shortcut, capability/nonce/type/size/path guard bypass, unsafe rendered notice, or retained temp file | `tests/compat/csv-import.php` | Pending execution |
+| 05-02-02b | CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario csv-workflows --case import-retry` | Nonzero exit, duplicate overwrite, repeat insert, lost result/recovery action, or changed retry result | `tests/compat/csv-import.php` | Pending execution |
+| 05-03-01 | CSV-01, CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario csv-workflows --case export-filters` | Nonzero exit, missing all-dates/upcoming/past assertion, selection/count/rows disagree, unauthorized query/emission, deleted or wrong-scope row, empty attachment, lost no-match choices, or Reset not restoring all three defaults | `tests/compat/csv-export.php` through the 05-01 `csv-workflows` registry | Pending execution |
+| 05-03-02 | CSV-01, CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario csv-workflows --case export-literals` | Nonzero exit, UI/label/disclosure/result drift, wrong 23-column order, wrong time/status/blank-date rule, changed UTF-8 literal, or missing status-0 attention | `tests/compat/csv-export.php` through the 05-01 `csv-workflows` registry | Pending execution |
+| 05-04-01 | CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario csv-workflows --case conversion-confirm` | Nonzero exit, incomplete preview or per-show original/intended snapshot, preview/Cancel write, intent guard bypass, wrong exact-name branch, or retry duplicate | `tests/compat/csv-conversion.php` through the 05-01 `csv-workflows` registry | Pending execution |
+| 05-04-02a | CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario csv-workflows --case conversion-retry` | Nonzero exit, lost stage/error/snapshot, no independent continuation, absent readback/ownership compare, deliberate reassignment overwritten, conflicted source deleted, incorrect retry, double delete, or false success | `tests/compat/csv-conversion.php` through the 05-01 `csv-workflows` registry | Pending execution |
+| 05-04-02b | CSV-01, CSV-02 | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario upgrade-preservation --case all` | Nonzero exit, schema/version contract change, or prior preservation regression | Existing upgrade scenario | Pending execution |
+| 05-05-01a | CSV-01, CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh csv-evidence --action build --report .planning/phases/05-csv-import-export/05-CSV-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3` | Nonzero exit, missing/failed exact `csv-workflows` member/runtime, unresolved image identity, or absent command/status/source/result/contract field | `05-CSV-MATRIX.md` provisional producer proof | Pending execution |
+| 05-05-01b | CSV-01, CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh csv-evidence --action validate --report .planning/phases/05-csv-import-export/05-CSV-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3` | Nonzero exit or exact registry/runtime/command/status/source/result/contract evidence missing, stale, mismatched, duplicated, or failed | `05-CSV-MATRIX.md` provisional producer proof | Pending execution |
+| 05-05-01c | CSV-01, CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh csv-evidence --action self-test --report .planning/phases/05-csv-import-export/05-CSV-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3` | Nonzero exit, accepted corruption, changed authoritative report, or leaked temporary artifact | `05-CSV-MATRIX.md` provisional producer proof | Pending execution |
+| 05-05-02 | CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh csv-fixture --action smoke --wp 7.1.2 --php 8.3 --case all` | Nonzero exit, unavailable route/action/auth prerequisite, missing ownership metadata, cleanup failure, or guard bypass | `tests/compat/CSV-BROWSER.md` | Pending execution |
+| 05-05-03a | CSV-01, CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh csv-evidence --action build --report .planning/phases/05-csv-import-export/05-CSV-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3` after Task 05-05-02's final fingerprinted source edit | Nonzero exit, missing/failed final `csv-workflows` member/runtime, unresolved image identity, or missing final-source fingerprint | Final `05-CSV-MATRIX.md` | Pending execution |
+| 05-05-03b | CSV-01, CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh csv-evidence --action validate --report .planning/phases/05-csv-import-export/05-CSV-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3` | Nonzero exit, stale/missing/duplicate/mismatched registry, runtime, command, status, source, result, or contract field | Final `05-CSV-MATRIX.md` | Pending execution |
+| 05-05-03c | CSV-01, CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh csv-evidence --action self-test --report .planning/phases/05-csv-import-export/05-CSV-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3` | Nonzero exit, accepted corruption, changed authoritative report, or leaked temporary artifact | Final `05-CSV-MATRIX.md` | Pending execution |
+| 05-05-03d | CSV-01, SEC-01 | `rtk proxy bash tests/compat/run.sh public-evidence --action build --report .planning/phases/04-public-publishing/04-PUBLIC-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3` | Nonzero exit, stale final-runner fingerprint, or failed public case/runtime | Refreshed `04-PUBLIC-MATRIX.md` | Pending execution |
+| 05-05-03e | CSV-01, SEC-01 | `rtk proxy bash tests/compat/run.sh public-evidence --action validate --report .planning/phases/04-public-publishing/04-PUBLIC-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3` | Nonzero exit or refreshed public report is missing, stale, mismatched, duplicated, corrupt, or failed | Refreshed `04-PUBLIC-MATRIX.md` | Pending execution |
+| 05-05-03f | CSV-01, SEC-01 | `rtk proxy bash tests/compat/run.sh public-evidence --action self-test --report .planning/phases/04-public-publishing/04-PUBLIC-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3` | Nonzero exit, accepted inherited-public corruption, or changed authoritative report | Refreshed `04-PUBLIC-MATRIX.md` | Pending execution |
+| 05-05-03g | CSV-01, SEC-01 | `rtk proxy bash tests/compat/run.sh matrix --scenario upgrade-preservation --case all --wp-lines 7.0,7.1 --wp-patches latest --php-supported upstream --php-min 8.3 --error-reporting E_ALL` | Nonzero exit, missing/failed preservation cell/case, runtime error, or exact results not used to refresh the report | Refreshed `02-PRESERVATION-MATRIX.md` | Pending execution |
+| 05-05-03h | CSV-01, SEC-01 | `rtk proxy bash tests/compat/run.sh preservation-evidence --report .planning/phases/02-data-and-upgrade-preservation/02-PRESERVATION-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3` | Nonzero exit or refreshed preservation report is missing an exact supported cell, recognized fixture, passing case, runtime identity, or required final-runner binding | Refreshed `02-PRESERVATION-MATRIX.md` | Pending execution |
 
-## Wave 0 Requirements
+## Exact Phase 05 evidence registry
 
-First tracer plan owns the shared harness registration and shared production seams. It must add `csv-workflows` to all runner/probe routing layers, case forwarding, nonempty assertions, required-set validation and fixtures before dependent commands are used.
+The `csv-evidence` report must contain exactly these nine member cases for every resolved supported runtime. `all` is an aggregate selector and is not a registry member.
 
-- [ ] Independent CSV expectations and migrated-fixture adapter; no importer-derived expected values.
-- [ ] Actual multipart HTTP upload checks plus trusted in-process fixture helper, with no production request bypass.
-- [ ] Query-level SQL faults for import and conversion, snapshots and read-back mismatches.
-- [ ] Source-bound matrix/evidence contract and positive/negative evidence validation.
-- [ ] Retained owner-scoped browser fixture with CSV lifecycle support and safe cleanup.
-- Existing harness is reused; no new testing framework installation.
+| Scenario | Case | Contract |
+|----------|------|----------|
+| csv-workflows | tracer-1.4 | Production import/export happy path for one migrated 1.4 show |
+| csv-workflows | migrated-contracts | Recognized 1.0-1.6 and fresh-destination preservation |
+| csv-workflows | import-rows | Complete-row validation and truthful outcomes |
+| csv-workflows | import-retry | Duplicate-safe correction and retry |
+| csv-workflows | upload-guards | Actual multipart, auth/file, cleanup, and CR04 rendering guards |
+| csv-workflows | export-filters | All-dates/upcoming/past selection/count/query parity and empty no-download/retain/Reset |
+| csv-workflows | export-literals | UI contract, 23 columns, status/time/date, UTF-8 exact literals |
+| csv-workflows | conversion-confirm | Preview/Cancel/Confirm, per-show original/intended snapshot, and exact-name resolution |
+| csv-workflows | conversion-retry | Durable journal, ownership comparison, conflict preservation, readback, independent faults, convergent owned retry |
 
-## Manual-Only Verifications
+## Required human evidence
 
-| Behavior | Requirement | Why manual | Instructions |
-|---|---|---|---|
-| Stacked sections, upload labels/help, disclosure keyboard/focus, visible grouped results and another upload | CSV-02 | Actual browser interaction | Open owned fixture, complete keyboard upload/retry and inspect results; repeat without JavaScript |
-| Real download, retained selected filters, no-match reset | CSV-01, CSV-02 | Actual browser download/visit state | Choose artist/tour/scope, download, verify selection; try empty selection then Reset |
-| Reviewed conversion Confirm/Cancel and safe retry feedback | CSV-02, SEC-01 | Actual reviewed-action flow | Review identities/counts, cancel with no mutation, confirm, inspect each outcome and retry failed tour |
-| Explicit spreadsheet text import and edit/re-import | CSV-01, SEC-01 | Client-specific behavior | Import all relevant columns as text, check representative literal values, edit/save and re-import; name observed client/version. D-17 accepts direct-open risk and authorizes no universal safety claim |
+All rows begin pending. Record them in `05-BROWSER.md`; never infer them from the CLI cases.
 
-## Validation Sign-Off
+| ID | Decision coverage | Observation | Required identity | Status |
+|----|-------------------|-------------|-------------------|--------|
+| H-05-01 | D-01, D-02, D-03, D-04 | With JavaScript disabled, Import is first, Export remains visible, disclosure is operable, related-post is visible/unchecked with exact-ID explanation, and labels are exact. | Browser/version + fixture session | Pending |
+| H-05-02 | D-05, D-06, D-07, D-08, D-13 | Actual multipart upload shows all four outcome counts/details, row/identity/reason/guidance, show-list/another-upload, correction/retry, duplicate no-overwrite, and status handling. | Browser/version + fixture session + fixture name | Pending |
+| H-05-03 | D-09, D-10, D-11 | Nonempty export shows actual artist/tour/all-dates-or-upcoming-or-past scope/count and downloads matching rows; empty export produces no download, retains the current choices and offers Reset filters; choosing Reset restores All artists/All tours/All dates, while a later visit starts at those defaults. | Browser/version + fixture session + downloaded file hash | Pending |
+| H-05-04 | D-12, D-17 | Visible note and disclosure describe the bounded text-import workflow; exact formula-like/leading-plus values are retained. If a spreadsheet is exercised, record text-import/save/re-import only for the named client. | Browser/version; optional spreadsheet client/version and saved-file hash | Pending |
+| H-05-05 | D-14, D-15, D-16 | Preview lists complete names/counts; Cancel is unchanged; Confirm/retry covers exact-one, none, ambiguity, independent failure, retained evidence, and final reassignment/deletion. | Browser/version + fixture session + before/after identifiers | Pending |
 
-- [ ] Every task has automated verification or an explicit first-plan dependency.
-- [ ] No three consecutive tasks lack automated verification.
-- [ ] All proposed routes/tests are implemented before use.
-- [ ] No watch-mode commands; positive nonempty assertions and exact case membership.
-- [ ] Supported targets/images are resolved once and pinned across CSV and inherited regression evidence.
-- [ ] Actual human/browser/client acceptance is reported separately from automated evidence.
-- [ ] Final task/threat map matches checked plans; Nyquist audit determines compliant status.
+The D-17 transparency prohibition is resolved only when H-05-04 records exact-value behavior and keeps any external-client claim scoped to the named observed workflow. Direct-open interpretation risk remains accepted; no rewrite/block transformation is introduced.
 
-**Approval:** Pending execution and verification; this draft is not a test pass.
+## Edge and failure coverage
+
+| Boundary | Required evidence |
+|----------|-------------------|
+| Empty/header-only import | One deterministic rejected/no-row result, zero writes, actionable guidance |
+| Single-record import | Exactly one classified outcome and no hidden second write |
+| BOM/encoding | Only a BOM at the first header is accepted/stripped; valid UTF-8 values stay exact; invalid encoding is actionable; no normalization/transcoding |
+| Complete-row atomicity | Validation finishes before any row write; invalid rows leave no artist/tour/gig/post partials |
+| Duplicate/retry | Existing show remains unchanged, duplicate is truthful, corrected retry converges once |
+| Empty export | No attachment header/body, exact visible notice, current choices retained, explicit Reset filters offered, and defaults restored only when Reset is chosen |
+| Literal export | Formula-like and leading-plus values decode exactly; no universal spreadsheet-safety claim |
+| Optional time/date/status | 00:00:01 sentinel differs from real 00:00:00; absent End date is blank; status uses CR07 text; preexisting `0` is retained/flagged |
+| Conversion ambiguity | More than one exact artist match yields no writes |
+| Conversion fault stages | Early/late insert, update, delete, readback, and journal-write failures remain durable/actionable; per-show original/intended ownership is compared; a deliberate reassignment after partial progress is not overwritten and retains the source; owned retry converges |
+| Hostile CR04 surfaces | Notice values, filenames, and system errors remain destination-safe in HTML, headers, logs, and CLI output |
+
+## Threat-to-evidence map
+
+| Threat ref | Plan | Mitigation evidence | Status |
+|------------|------|---------------------|--------|
+| T-05-01 | 05-01 | Complete-record validation, field formats, persisted identity/field readback before imported | Pending |
+| T-05-02 | 05-01 | One terminal outcome per parsed row, fixture-owned identity, count equality, unchanged duplicate/retry snapshots | Pending |
+| T-05-03 | 05-01 | Exact selected-case evidence dispatch, nonempty assertions, and zero runtime/plugin errors | Pending |
+| T-05-04 | 05-02 | Import capability, POST/action, nonce, and readiness reject before file reads/moves/writes | Pending |
+| T-05-05 | 05-02 | Actual uploaded origin, bounded nonempty file, exact structure, and owned temp cleanup | Pending |
+| T-05-06 | 05-02 | Complete-row identity/write readback and stage-aware retry after query failure | Pending |
+| T-05-07 | 05-02 | Destination-safe CR04 row, filename, and bounded system-error rendering | Pending |
+| T-05-08 | 05-03 | Normalized filter/query and displayed count/download parity | Pending |
+| T-05-09 | 05-03 | Export capability/nonce rejection before query/headers/body | Pending |
+| T-05-10 | 05-03 | Exact literal preservation plus D-17 bounded text-import guidance/accepted client risk | Pending |
+| T-05-11 | 05-04 | Owner/expiry/nonce/capability/source/replay-bound conversion intent | Pending |
+| T-05-12 | 05-04 | All-candidate exact-name resolution, original/intended per-show journal snapshots, ownership comparison, deliberate-reassignment conflict preservation, mutation readback, and idempotent owned retry | Pending |
+| T-05-13 | 05-04 | Per-tour durable stage/failure results and independent continuation | Pending |
+| T-05-14 | 05-05 | Exact unified matrix registry, runtime identities, post-final-edit Phase 05 build, affected Phase 02/04 report refresh, final validators, and corruption self-tests | Pending |
+| T-05-15 | 05-05 | Browser fixture ownership/session/status/check/cleanup evidence | Pending |
+| T-05-16 | 05-05 | Named human clients, per-row observations, absent-evidence pending rule | Pending |
+| T-05-SC | all | No package install planned; any introduced install stops for legitimacy audit/checkpoint | Pending execution audit |
+
+## Source coverage gate
+
+| Source class | Required set | Planned coverage | Status |
+|--------------|--------------|------------------|--------|
+| GOAL | Understand import/export tasks/results; retain established exchange; reject unsafe mutation | Plans 05-01 through 05-05 | Complete in plans; evidence pending |
+| REQ | CSV-01, CSV-02, SEC-01 | Every requirement appears in plan frontmatter and executable tasks | Complete in plans; evidence pending |
+| RESEARCH | 23-column/value/time/status contract; import atomicity/multipart/CR04; migrated fixtures; export state; conversion journal/faults; exact matrix/browser lifecycle | Plans 05-01 through 05-05 and exact registry above | Complete in plans; evidence pending |
+| CONTEXT | D-01 through D-17 | Tasks and H-05-01 through H-05-05 | Complete in plans; evidence pending |
+| DEFERRED | FUTURE-02 arbitrary mappings/new formats | Explicitly excluded | Not a gap |
+
+## Assumption and API gates
+
+- CSV-01 unclassified behavior assumption remains unresolved until the source-fingerprinted registry and browser flow reveal no additional consumer or undocumented mapping.
+- SEC-01 unclassified authorization assumption remains unresolved until every planned negative capability/nonce/file/rendering/conversion path is evidenced.
+- The pre-plan assumption-delta detector reported no planning-critical delta; execution must still record any discovered delta rather than silently changing scope.
+- The phase introduces no external service API. WordPress/GigPress calls are local product interfaces covered by the scenarios and source fingerprints.
+
+## Completion rule
+
+Set `wave_0_complete: true` only after every producer scenario, fixture, runner lane, report schema, and browser lifecycle named above exists. Set `nyquist_compliant: true` and advance `status` only when:
+
+1. after the final fingerprinted source change, the exact Phase 05 build succeeds and its validate/self-test commands accept only the current matrix evidence,
+2. refreshed Phase 04 public build/validate/self-test and refreshed Phase 02 upgrade-preservation matrix/report validation succeed against the final shared runner,
+3. H-05-01 through H-05-05 contain named observations or an explicitly accepted pending external-client row consistent with D-17,
+4. every T-05-01 through T-05-16 mitigation is evidenced,
+5. the two unclassified assumptions are resolved or explicitly accepted by the developer, and
+6. no source item is missing or silently reduced.

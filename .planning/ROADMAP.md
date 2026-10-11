@@ -140,7 +140,22 @@ Required inherited review fixes: [CSV review follow-ups](CSV-REVIEW-FOLLOWUPS.md
   2. Import and export screens clearly label each task and report actionable results, including imported, duplicate, skipped, or rejected row counts and applicable reasons.
   3. Invalid inputs on changed administration and import/export paths are rejected with text feedback; unauthorized or nonce-invalid mutations do not change records, and output is safely encoded for its destination.
 
-**Plans**: TBD
+**Plans**: 0/5 plans complete in 4 waves
+
+Plans:
+**Wave 1**
+- [ ] 05-01-PLAN.md — Establish a populated migrated CSV tracer, shared contracts and recognized-version round trips.
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 05-02-PLAN.md — Complete import validation, real upload protection, truthful results and safe retries.
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 05-03-PLAN.md — Deliver matching export counts/filters and the stacked Import/Export screen with exact-value guidance.
+- [ ] 05-04-PLAN.md — Confirm and verify tour conversion with recoverable, conflict-aware retries.
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 05-05-PLAN.md — Produce final-source compatibility evidence and owned browser acceptance fixtures.
+
 **UI hint**: yes
 **Research flags**: Use representative CSV fixtures to verify duplicate/invalid rows, partial failures, row counts and reasons, spreadsheet safety, and import/export round trips while retaining current column and filter behavior. Run import/export on populated migrated Phase 02 fixtures to complete the deferred migration integration check.
 
@@ -152,4 +167,4 @@ Required inherited review fixes: [CSV review follow-ups](CSV-REVIEW-FOLLOWUPS.md
 | 2. Data and Upgrade Preservation | 4/4 | Complete    | 2026-10-04 |
 | 3. Administration Workflows | 4/4 | Complete    | 2026-10-05 |
 | 4. Public Publishing | 5/5 | Complete    | 2026-10-11 |
-| 5. CSV Import/Export | 0/TBD | Not started | - |
+| 5. CSV Import/Export | 0/5 | Planned | - |

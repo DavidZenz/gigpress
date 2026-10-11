@@ -2,7 +2,7 @@
 
 **Researched:** 2026-10-11
 **Domain:** Procedural WordPress/PHP CSV transfer, recoverable related-record writes, administration feedback.
-**Confidence:** HIGH for current source contracts; MEDIUM for external spreadsheet guidance; unresolved policy is explicit below.
+**Confidence:** HIGH for current source contracts; MEDIUM for external spreadsheet guidance; the D-17 policy and remaining execution prerequisites are explicitly resolved/disposed below.
 
 <user_constraints>
 ## User Constraints (from CONTEXT.md)
@@ -46,7 +46,7 @@ Source: the following locked decisions, discretion and deferred ideas are copied
 
 The user selected all four areas and explicitly chose each substantive decision above; no area was delegated wholesale. Exact supporting copy, spacing, accessible disclosure/focus mechanics, request-state handling, row-number conventions, fixture organization, recovery bookkeeping and safe output encoding are implementation details for research and planning.
 
-Characterize existing CSV parsing, matching, related-post and export semantics before altering them. Research spreadsheet formula handling alongside literal-value preservation and round trips; the selected instructional note does not waive SEC-01 or authorize silently changing stored/exported content. Record any unresolved tradeoff with a concrete proposed behavior during planning. No arbitrary mapping wizard or new export mode was selected.
+Characterize existing CSV parsing, matching, related-post and export semantics before altering them. D-17 resolves the researched spreadsheet formula/literal-transfer tradeoff; it does not waive SEC-01 upload, mutation, HTML-output or CSV-structure controls. No arbitrary mapping wizard or new export mode was selected.
 
 Creating this context authorizes the discussion artifacts and commits; it does not start planning or execution automatically.
 
@@ -69,7 +69,7 @@ Project skill directories yielded no skill files in this session, and the config
 |---|---|---|
 | CSV-01 | CSV import and export retain the existing GigPress column format, supported filters, related-post option, and row-handling behavior. | Column contract; matching and row validation; shared export query; migrated fixtures and two distinct round trips. |
 | CSV-02 | Import and export screens clearly label their tasks and report actionable results, including imported, duplicate, skipped, or rejected row counts and reasons where applicable. | Structured mutually exclusive outcomes; row identity; retained visit state; zero-result recovery; accessible disclosures. |
-| SEC-01 | Changed administration and import/export paths validate inputs, retain appropriate capability and nonce checks for mutations, and escape output for its destination format. | Upload-origin checks; boundary validation; actual capability enforcement; verified writes; HTML versus CSV serialization; formula-policy question. |
+| SEC-01 | Changed administration and import/export paths validate inputs, retain appropriate capability and nonce checks for mutations, and escape output for its destination format. | Upload-origin checks; boundary validation; actual capability enforcement; verified writes; HTML versus CSV serialization; D-17 exact-literal policy and scoped client evidence. |
 
 The IDs and descriptions above come from the requirement definitions. [VERIFIED: .planning/REQUIREMENTS.md:35-41]
 </phase_requirements>
@@ -80,7 +80,7 @@ Use the existing procedural plugin, bundled parser and real WordPress compatibil
 
 The highest-risk work is preserving identities during interrupted import/conversion, correcting textual status writes, and separating stored/parsed values from HTML notices. Import currently creates tour/artist/venue records before duplicate detection and checks only the eventual show insert; conversion unconditionally inserts, updates and deletes and evaluates only the last iteration. The reviewed source still contains these behaviors. [VERIFIED: admin/handlers.php:1016-1136,1225-1243]
 
-**Primary recommendation:** First deliver a populated migrated-fixture tracer through protected import, verified row insertion, literal CSV export and safe repeat import. Establish structured outcomes and an exact harness registry in that slice. Then implement full input/retry coverage, export screen/query state and confirmed conversion in dependency order. Treat spreadsheet protection as an explicit planning decision: current official guidance documents a conflict between formula neutralization and unchanged CSV values. [VERIFIED: tests/compat/public-tracer.php:47-83; admin/handlers.php:1084-1136; CITED: https://community.owasp.org/attacks/CSV_Injection]
+**Primary recommendation:** First deliver a populated migrated-fixture tracer through protected import, verified row insertion, literal CSV export and safe repeat import. Establish structured outcomes and an exact harness registry in that slice. Then implement full input/retry coverage, export screen/query state and confirmed conversion in dependency order. Implement D-17 exactly: preserve formula-like and leading-plus values, provide text-import guidance, and keep any spreadsheet claim scoped to the named observed workflow without transforms or download blocking. [VERIFIED: tests/compat/public-tracer.php:47-83; admin/handlers.php:1084-1136; 05-CONTEXT.md D-17; CITED: https://community.owasp.org/attacks/CSV_Injection]
 
 ## Architectural Responsibility Map
 
@@ -94,7 +94,7 @@ The ownership below is the recommended design, grounded in the existing server-r
 | Tour conversion confirmation and recovery | API / Backend | Database / Storage | Bind confirmed intent; verify all writes before source deletion. |
 | Export count, membership, serialization | API / Backend | Database / Storage | One normalized query defines both count and actual downloadable rows. |
 | HTML feedback | Frontend Server | — | Escape raw row/file/system text at the final HTML sink. |
-| Spreadsheet interpretation | External spreadsheet client | Backend detection / browser guidance | CSV syntax cannot encode a universal spreadsheet cell type; policy must be stated. |
+| Spreadsheet interpretation | External spreadsheet client | Backend detection / browser guidance | D-17 fixes exact literal transfer and scoped text-import guidance; CSV syntax still cannot support a universal client-safety claim. |
 
 ## Standard Stack
 
@@ -414,23 +414,18 @@ Do not describe the bundled parser as universally current or fully conformant me
 | A1 | Transaction availability on existing installations is unobserved; an unspecified schema engine does not prove either support or incompatibility. | Conversion | A rollback-only plan could lose recovery guarantees. |
 | A2 | Live external service configuration was not audited. | Runtime State Inventory | External dependency would require actual inspection if newly introduced. |
 | A3 | Host OS registrations were not audited; no registration operation is proposed. | Runtime State Inventory | A newly introduced host dependency would require inventory. |
-| A4 | No measured application upload processing bound or real spreadsheet client/version acceptance has been obtained. | Open Questions | An invented limit or universal client guarantee would lack evidence. |
+| A4 | No measured application upload processing bound or real spreadsheet client/version acceptance has been obtained. | Resolved dispositions below | Use the request-time WordPress/PHP bound and exact UTF-8/BOM rule; keep any unobserved client workflow pending rather than inventing a guarantee. |
 
 Design recommendations are explicitly recommendations within discretion; they are not assertions that helpers, journals or new harness cases already exist.
 
-## Open Questions
+## Open Questions — RESOLVED
 
-1. **Formula protection versus unchanged literal transfer — resolved during planning as option A, D-17.**
-   - Known: D-12 retains the CSV contract and selects guidance placement; SEC-01 still applies. OWASP's discussed prefixes can alter literal data, and quoting alone is not a formula defense. [VERIFIED: user constraints above; CITED: https://community.owasp.org/attacks/CSV_Injection]
-   - **Proposed option A:** Keep exact CSV values and established download behavior; clearly require explicit text import in spreadsheet guidance, and constrain the verified safety claim to safe CSV record serialization plus the specifically observed text-import workflow. Document residual unsafe direct-opening/save/reopen behavior as a concrete user-accepted destination limitation. This preserves compatibility but needs explicit acceptance; the selected note alone is insufficient.
-   - **Proposed option B:** Detect risky exported cells after final projection; refuse only affected selected downloads, remain on page and identify show/field for manual correction. No stored mutation or output prefix. This is stronger fail-closed behavior but changes transfer availability and can block legitimate leading-plus phone values, so it requires an explicit choice and a tested classification policy. It must not become a blanket block merely because a legacy row has status zero.
-   - Automatic apostrophe/tab transforms or a second spreadsheet output mode are outside current authorization. Do not choose them silently. Bring the concrete options to the user through the parent planner; continue unrelated planning in parallel.
-2. **Upload processing bound and accepted encoding detail.**
-   - Known: current loader reads the complete file; core upload size testing alone checks nonempty input. No project-specific numeric cap was supplied. [VERIFIED: lib/parsecsv.lib.php:741-746; CITED: https://developer.wordpress.org/reference/functions/_wp_handle_upload/]
-   - Recommendation: derive effective bounds from WordPress/PHP settings and measured representative input, expose a truthful help/error limit, retain comma/header format and define UTF-8/BOM behavior in the tests. A chosen numeric cap and claimed client compatibility remain unmeasured. [ASSUMED]
-3. **Actual execution environment availability.**
-   - Known: CLI versions were observed, but Docker socket access returned `permission denied while trying to connect to the docker API at unix:///Users/davidzenz/.orbstack/run/docker.sock`. This is no observation of daemon state or container/image readiness. [VERIFIED: session docker-info output]
-   - Recommendation: execution obtains sandbox permission for the existing owned harness, resolves targets once and records immutable images. This does not block writing plans or source research.
+1. **Formula protection versus unchanged literal transfer — resolved by D-17.**
+   - Resolution: preserve exact exported values, including formula-like strings and legitimate leading-plus phone numbers, provide explicit text-import guidance, and limit any client-safety statement to the specifically observed workflow. Direct-opening formula execution is an accepted destination limitation; no prefix, strip, rewrite, block, second output mode or universal claim is authorized. The binding D-17 wording remains verbatim in `User Constraints` above. [VERIFIED: 05-CONTEXT.md D-17 and 05-DISCUSSION-LOG.md]
+2. **Upload processing bound and accepted encoding detail — resolved by implementation discretion.**
+   - Resolution: resolve `wp_max_upload_size()` in the request-handling runtime and use that value as the application processing maximum; require both the submitted size and actual temporary-file byte length to be nonzero and no greater than that effective WordPress/PHP limit. Add no unrelated fixed numeric cap. Accept valid UTF-8 only, strip exactly one UTF-8 BOM only at byte zero before the first `Date` header, and reject invalid UTF-8, UTF-16/legacy encodings, a BOM elsewhere, normalization and silent transcoding. Surface the runtime-resolved byte limit in errors/help and assert these exact cases. [VERIFIED: WordPress runtime-bound design; parser/header evidence above]
+3. **Actual execution environment availability — execution prerequisite recorded; availability remains unclaimed.**
+   - Disposition: planning observed Docker CLI/Compose versions, while the read-only daemon probe was denied at `/Users/davidzenz/.orbstack/run/docker.sock`; this proves neither daemon nor image availability. Before the first container-backed task, execution runs read-only `rtk docker info`; on a sandbox socket denial it requests the proper escalation and reruns the probe. The task halts if the probe still cannot establish availability, then resolves targets once and records immutable image identities. No successful environment probe is fabricated in this research record. [VERIFIED: session docker-info output; 05-01 execution precondition]
 
 ## Environment Availability
 
@@ -504,7 +499,7 @@ Those commands deliberately specify proposed scenario/case values; they are **no
 | SEC-01 / CR-04 | Distinct hostile row, filename and system-error values stay text in every rendered outcome | Actual handler output / DOM parsing | Proposed `import-rows`, `upload-guards` | New cases Wave 0 |
 | SEC-01 / CR-05 | Early/late INSERT, UPDATE, DELETE failures; stale/ambiguous/no-show tours; complete truthful batch and safe retry | Injected real-WP SQL failure + read-back | Proposed `conversion-retry`, `conversion-confirm` | New cases Wave 0 |
 | SEC-01 / CR-07 | Text status writes, exact format alignment, supported statuses, blank default, existing zero retained and identified | Integration | Proposed `import-rows`, `export-literals`, `migrated-contracts` | New cases Wave 0 |
-| SEC-01 | Chosen formula policy and exact literal preservation | CSV parser assertions + manual scoped spreadsheet workflow | Proposed `export-literals`; human policy/client checks | Policy unresolved; new coverage required |
+| SEC-01 | D-17 exact literal preservation and bounded spreadsheet guidance | CSV parser assertions + manual scoped spreadsheet workflow | Proposed `export-literals`; named human client evidence remains pending until observed | Policy resolved; executable and client-scoped evidence required |
 
 ### Assertion coverage that must be explicit
 
@@ -595,7 +590,7 @@ Research cache puts were attempted for all three returned keys, but the tool ret
 
 - Standard stack: HIGH — current bundled source, metadata and existing harness inspected; no new package/version assumption.
 - Architecture: HIGH — explicit user decisions and live source boundaries; proposed seams/journal are clearly recommendations.
-- Pitfalls: HIGH for source defects; MEDIUM for primary-source spreadsheet guidance; policy/client acceptance remains unresolved.
-- Environment: observed CLI versions only; daemon/container access and actual spreadsheet behavior are unconfirmed.
+- Pitfalls: HIGH for source defects; MEDIUM for primary-source spreadsheet guidance; D-17 is resolved while client-specific acceptance remains pending until observed.
+- Environment: observed CLI versions only; daemon/container access remains an explicit execution precondition and actual spreadsheet behavior remains unconfirmed.
 
 **Research date:** 2026-10-11. **Refresh:** reread source if implementation changes; resolve supported runtimes and verify client-specific guidance at final validation. **Tests run:** none. **Implementation edits:** none. **Commit:** parent orchestrator handles the research artifact commit.
