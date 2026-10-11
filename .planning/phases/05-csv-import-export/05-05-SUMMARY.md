@@ -94,7 +94,7 @@ status: complete
 2. **Task 05-05-02:** `0191910` — owned browser fixture, pending acceptance form, and route include fix.
 3. **Task 05-05-03:** `73dad71` — refreshed matrix reports and validation mapping.
 
-**Plan metadata:** Recorded separately after state updates.
+**Plan metadata:** `3c18078` — state, roadmap, and summary record.
 
 ## Files Created/Modified
 
