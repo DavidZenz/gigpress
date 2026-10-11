@@ -70,6 +70,10 @@ function gigpress_csv_workflows_case($case) {
 		$checks['text_status_and_relationship_readback'] = is_array($stored) && $stored['show_status'] === 'active' && (int) $stored['show_tour_id'] > 0 && (int) $stored['show_related'] === (int) ($exported['Related ID'] ?? 0);
 		$checks['result_accounting_has_one_terminal_group'] = function_exists('gigpress_csv_import_result') && gigpress_csv_import_result(array($imported, $retry))['counts'] === array('imported' => 1, 'duplicate' => 1, 'rejected' => 0, 'failed' => 0);
 	}
+	if ($case === 'migrated-contracts') {
+		require_once WP_PLUGIN_DIR . '/gigpress/tests/compat/csv-migrated.php';
+		return gigpress_csv_migrated_case($case);
+	}
 	$failed = !$checks['selected_case'] || !$checks || in_array(false, $checks, true);
 	return array('case' => $case, 'status' => $failed ? 'FAIL' : 'PASS', 'checks' => $checks,
 		'assertion_count' => count($checks), 'warning_count' => 0, 'fatal_count' => 0, 'plugin_error_count' => 0);
