@@ -1,19 +1,13 @@
 ---
-status: testing
+status: complete
 phase: 04-public-publishing
 source: [04-01-SUMMARY.md, 04-02-SUMMARY.md, 04-03-SUMMARY.md, 04-04-SUMMARY.md, 04-05-SUMMARY.md, 04-VERIFICATION.md]
 started: 2026-10-06T12:03:57+02:00
-updated: 2026-10-07T10:46:11+02:00
+updated: 2026-10-11T10:30:36+02:00
 ---
 
 ## Current Test
-<!-- OVERWRITE each test - shows where we are -->
-
-number: 22
-name: Resolve the PUB-01 privacy prohibition
-expected: |
-  Explicitly accept the static finding that the changed public production paths add no server-side outbound HTTP request or new external provider for feed/calendar output; Google Calendar and Maps URLs remain visitor-followed links. Alternatively, define a concrete network-level check and record its result.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -154,17 +148,20 @@ coverage_id: D4
 
 ### 22. Resolve the PUB-01 privacy prohibition
 expected: Explicitly accept the static finding that the changed public production paths add no server-side outbound HTTP request or new external provider for feed/calendar output; Google Calendar and Maps URLs remain visitor-followed links. Alternatively, define a concrete network-level check and record its result.
-result: [pending]
+result: pass
 source: user_reported
 evidence: .planning/phases/04-public-publishing/04-VERIFICATION.md#human-verification-required
 coverage_id: PUB-01-privacy
+response: "pass"
+accepted_at: 2026-10-11T10:30:36+02:00
+acceptance: User explicitly accepted the static assessment of the privacy boundary described in this checkpoint; no network-level check was requested or performed.
 
 ## Summary
 
 total: 22
-passed: 21
+passed: 22
 issues: 0
-pending: 1
+pending: 0
 skipped: 0
 blocked: 0
 
