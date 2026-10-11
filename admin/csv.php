@@ -119,6 +119,11 @@ function gigpress_csv_validate_record(array $row, int $csv_row, bool $include_re
 		'end_date' => $end, 'multi' => $values['End date'] === '' ? 0 : 1, 'status' => $status, 'related' => $related);
 }
 
+/* Keep the Plan 05-01 preparation contract available to migration tracers. */
+function gigpress_csv_prepare_record(array $row, int $csv_row, bool $include_related) {
+	return gigpress_csv_validate_record($row, $csv_row, $include_related);
+}
+
 function gigpress_csv_query_value($sql, $field) {
 	global $wpdb;
 	$wpdb->last_error = '';
