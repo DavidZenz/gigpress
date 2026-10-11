@@ -74,6 +74,10 @@ function gigpress_csv_workflows_case($case) {
 		require_once WP_PLUGIN_DIR . '/gigpress/tests/compat/csv-migrated.php';
 		return gigpress_csv_migrated_case($case);
 	}
+	if (in_array($case, array('import-rows', 'import-retry', 'upload-guards'), true)) {
+		require_once WP_PLUGIN_DIR . '/gigpress/tests/compat/csv-import.php';
+		return gigpress_csv_import_case($case);
+	}
 	$failed = !$checks['selected_case'] || !$checks || in_array(false, $checks, true);
 	return array('case' => $case, 'status' => $failed ? 'FAIL' : 'PASS', 'checks' => $checks,
 		'assertion_count' => count($checks), 'warning_count' => 0, 'fatal_count' => 0, 'plugin_error_count' => 0);
