@@ -74,6 +74,22 @@ function gigpress_csv_migrated_case($case) {
 		$legacyZeroPreserved = ($legacyRow['Status'] ?? null) === '0' && ($legacyRejected['group'] ?? '') === 'rejected'
 			&& ($legacyRejected['field'] ?? '') === 'Status' && strpos($legacyRejected['reason'] ?? '', 'manual correction') !== false
 			&& gigpress_upgrade_preservation_snapshot() === $legacyBefore;
+		$literalInput = $legacyRow;
+		$literalInput['Date'] = '2031-09-02';
+		$literalInput['Status'] = 'active';
+		$literalInput['Related ID'] = '';
+		$literalInput['Notes'] = '=HYPERLINK("https://example.test","Zażółć 東京")';
+		$literalInput['Ticket phone'] = '+00012';
+		$literalPrepared = gigpress_csv_prepare_record($literalInput, 3, false);
+		$literalPersisted = gigpress_csv_persist_record($literalPrepared);
+		$_POST = array('_wpnonce' => wp_create_nonce('gigpress-action'), 'scope' => '-1', 'artist_id' => '-1', 'tour_id' => '-1'); $_REQUEST = $_POST;
+		ob_start(); gigpress_export(); $literalCsv = ob_get_clean();
+		$literalParser = new parseCSV(); $literalParser->parse($literalCsv);
+		$literalExport = null;
+		foreach ((array) $literalParser->data as $candidate) if (($candidate['Notes'] ?? '') === $literalInput['Notes']) $literalExport = $candidate;
+		$storedZero = $wpdb->get_var($wpdb->prepare('SELECT show_status FROM ' . GIGPRESS_SHOWS . ' WHERE show_id = %d', 161));
+		$literalRoundTrip = ($literalPersisted['group'] ?? '') === 'imported' && ($literalExport['Notes'] ?? null) === $literalInput['Notes']
+			&& ($literalExport['Ticket phone'] ?? null) === '+00012' && (string) $storedZero === '0';
 	} else $legacyZeroPreserved = false;
 	$checks['source_evidence_nonempty'] = count($perVersion) === 7;
 	$checks['every_recognized_projection'] = $allProjection;
@@ -81,6 +97,7 @@ function gigpress_csv_migrated_case($case) {
 	$checks['fresh_destination_identity_and_retry'] = $allFreshIdentity && $allFreshRetry;
 	$checks['related_post_opt_out_and_opt_in'] = $allRelatedChoices;
 	$checks['legacy_zero_export_preserved_and_manual_correction_identified'] = $legacyZeroPreserved;
+	$checks['formula_unicode_and_leading_plus_literals_round_trip'] = $legacyReady['status'] === 'ready' && $literalRoundTrip;
 	$failed = !$checks['selected_case'] || !$checks || in_array(false, $checks, true);
 	return array('case' => $case, 'status' => $failed ? 'FAIL' : 'PASS', 'checks' => $checks, 'versions' => $perVersion,
 		'assertion_count' => count($checks), 'warning_count' => 0, 'fatal_count' => 0, 'plugin_error_count' => 0);
