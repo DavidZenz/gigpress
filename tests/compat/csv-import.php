@@ -45,13 +45,17 @@ function gigpress_csv_import_case($case) {
 			&& gigpress_csv_decode($raw . "\xEF\xBB\xBF")['error'] !== null;
 		$short = array_slice($fixture['base'], 0, -1);
 		$shortResult = gigpress_csv_validate_record($short, 4, false);
+		$shortCsv = implode(',', array_map($encode, $fixture['headers'])) . "\r\n" . implode(',', array_map(function ($key) use ($encode, $literalRow) { return $encode($literalRow[$key]); }, array_slice($fixture['headers'], 0, -1))) . "\r\n";
+		$shortParsed = gigpress_csv_decode($shortCsv);
 		$status = $fixture['base']; $status['Status'] = 'unknown';
 		$time = $fixture['base']; $time['Time'] = '24:00:00';
 		$related = $fixture['base']; $related['Related ID'] = '-1';
 		$checks['short_record_status_time_and_related_rejected'] = ($shortResult['group'] ?? '') === 'rejected'
 			&& gigpress_csv_validate_record($status, 5, false)['group'] === 'rejected'
 			&& gigpress_csv_validate_record($time, 6, false)['field'] === 'Time'
-			&& gigpress_csv_validate_record($related, 7, true)['field'] === 'Related ID';
+			&& gigpress_csv_validate_record($related, 7, true)['field'] === 'Related ID'
+			&& ($shortParsed['records'][0]['group'] ?? '') === 'rejected' && ($shortParsed['records'][0]['row'] ?? 0) === 2
+			&& strpos($shortParsed['records'][0]['identity'] ?? '', $literalRow['Artist']) !== false;
 		$checks['record_width_and_utf8_validation'] = is_array($parsed) && count($parsed['records'] ?? array()) === 1;
 		foreach (array(GIGPRESS_SHOWS, GIGPRESS_ARTISTS, GIGPRESS_VENUES, GIGPRESS_TOURS) as $table) $wpdb->query('DELETE FROM ' . $table);
 		$literalPrepared = gigpress_csv_validate_record($literalRow, 2, false);
@@ -94,6 +98,19 @@ function gigpress_csv_import_case($case) {
 			&& count($afterFailure['venues']) === 1 && count($afterFailure['tours']) === 1 && count($afterFailure['shows']) === 0
 			&& ($retry['group'] ?? '') === 'imported' && count($afterRetry['artists']) === 1 && count($afterRetry['venues']) === 1
 			&& count($afterRetry['tours']) === 1 && count($afterRetry['shows']) === 1 && ($repeat['group'] ?? '') === 'duplicate' && $afterRepeat === $afterRetry;
+		$writeFailures = array();
+		foreach (array('artist' => GIGPRESS_ARTISTS, 'tour' => GIGPRESS_TOURS, 'venue' => GIGPRESS_VENUES) as $kind => $table) {
+			$testRow = $fixture['base']; $testRow['Artist'] = 'Retry ' . ucfirst($kind) . ' Band'; $testRow['Venue'] = 'Retry ' . ucfirst($kind) . ' Hall'; $testRow['Tour'] = 'Retry ' . ucfirst($kind) . ' Tour';
+			$testPrepared = gigpress_csv_validate_record($testRow, 4, false); $seen = false; $needle = 'INSERT INTO `' . $table . '`';
+			$failWrite = function ($sql) use (&$seen, $needle) { if (!$seen && stripos($sql, $needle) !== false) { $seen = true; return 'INTENTIONAL ENTITY WRITE FAILURE'; } return $sql; };
+			$suppressedErrors = $wpdb->suppress_errors(true); add_filter('query', $failWrite, 9999);
+			$failedEntity = gigpress_csv_persist_record($testPrepared);
+			remove_filter('query', $failWrite, 9999); $wpdb->suppress_errors($suppressedErrors);
+			$retriedEntity = gigpress_csv_persist_record($testPrepared);
+			$writeFailures[$kind] = $seen && ($failedEntity['group'] ?? '') === 'failed' && !empty($failedEntity['reason'])
+				&& !empty($failedEntity['next_step']) && ($retriedEntity['group'] ?? '') === 'imported';
+		}
+		$checks['early_artist_tour_and_venue_write_failures_retry_safely'] = !in_array(false, $writeFailures, true);
 		$readbackRow = $fixture['base']; $readbackRow['Artist'] = 'Readback Failure Band'; $readbackRow['Venue'] = 'Readback Failure Hall';
 		$readbackPrepared = gigpress_csv_validate_record($readbackRow, 3, false); $readbackAttempted = false;
 		$readbackTarget = 'SELECT * FROM ' . GIGPRESS_SHOWS . ' WHERE show_id';

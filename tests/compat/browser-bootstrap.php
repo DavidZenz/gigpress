@@ -71,8 +71,93 @@ function browser_http($path, $post = null, $jar = 'admin') {
     return $result;
 }
 
+function browser_multipart_upload($path, array $post, $field, $filePath, $filename, $jar = 'admin') {
+    global $base;
+    if (!is_string($path) || !str_starts_with($path, '/') || str_starts_with($path, '//')) throw new RuntimeException('Owned HTTP path required');
+    if (!is_string($field) || !preg_match('/\A[a-zA-Z0-9_]+\z/', $field)) throw new RuntimeException('Owned multipart field required');
+    $fixtureRoot = realpath(WP_PLUGIN_DIR . '/gigpress/tests/compat/fixtures');
+    $resolved = is_string($filePath) ? realpath($filePath) : false;
+    $ownedFixture = $fixtureRoot && $resolved && ($resolved === $fixtureRoot || str_starts_with($resolved, $fixtureRoot . DIRECTORY_SEPARATOR));
+    $ownedTemp = $resolved && dirname($resolved) === sys_get_temp_dir() && preg_match('/\Agigpress-browser-owned-upload-[A-Za-z0-9]+\.csv\z/', basename($resolved));
+    if ((!$ownedFixture && !$ownedTemp) || !$resolved || !is_file($resolved) || !is_readable($resolved) || strtolower(pathinfo($resolved, PATHINFO_EXTENSION)) !== 'csv') {
+        throw new RuntimeException('Multipart source must be a readable owned CSV fixture');
+    }
+    if (!is_string($filename) || $filename === '' || str_contains($filename, "\0")) throw new RuntimeException('Multipart filename is required');
+    $cookie = '/tmp/gigpress-browser-' . $jar . '.cookies';
+    $handle = curl_init($base . $path);
+    $fields = $post; $fields[$field] = new CURLFile($resolved, 'text/csv', $filename);
+    curl_setopt_array($handle, array(CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS => 5, CURLOPT_TIMEOUT => 30, CURLOPT_COOKIEJAR => $cookie, CURLOPT_COOKIEFILE => $cookie,
+        CURLOPT_CONNECT_TO => array('127.0.0.1:' . parse_url($base, PHP_URL_PORT) . ':127.0.0.1:80'),
+        CURLOPT_PROXY => '', CURLOPT_REFERER => $base . '/wp-admin/admin.php?page=gigpress-import-export',
+        CURLOPT_POST => true, CURLOPT_POSTFIELDS => $fields));
+    $html = curl_exec($handle);
+    if ($html === false) throw new RuntimeException('Multipart fixture transport failed: ' . curl_error($handle));
+    $result = array('html' => $html, 'status' => (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE), 'url' => curl_getinfo($handle, CURLINFO_EFFECTIVE_URL),
+        'content_type' => (string) curl_getinfo($handle, CURLINFO_CONTENT_TYPE), 'request_method' => 'POST', 'transport' => 'multipart/form-data');
+    unset($handle);
+    return $result;
+}
+
 function browser_csv() {
-    return array('owned_multipart_helper_available' => function_exists('browser_multipart_upload'));
+    global $wpdb;
+    $checks = array('authenticated_admin_login' => browser_login('browser-admin', 'admin'));
+    $page = '/wp-admin/admin.php?page=gigpress-import-export';
+    $form = browser_http($page);
+    $fields = browser_form($form['html'], '//form[.//input[@name="gpaction" and @value="import"]]');
+    $checks['rendered_import_nonce'] = $form['status'] === 200 && !empty($fields['_wpnonce']) && ($fields['gpaction'] ?? '') === 'import';
+    $fixture = WP_PLUGIN_DIR . '/gigpress/tests/compat/fixtures/shows.csv';
+    $before = browser_snapshot();
+    $tempsBefore = glob(sys_get_temp_dir() . '/php*') ?: array();
+    $upload = browser_multipart_upload($page, $fields, 'gp_import', $fixture, 'browser-multipart.csv');
+    $after = browser_snapshot();
+    $row = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . GIGPRESS_SHOWS . ' WHERE show_notes = %s ORDER BY show_id DESC LIMIT 1', 'Quoted, durable notes'), ARRAY_A);
+    $checks['actual_multipart_reaches_uploaded_origin_and_persists'] = $upload['status'] === 200 && $upload['transport'] === 'multipart/form-data'
+        && strpos($upload['content_type'], 'text/html') !== false && strpos($upload['html'], 'Show imported and verified.') !== false
+        && count($after['shows']) === count($before['shows']) + 1 && $row && $row['show_notes'] === 'Quoted, durable notes'
+        && $row['show_tix_phone'] === '+1-555-0101';
+    $beforeHostile = browser_snapshot();
+    $hostile = browser_multipart_upload($page, $fields, 'gp_import', $fixture, '<img src=x onerror=alert(1)>.txt');
+    $afterHostile = browser_snapshot();
+    $checks['hostile_filename_is_text_and_extension_rejected_without_writes'] = $hostile['status'] === 200
+        && strpos($hostile['html'], '&lt;img src=x onerror=alert(1)&gt;.txt') !== false
+        && strpos($hostile['html'], '<img src=x onerror=alert(1)>') === false && strpos($hostile['html'], '0 imported') !== false && $beforeHostile === $afterHostile;
+    $badNonceFields = $fields; $badNonceFields['_wpnonce'] = 'invalid';
+    $beforeBadNonce = browser_snapshot();
+    $badNonce = browser_multipart_upload($page, $badNonceFields, 'gp_import', $fixture, 'blocked.csv');
+    $afterBadNonce = browser_snapshot();
+    $checks['actual_multipart_invalid_nonce_rejected_before_mutation'] = strpos($badNonce['html'], 'import request expired') !== false && $beforeBadNonce === $afterBadNonce;
+    $subscriberLogin = browser_login('browser-subscriber', 'subscriber');
+    $beforeSubscriber = browser_snapshot();
+    $subscriber = browser_multipart_upload($page, $fields, 'gp_import', $fixture, 'subscriber.csv', 'subscriber');
+    $afterSubscriber = browser_snapshot();
+    $checks['actual_multipart_subscriber_cannot_mutate'] = $subscriberLogin && strpos($subscriber['html'], 'not allowed') !== false
+        && $beforeSubscriber === $afterSubscriber;
+    foreach (array('empty' => WP_PLUGIN_DIR . '/gigpress/tests/compat/fixtures/csv/empty.csv',
+        'header_only' => WP_PLUGIN_DIR . '/gigpress/tests/compat/fixtures/csv/header-only.csv') as $kind => $pathToFile) {
+        $beforeFileError = browser_snapshot();
+        $response = browser_multipart_upload($page, $fields, 'gp_import', $pathToFile, $kind . '.csv');
+        $afterFileError = browser_snapshot();
+        $fileLevelGuidance = $kind === 'empty' ? 'CSV file is empty' : 'header and at least one show';
+        $checks[$kind . '_multipart_file_error_has_zero_rows_and_no_writes'] = strpos($response['html'], $fileLevelGuidance) !== false
+            && strpos($response['html'], '0 imported') !== false && strpos($response['html'], '0 duplicates') !== false
+            && strpos($response['html'], '0 rejected') !== false && strpos($response['html'], '0 failed') !== false
+            && $beforeFileError === $afterFileError;
+    }
+    $limit = (int) wp_max_upload_size();
+    $tempBase = tempnam(sys_get_temp_dir(), 'gigpress-browser-owned-upload-');
+    $largePath = $tempBase . '.csv'; rename($tempBase, $largePath);
+    $large = fopen($largePath, 'wb'); $remaining = $limit + 1;
+    while ($remaining > 0) { $chunk = min($remaining, 65536); fwrite($large, str_repeat('X', $chunk)); $remaining -= $chunk; }
+    fclose($large);
+    $beforeLarge = browser_snapshot();
+    $oversize = browser_multipart_upload($page, $fields, 'gp_import', $largePath, 'oversize.csv');
+    $afterLarge = browser_snapshot(); @unlink($largePath);
+    $checks['actual_upload_size_limit_matches_wordpress_effective_limit'] = strpos($oversize['html'], 'current upload limit is ' . size_format($limit)) !== false
+        && strpos($oversize['html'], 'no larger than ' . size_format($limit)) !== false && $beforeLarge === $afterLarge;
+    $tempsAfter = glob(sys_get_temp_dir() . '/php*') ?: array();
+    $checks['multipart_temporary_uploads_cleaned'] = array_values(array_diff($tempsAfter, $tempsBefore)) === array();
+    return $checks;
 }
 
 function browser_dom($html) {

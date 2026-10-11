@@ -69,7 +69,9 @@ function gigpress_csv_decode(string $contents) {
 	$records = array();
 	foreach ($rows as $index => $cells) {
 		if (count($cells) !== count($headers)) {
-			$records[] = gigpress_csv_detail('rejected', $index + 2, '', '', __('This record has a different number of cells than the header.', 'gigpress'), __('Add or remove cells so this row has exactly 23 values.', 'gigpress'));
+			$partial = array();
+			foreach ($headers as $cellIndex => $header) if (array_key_exists($cellIndex, $cells)) $partial[$header] = $cells[$cellIndex];
+			$records[] = gigpress_csv_detail('rejected', $index + 2, gigpress_csv_identity($partial), 'CSV record', __('This record has a different number of cells than the header.', 'gigpress'), __('Add or remove cells so this row has exactly 23 values.', 'gigpress'));
 			continue;
 		}
 		$records[] = array_combine($headers, $cells);
@@ -211,10 +213,13 @@ function gigpress_csv_validate_upload(array $file, array $request) {
 	foreach (array('name', 'tmp_name', 'error', 'size') as $key) if (!isset($file[$key]) || !is_scalar($file[$key])) return array('valid' => false, 'reason' => __('The uploaded file details are incomplete.', 'gigpress'), 'next_step' => __('Choose the CSV file again and retry.', 'gigpress'));
 	$name = (string) $file['name']; $path = (string) $file['tmp_name']; $error = (int) $file['error'];
 	$owned = $path !== '' && is_uploaded_file($path);
-	if ($error !== UPLOAD_ERR_OK) return array('valid' => false, 'owned' => $owned, 'path' => $owned ? $path : '', 'reason' => __('The file upload did not complete.', 'gigpress'), 'next_step' => __('Choose the CSV file again and check the upload size limit.', 'gigpress'));
+	$limit = (int) wp_max_upload_size();
+	if ($error !== UPLOAD_ERR_OK) return array('valid' => false, 'owned' => $owned, 'path' => $owned ? $path : '',
+		'reason' => sprintf(__('The file upload did not complete. The current upload limit is %s.', 'gigpress'), size_format($limit)),
+		'next_step' => sprintf(__('Choose the CSV file again with a size no larger than %s.', 'gigpress'), size_format($limit)), 'limit' => $limit);
 	if (!$owned) return array('valid' => false, 'reason' => __('The file was not received through an authenticated upload.', 'gigpress'), 'next_step' => __('Submit the file through the GigPress import form.', 'gigpress'));
 	if (!preg_match('/\.csv\z/i', $name)) return array('valid' => false, 'owned' => true, 'path' => $path, 'reason' => __('Choose a file with a .csv extension.', 'gigpress'), 'next_step' => __('Export the file as comma-delimited UTF-8 CSV and try again.', 'gigpress'));
-	$limit = (int) wp_max_upload_size(); $actual = filesize($path); $reported = (int) $file['size'];
+	$actual = filesize($path); $reported = (int) $file['size'];
 	if ($limit < 1 || $actual === false || $reported < 1 || $actual < 1 || $actual > $limit || $reported > $limit) return array('valid' => false, 'owned' => true, 'path' => $path,
 		'reason' => $actual === 0 ? __('The CSV file is empty.', 'gigpress') : sprintf(__('The file exceeds the current upload limit of %s.', 'gigpress'), size_format($limit)),
 		'next_step' => sprintf(__('Choose a nonempty CSV file no larger than %s.', 'gigpress'), size_format($limit)), 'limit' => $limit);
