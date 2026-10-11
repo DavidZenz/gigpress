@@ -4,6 +4,7 @@
 function gigpress_upgrade_preservation_request($handler, $request, $files = array(), &$outcome = null) {
 	if ($handler === 'gigpress_delete_show') return gigpress_upgrade_preservation_confirmed_trash($request, $outcome);
 	$nonce = wp_create_nonce('gigpress-action');
+	$_SERVER['REQUEST_METHOD'] = 'POST';
 	$_GET = $request;
 	$_POST = $request;
 	$_FILES = $files;
@@ -37,6 +38,7 @@ function gigpress_upgrade_preservation_confirmed_trash($request, &$outcome = nul
 }
 
 function gigpress_upgrade_preservation_forged_request($handler, $request, $files = array()) {
+	$_SERVER['REQUEST_METHOD'] = 'POST';
 	$_GET = $request;
 	$_POST = $request;
 	$_FILES = $files;
@@ -44,8 +46,9 @@ function gigpress_upgrade_preservation_forged_request($handler, $request, $files
 	$level = ob_get_level();
 	try {
 		ob_start();
-		call_user_func($handler);
-		ob_end_clean();
+		$result = call_user_func($handler);
+		$output = ob_get_clean();
+		if ($handler === 'gigpress_import') return $result === false && strpos($output, 'request expired') !== false;
 		return false;
 	} catch (RuntimeException $exception) {
 		while (ob_get_level() > $level) ob_end_clean();
@@ -111,12 +114,16 @@ function gigpress_upgrade_preservation_run_mutation_readiness_guards() {
 	$ok = $ok && gigpress_db_bootstrap()['status'] === 'ready';
 	require_once WP_PLUGIN_DIR . '/gigpress/admin/handlers.php';
 
-	// The legacy map action is also a dispatched write path: a valid nonce must
-	// keep its established workflow available before blocked-state assertions.
-	gigpress_upgrade_preservation_request('gigpress_map_tours_to_artists', array());
-	$ok = $ok
-		&& !$wpdb->get_var($wpdb->prepare('SELECT tour_id FROM ' . GIGPRESS_TOURS . ' WHERE tour_id = %d', 29))
-		&& $wpdb->get_var($wpdb->prepare('SELECT artist_id FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_name = %s', 'Preservation Tour'));
+	// Phase 05 replaced the old one-click conversion write with explicit preview
+	// and confirmation. A stale legacy action must now be rejected without writes;
+	// the confirmed workflow is exercised by the CSV conversion cases.
+	$beforeLegacyConversion = gigpress_upgrade_preservation_mutation_snapshot();
+	$legacyConversionOutcome = null;
+	gigpress_upgrade_preservation_request('gigpress_map_tours_to_artists', array(), array(), $legacyConversionOutcome);
+	$afterLegacyConversion = gigpress_upgrade_preservation_mutation_snapshot();
+	$ok = $ok && ($legacyConversionOutcome['status'] ?? '') === 'rejected'
+		&& ($legacyConversionOutcome['reason'] ?? '') === 'conversion_requires_confirmed_intent'
+		&& $beforeLegacyConversion === $afterLegacyConversion;
 
 	$ok = $ok && upgrade_preservation_seed($fixture);
 	unset($GLOBALS['gigpress_db_bootstrap_result']);
@@ -135,9 +142,8 @@ function gigpress_upgrade_preservation_run_mutation_readiness_guards() {
 		'gigpress_update_tour' => array('tour_id' => 29, 'tour_name' => 'Changed Tour'),
 		'gigpress_add_artist' => array('artist_name' => 'Blocked Artist', 'artist_url' => ''),
 		'gigpress_update_artist' => array('artist_id' => 41, 'artist_name' => 'Changed Artist', 'artist_url' => ''),
-		'gigpress_import' => array(),
+		'gigpress_import' => array('gpaction' => 'import'),
 		'gigpress_empty_trash' => array(),
-		'gigpress_map_tours_to_artists' => array(),
 	);
 	$beforeBlocked = gigpress_upgrade_preservation_mutation_snapshot();
 	$GLOBALS['gigpress_db_bootstrap_result'] = array('status' => 'blocked', 'code' => 'unsafe_metadata');
