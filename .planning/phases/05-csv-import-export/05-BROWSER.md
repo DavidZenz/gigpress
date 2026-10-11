@@ -5,13 +5,13 @@ browser: pending
 browser_version: pending
 spreadsheet_client: pending
 spreadsheet_client_version: pending
-fixture_url: pending
-fixture_session: pending
+fixture_url: http://127.0.0.1:32819
+fixture_session: /var/folders/1l/t8mktk5j58g75tthg0q79qhw0000gn/T//gigpress-browser-bkTGXa/session.json
 ---
 
 # Phase 05 CSV Browser Acceptance
 
-This is an evidence form. No browser or spreadsheet-client observation has been recorded yet. Automated container/HTTP evidence does not fill these rows. D-17 retains exact CSV values, accepts direct-open formula risk, and permits only text-import guidance bounded to an actually observed named client workflow.
+This is an evidence form. No browser or spreadsheet-client observation has been recorded yet. Automated container/HTTP evidence does not fill these rows. D-17 retains exact CSV values and accepts direct-open formula risk. The UI's text-import steps are explicitly Excel-specific; no Excel or other spreadsheet-client workflow has been observed, so client acceptance remains pending and no client-specific outcome is claimed.
 
 | Decision | Required observation | Browser/client identity | Result/evidence | Status |
 |---|---|---|---|---|
@@ -46,4 +46,4 @@ This is an evidence form. No browser or spreadsheet-client observation has been 
 
 ## Baseline note
 
-Plan 05-04's conversion case matrix passed. Its summary separately records one `show-lifecycle` failure on the pre-conversion baseline. That failure remains disclosed and must not be represented as a Phase 05 conversion regression or as a passing preservation case.
+The final Phase 02 preservation rerun now passes all 11 cases in all six runtime cells. The earlier `show-lifecycle` failure came from test expectations that still treated the retired one-click conversion as an active write path and sent CSV import without its required POST action. The test now covers the guarded legacy rejection and current import request contract; confirmed conversion remains covered by the Phase 05 conversion cases.
