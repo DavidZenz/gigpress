@@ -70,9 +70,16 @@ function gigpress_csv_export_case($case) {
 		$checks['native_disclosures_and_bounded_spreadsheet_guidance'] = strpos($page, '<details') !== false && strpos($page, '<summary') !== false
 			&& stripos($page, 'Data &gt; From Text/CSV') !== false && strpos($page, 'not universal') !== false;
 		$checks['empty_selection_notice_and_artist_retained'] = strpos($page, 'No shows match these export filters') !== false
-			&& preg_match('/<option value="' . $emptyArtist . '"[^>]*selected/', $page) === 1;
+			&& preg_match('/<option value="' . $emptyArtist . '"[^>]*selected/', $page) === 1
+			&& strpos($page, 'Date scope: Past dates; matching shows: 0.') !== false;
 		$checks['tour_and_scope_retained_with_reset_action'] = preg_match('/<option value="' . $emptyTour . '"[^>]*selected/', $page) === 1
 			&& preg_match('/<option value="past"[^>]*selected/', $page) === 1 && strpos($page, 'reset_filters=1') !== false;
+		$checks['filter_preview_is_get_and_download_keeps_applied_selection'] = preg_match('/<form class="gp-csv-export-filters"[^>]*method="get"/', $page) === 1
+			&& strpos($page, 'name="page" value="gigpress-import-export"') !== false && strpos($page, 'Apply filters') !== false
+			&& preg_match('/<form class="gp-csv-download"[^>]*method="post"/', $page) === 1
+			&& strpos($page, 'name="artist_id" value="' . $emptyArtist . '"') !== false
+			&& strpos($page, 'name="tour_id" value="' . $emptyTour . '"') !== false
+			&& strpos($page, 'name="scope" value="past"') !== false && strpos($page, 'Download CSV') !== false;
 		$checks['status_zero_manual_attention_visible'] = strpos($page, 'Status 0') !== false && strpos($page, 'manual attention') !== false;
 		$result = array('counts' => array('imported' => 1, 'duplicate' => 1, 'rejected' => 1, 'failed' => 1, 'skipped' => 1), 'total' => 5,
 			'records' => array('imported' => array(array('row' => 1, 'identity' => 'Imported — 2032-05-05 — Hall', 'reason' => 'Saved')),
