@@ -120,3 +120,13 @@ All five plans remain summarized, and the final-source automated matrix, accepte
 | Escalated | 0 |
 
 All 13 plan tasks remain covered by passing automated evidence or the approved manual checks. The final-source matrix, retained-fixture cleanup, and browser/calendar approvals remain bound to `af7feea`; the commits since then contain planning and evidence documents only.
+
+## Validation Audit 2026-10-11 — UAT completion
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+The existing 13-task map remains covered by source-bound automated and accepted manual evidence. No implementation files changed since `af7feea`. All 22 UAT rows now pass, including the explicit acceptance of the static privacy assessment in test 22. No new tests were needed or run for this records-only completion.

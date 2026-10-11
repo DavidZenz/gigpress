@@ -92,3 +92,13 @@ The plan-authored threat register remains fully mitigated at ASVS Level 1. The r
 | Open | 0 |
 
 The plan-authored threat register remains fully mitigated at ASVS Level 1. No implementation source changed after revision `af7feea686585e13920daadfa4e45d4e76c5d21a`.
+
+## Security Audit 2026-10-11 — UAT completion
+
+| Metric | Count |
+|--------|-------|
+| Threats found | 14 |
+| Closed | 14 |
+| Open | 0 |
+
+The existing plan-authored register and mitigation evidence remain current at ASVS Level 1; implementation source is unchanged since `af7feea`. UAT test 22 records the user's explicit acceptance of the static privacy assessment. This acceptance adds no external provider or data transmission and makes no network-level test claim.
