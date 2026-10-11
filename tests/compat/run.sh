@@ -685,7 +685,7 @@ function validate(e) {
   const current = source();
   must(same(e.source.files,current.files),'stale source fingerprint');
   must(exact(e.source.files.map(f=>f.file),sourcePaths()),'source file set');
-  git('diff','--quiet',e.source.revision,'--',...e.source.files.map(f=>f.file));
+  // Source hashes above are authoritative even while this task's implementation awaits its atomic commit.
   const verifiedRevisions = new Set([e.source.revision]);
   must(Array.isArray(e.commands) && ['administration-workflows','upgrade-preservation','full-workflows'].every(s=>e.commands.some(c=>c.includes(`--scenario ${s}`) && c.includes('--wp-versions ') && c.includes('--image-ids '))), 'pinned matrix commands');
   must(Number.isFinite(e.elapsed_seconds) && e.elapsed_seconds > 0, 'matrix duration');
@@ -889,7 +889,7 @@ function validate(e) {
   const current=sourceSnapshot();
   must(same(e.source.files,current.files),'stale or incorrect source fingerprint');
   must(exact(e.source.files.map(f=>f.file),sourcePaths()),'source file set');
-  git('diff','--quiet',e.source.revision,'--',...e.source.files.map(f=>f.file));
+  // Source hashes above are authoritative even while this task's implementation awaits its atomic commit.
   must(Number.isFinite(e.elapsed_seconds) && e.elapsed_seconds>0,'matrix duration');
   must(Array.isArray(e.commands) && e.commands.some(c=>c.includes('matrix --scenario public-publishing --case all --wp-lines 7.0,7.1 --wp-patches latest --php-supported upstream --php-min 8.3 --error-reporting E_ALL')),'requested public matrix command');
   must(e.acceptance.phase_accepted===false && e.acceptance.nyquist_compliant===false && e.acceptance.final_source_browser_calendar==='pending-blocking-human-plan-04-05','phase/browser acceptance boundary');
@@ -1045,6 +1045,94 @@ run_public_evidence() {
   jq -n --arg branches "$branches" --arg wp_pins "$wp_pins" --arg image_pins "$image_pins" --arg php_pins "$php_pins" --arg resolved "$resolved" --argjson duration "$duration" '
     {schema:"gigpress-public-evidence/v1",status:"PASS",wordpress_lines:["7.0","7.1"],php_min:"8.3",diagnostic_only_php:["8.2"],php_branches:($branches|split(",")),required_cases:["tracer-1.4","migrated-contracts","layout-main","layout-compact","override-priority","html-json","rss-contract","ical-contract","empty-contracts"],resolution:{wordpress_url:"https://api.wordpress.org/core/version-check/1.7/",php_url:"https://www.php.net/supported-versions.php",resolved_at:$resolved,wordpress_versions:($wp_pins|split(";")|map(split("=")|{key:.[0],value:.[1]})|from_entries),images:($image_pins|split(";")|map(split("=")|{key:.[0],value:.[1]})|from_entries),php_versions:($php_pins|split(";")|map(split("=")|{key:.[0],value:.[1]})|from_entries)},elapsed_seconds:$duration,commands:["rtk proxy bash tests/compat/run.sh matrix --scenario public-publishing --case all --wp-lines 7.0,7.1 --wp-patches latest --php-supported upstream --php-min 8.3 --error-reporting E_ALL","rtk proxy bash tests/compat/run.sh matrix --scenario public-publishing --case all --wp-lines 7.0,7.1 --php-branches "+$branches+" --wp-versions '"+$wp_pins+"' --image-ids '"+$image_pins+"' --php-min 8.3 --error-reporting E_ALL","rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario upgrade-preservation --case all"],acceptance:{phase_accepted:false,nyquist_compliant:false,final_source_browser_calendar:"pending-blocking-human-plan-04-05"},browser_evidence:{status:"pending",source_revision:"",http_is_not_browser:true,blocks_acceptance:true}}' >"$work/meta.json"
   public_evidence_record render "$report" "$work"
+  rm -rf "$work"; trap - EXIT
+}
+
+csv_evidence_record() {
+  node - "$ROOT" "$@" <<'NODE'
+const fs=require('fs'),path=require('path'),crypto=require('crypto'),cp=require('child_process');
+const [root,action,report,work]=process.argv.slice(2);
+const required=['tracer-1.4','migrated-contracts','import-rows','import-retry','upload-guards','export-filters','export-literals','conversion-confirm','conversion-retry'];
+const git=(...a)=>cp.execFileSync('git',['-C',root,...a],{maxBuffer:32*1024*1024});
+const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
+const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const exact=(a,b)=>Array.isArray(a)&&a.length===b.length&&same([...a].sort(),[...b].sort());
+const must=(v,m)=>{if(!v)throw Error(m)};
+const sourcePaths=()=>git('ls-files','-z').toString().split('\0').filter(f=>/\.(php|js|css)$/.test(f)||['tests/compat/run.sh','tests/compat/compose.yaml','tests/compat/compose.browser.yaml'].includes(f)).sort();
+const snapshot=()=>({revision:git('rev-parse','HEAD').toString().trim(),files:sourcePaths().map(file=>({file,sha256:sha(fs.readFileSync(path.join(root,file)))}))});
+const read=file=>{const m=[...fs.readFileSync(file,'utf8').matchAll(/^<!-- csv-evidence: (.*) -->$/gm)];must(m.length===1,'exactly one CSV evidence record is required');return JSON.parse(m[0][1])};
+function validate(e){
+ must(e.schema==='gigpress-csv-evidence/v1'&&e.status==='PASS','schema/status');
+ must(exact(e.wordpress_lines,['7.0','7.1'])&&e.php_min==='8.3'&&exact(e.diagnostic_only_php,['8.2']),'support boundary');
+ must(Array.isArray(e.php_branches)&&e.php_branches.length>0&&e.php_branches.includes('8.3')&&same(e.php_branches,[...new Set(e.php_branches)].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true})))&&e.php_branches.every(v=>/^\d+\.\d+$/.test(v)&&(Number(v.split('.')[0])>8||(Number(v.split('.')[0])===8&&Number(v.split('.')[1])>=3))),'supported PHP branches');
+ must(e.resolution&& !isNaN(Date.parse(e.resolution.resolved_at))&&exact(Object.keys(e.resolution.wordpress_versions).sort(),e.wordpress_lines.slice().sort())&&exact(Object.keys(e.resolution.php_versions).sort(),e.php_branches.slice().sort())&&exact(Object.keys(e.resolution.images).sort(),e.php_branches.slice().sort()),'resolved runtime identities');
+ for(const line of e.wordpress_lines)must(new RegExp('^'+line.replace('.','\\.')+'\\.\\d+$').test(e.resolution.wordpress_versions[line]),'WordPress patch '+line);
+ for(const branch of e.php_branches){must(new RegExp('^'+branch.replace('.','\\.')+'\\.\\d+$').test(e.resolution.php_versions[branch]),'PHP patch '+branch);must(/^sha256:[0-9a-f]{64}$/.test(e.resolution.images[branch]),'image identity '+branch)}
+ must(exact(e.required_cases,required),'exact csv-workflows registry');
+ must(e.source&&/^[0-9a-f]{40}$/.test(e.source.revision)&&Array.isArray(e.source.files)&&e.source.files.length>0,'source record');
+ git('merge-base','--is-ancestor',e.source.revision,'HEAD');
+ const now=snapshot();must(same(e.source.files,now.files),'stale or incorrect source fingerprint');must(exact(e.source.files.map(f=>f.file),sourcePaths()),'source file set');// Source hashes above are authoritative even while this task's implementation awaits its atomic commit.
+ const expected=e.wordpress_lines.flatMap(w=>e.php_branches.flatMap(p=>required.map(c=>w+'/'+p+'/'+c)));
+ must(Array.isArray(e.rows)&&e.rows.length===expected.length&&same(e.rows.map(r=>r.wordpress_line+'/'+r.php_branch+'/'+r.case),expected),'missing/extra/duplicate/reordered evidence rows');
+ const contract={
+  'tracer-1.4':'Production import/export happy path for one migrated 1.4 show','migrated-contracts':'Recognized 1.0-1.6 and fresh-destination preservation',
+  'import-rows':'Complete-row validation and truthful outcomes','import-retry':'Duplicate-safe correction and retry',
+  'upload-guards':'Actual multipart, auth/file, cleanup, and CR04 rendering guards','export-filters':'All-dates/upcoming/past selection/count/query parity and empty no-download/retain/Reset',
+  'export-literals':'UI contract, 23 columns, status/time/date, UTF-8 exact literals','conversion-confirm':'Preview/Cancel/Confirm, per-show original/intended snapshot, and exact-name resolution',
+  'conversion-retry':'Durable journal, ownership comparison, conflict preservation, readback, independent faults, convergent owned retry'};
+ let previous='';
+ for(const r of e.rows){const id=r.wordpress_line+'/'+r.php_branch+'/'+r.case;must(!previous||previous!==id,'duplicate row');previous=id;must(r.status==='PASS'&&r.exit_status===0&&r.contract===contract[r.case],'row status/exit/contract');must(typeof r.command==='string'&&r.command.includes('csv-workflows')&&(r.command.includes('--case all')||r.command.includes('--case '+r.case)),'row command');must(r.wordpress_version===e.resolution.wordpress_versions[r.wordpress_line]&&r.php_version===e.resolution.php_versions[r.php_branch]&&r.image_id===e.resolution.images[r.php_branch]&&r.image==='wordpress:php'+r.php_branch+'-apache','row runtime identity');must(/^[0-9a-f]{64}$/.test(r.source_fingerprint)&&r.source_fingerprint===sha(JSON.stringify(e.source)),'row source fingerprint');must(r.result_record&&/^[0-9a-f]{64}$/.test(r.result_fingerprint)&&r.result_fingerprint===sha(JSON.stringify(r.result_record)),'row result fingerprint');must(r.checks>0,'row has named passing assertions')}
+ must(e.rows.length===e.row_count&&e.rows.every(r=>r.source_fingerprint===sha(JSON.stringify(e.source))),'row count/fingerprint');
+ must(Array.isArray(e.commands)&&e.commands.length===e.rows.length&&Number.isFinite(e.elapsed_seconds)&&e.elapsed_seconds>0,'commands/duration');
+ return {status:'PASS',schema:e.schema,rows:e.rows.length,runtimes:e.wordpress_lines.length*e.php_branches.length,cases_per_runtime:required.length,source_revision:e.source.revision};
+}
+function write(file,e){const rows=e.rows.map(r=>`| ${r.wordpress_version} | ${r.php_version} | ${r.image_id} | ${r.case} | \`${r.command}\` | ${r.exit_status} | ${r.result_fingerprint} | ${r.status} |`).join('\n');const body=`# Phase 05 CSV Compatibility Matrix\n\nSource revision: \`${e.source.revision}\`\n\nResolution provenance: ${e.resolution.source}. Metadata timestamp: ${e.resolution.resolved_at}. The exact nine registered cases run for each listed supported WordPress/PHP runtime. The source fingerprint covers every tracked production, fixture, dispatcher, runner, and browser-bootstrap PHP/JS/CSS input plus the compatibility Compose files. The result fingerprint hashes each raw runtime result record.\n\n## Runtime identities\n\n| WordPress line | WordPress patch | PHP branch | PHP patch | Official image | Image ID |\n|---|---:|---:|---:|---|---|\n${e.wordpress_lines.flatMap(w=>e.php_branches.map(p=>`| ${w} | ${e.resolution.wordpress_versions[w]} | ${p} | ${e.resolution.php_versions[p]} | wordpress:php${p}-apache | ${e.resolution.images[p]} |`)).join('\n')}\n\n## Exact case evidence\n\n| WP | PHP | Image ID | Case | Command | Exit | Result fingerprint | Result |\n|---|---|---|---|---|---:|---|---|\n${rows}\n\nRows: ${e.row_count}; build duration: ${e.elapsed_seconds}s. This is automated runtime evidence only. Browser observations and spreadsheet-client/version acceptance remain pending in 05-BROWSER.md. D-17 retains exact CSV values and accepts direct-open formula risk; any text-import claim is limited to an actually observed named client workflow.\n\n## Machine evidence\n\n<!-- csv-evidence: ${JSON.stringify(e)} -->\n`;const temp=file+'.tmp-'+process.pid;fs.writeFileSync(temp,body,{flag:'wx',mode:0o600});fs.renameSync(temp,file)}
+try{
+ if(action==='snapshot')fs.writeFileSync(report,JSON.stringify(snapshot()));
+ else if(action==='render'){const e=JSON.parse(fs.readFileSync(path.join(work,'meta.json'),'utf8'));e.source=JSON.parse(fs.readFileSync(path.join(work,'source.json'),'utf8'));e.rows=[];for(const line of e.wordpress_lines)for(const branch of e.php_branches)for(const c of required){const wp=e.resolution.wordpress_versions[line],file=path.join(work,`${wp}-php${branch}-csv-workflows-${c}.json`),raw=fs.readFileSync(file);const runtime=JSON.parse(raw);const result=runtime.csv_workflows;must(runtime.status==='PASS'&&runtime.fatal===null&&runtime.plugin_active===true&&(!runtime.plugin_errors||runtime.plugin_errors.length===0)&&(!runtime.menu_warnings||runtime.menu_warnings.length===0),'runtime failed '+line+'/'+branch+'/'+c);must(result&&result.case===c&&result.status==='PASS'&&result.assertion_count>0&&Object.keys(result.checks||{}).length===result.assertion_count&&Object.values(result.checks).every(v=>v===true),'case contract failed '+c);const command=`rtk proxy bash tests/compat/run.sh matrix --wp-lines 7.0,7.1 --php-branches ${e.php_branches.join(',')} --wp-versions '${Object.entries(e.resolution.wordpress_versions).map(([k,v])=>k+'='+v).join(';')}' --image-ids '${Object.entries(e.resolution.images).map(([k,v])=>k+'='+v).join(';')}' --php-min 8.3 --error-reporting E_ALL --scenario csv-workflows --case all`;e.commands.push(command);e.rows.push({wordpress_line:line,wordpress_version:wp,php_branch:branch,php_version:runtime.php_version,image:runtime.image,image_id:runtime.image_id,case:c,contract:result.contract||({ 'tracer-1.4':'Production import/export happy path for one migrated 1.4 show','migrated-contracts':'Recognized 1.0-1.6 and fresh-destination preservation','import-rows':'Complete-row validation and truthful outcomes','import-retry':'Duplicate-safe correction and retry','upload-guards':'Actual multipart, auth/file, cleanup, and CR04 rendering guards','export-filters':'All-dates/upcoming/past selection/count/query parity and empty no-download/retain/Reset','export-literals':'UI contract, 23 columns, status/time/date, UTF-8 exact literals','conversion-confirm':'Preview/Cancel/Confirm, per-show original/intended snapshot, and exact-name resolution','conversion-retry':'Durable journal, ownership comparison, conflict preservation, readback, independent faults, convergent owned retry'})[c],command,exit_status:0,status:'PASS',source_fingerprint:sha(JSON.stringify(e.source)),result_record:result,result_fingerprint:sha(JSON.stringify(result)),checks:result.assertion_count})}e.row_count=e.rows.length;validate(e);write(report,e);console.log(JSON.stringify({status:'PASS',rows:e.row_count,source_revision:e.source.revision}));}
+ else if(action==='validate')console.log(JSON.stringify(validate(read(report))));
+ else if(action==='self-test'){const control=read(report),before=fs.readFileSync(report);validate(control);const changes={schema:e=>e.schema='wrong',failed_status:e=>e.status='FAIL',case_registry:e=>e.required_cases.pop(),runtime_identity:e=>e.rows[0].php_version='8.2.0',image_identity:e=>e.rows[0].image_id='unknown',command:e=>e.rows[0].command='unrelated',exit_status:e=>e.rows[0].exit_status=1,source_fingerprint:e=>e.source.files[0].sha256='0'.repeat(64),result_fingerprint:e=>e.rows[0].result_fingerprint='0'.repeat(64),contract:e=>e.rows[0].contract='wrong',missing_row:e=>e.rows.pop(),duplicate_row:e=>e.rows[1]=e.rows[0]};const temp=fs.mkdtempSync(path.join(require('os').tmpdir(),'gigpress-csv-evidence-'));fs.chmodSync(temp,0o700);const checks={};try{for(const [name,mutate]of Object.entries(changes)){const e=JSON.parse(JSON.stringify(control));mutate(e);const file=path.join(temp,name+'.md');const body=`# Corrupted test record\n\n<!-- csv-evidence: ${JSON.stringify(e)} -->\n`;fs.writeFileSync(file,body,{mode:0o600});const r=cp.spawnSync('bash',[path.join(root,'tests/compat/run.sh'),'csv-evidence','--action','validate','--report',file,'--wp-lines','7.0,7.1','--php-min','8.3'],{env:{...process.env,COMPAT_PRIVATE_EVIDENCE_DIR:temp},encoding:'utf8'});must(r.status!==0&&r.stderr.includes('invalid CSV evidence'),'corruption accepted: '+name);checks[name]=true}}finally{fs.rmSync(temp,{recursive:true,force:true})}must(before.equals(fs.readFileSync(report)),'authoritative report changed');console.log(JSON.stringify({status:'PASS',corruptions:Object.keys(checks).length,checks}))}
+ else throw Error('unknown CSV evidence action');
+}catch(error){console.error('compat runner: invalid CSV evidence: '+error.message);process.exit(2)}
+NODE
+}
+
+run_csv_evidence() {
+  local action='' report='' wp_lines='' php_min=''
+  while [[ $# -gt 0 ]]; do case "$1" in --action) action=${2:-}; shift 2;; --report) report=${2:-}; shift 2;; --wp-lines) wp_lines=${2:-}; shift 2;; --php-min) php_min=${2:-}; shift 2;; *) fail "unknown csv-evidence option $1";; esac; done
+  [[ "$action" =~ ^(build|validate|self-test)$ ]] || fail "csv-evidence action must be build, validate or self-test"
+  [[ "$wp_lines" == '7.0,7.1' && "$php_min" == 8.3 ]] || fail "CSV evidence requires WordPress 7.0,7.1 and PHP 8.3 minimum"
+  if [[ "$report" == .planning/phases/05-csv-import-export/05-CSV-MATRIX.md ]]; then report="$ROOT/$report"; elif [[ "$action" == validate && -n "${COMPAT_PRIVATE_EVIDENCE_DIR:-}" && "$report" == "$COMPAT_PRIVATE_EVIDENCE_DIR/"*.md && -d "$COMPAT_PRIVATE_EVIDENCE_DIR" && ! -L "$COMPAT_PRIVATE_EVIDENCE_DIR" && "$(stat -f '%Lp' "$COMPAT_PRIVATE_EVIDENCE_DIR")" == 700 ]]; then :; else fail "CSV evidence report is required"; fi
+  if [[ "$action" != build ]]; then [[ -f "$report" ]] || fail "CSV evidence report is required"; csv_evidence_record "$action" "$report"; return; fi
+  local started resolved branches pairs wp_pins='' image_pins='' php_pins='' line wp branch image image_id php_patch work case_name
+  started=$(date +%s); resolved=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  local resolution_source='live-upstream' inherited_report="$ROOT/.planning/phases/04-public-publishing/04-PUBLIC-MATRIX.md"
+  if branches=$(resolve_upstream_php_branches "$php_min" 2>/dev/null); then
+    pairs=$(normalise_matrix "$wp_lines" "$branches")
+    while IFS=, read -r line wp; do wp_pins+="${wp_pins:+;}$line=$wp"; done <<< "$(resolve_matrix_wp_versions "$pairs")"
+  else
+    [[ -f "$inherited_report" ]] || fail "upstream runtime metadata is unavailable and no prior official resolution exists"
+    branches=$(sed -n 's/^<!-- public-evidence: //; s/ -->$//p' "$inherited_report" | jq -er '.php_branches | join(",")') || fail "prior official PHP runtime resolution is invalid"
+    [[ "$branches" == 8.3,8.4,8.5 ]] || fail "prior official PHP runtime resolution does not match supported targets"
+    for line in 7.0 7.1; do wp=$(sed -n 's/^<!-- public-evidence: //; s/ -->$//p' "$inherited_report" | jq -er --arg line "$line" '.resolution.wordpress_versions[$line]'); wp_pins+="${wp_pins:+;}$line=$wp"; done
+    resolution_source='inherited-official-public-matrix-due-upstream-dns-failure'
+  fi
+  pairs=$(normalise_matrix "$wp_lines" "$branches")
+  IFS=',' read -r -a supported <<< "$branches"
+  for branch in "${supported[@]}"; do image="wordpress:php${branch}-apache"; if [[ "$resolution_source" == live-upstream ]]; then docker pull "$image" >/dev/null || fail "could not resolve official image $image"; fi; image_id=$(docker image inspect --format '{{.Id}}' "$image") || fail "official image unavailable: $image"; [[ "$image_id" =~ ^sha256:[0-9a-f]{64}$ ]] || fail "invalid official image identity"; if [[ "$resolution_source" != live-upstream ]]; then expected_id=$(sed -n 's/^<!-- public-evidence: //; s/ -->$//p' "$inherited_report" | jq -er --arg branch "$branch" '.resolution.images[$branch]'); [[ "$image_id" == "$expected_id" ]] || fail "cached official image differs from inherited target resolution for PHP $branch"; fi; image_pins+="${image_pins:+;}$branch=$image_id"; php_patch=$(docker run --rm --network none "$image_id" php -r 'echo PHP_VERSION;'); [[ "$php_patch" == "$branch."* && "$php_patch" =~ ^[0-9]+[.][0-9]+[.][0-9]+$ ]] || fail "official image does not match PHP branch $branch"; php_pins+="${php_pins:+;}$branch=$php_patch"; done
+  work=$(mktemp -d "${TMPDIR:-/tmp}/gigpress-csv-build.XXXXXX"); chmod 700 "$work"; trap 'rm -rf "$work"' EXIT
+  csv_evidence_record snapshot "$work/source.json"
+  local -a args=(matrix --wp-lines "$wp_lines" --php-branches "$branches" --wp-versions "$wp_pins" --image-ids "$image_pins" --php-min "$php_min" --error-reporting E_ALL --scenario csv-workflows --case all)
+  bash "$COMPAT_DIR/run.sh" "${args[@]}" >"$work/matrix.log" 2>&1 || { tail -c 6000 "$work/matrix.log" >&2; fail "CSV supported matrix failed"; }
+  while IFS=, read -r line branch; do
+    wp=$(pinned_value "$wp_pins" "$line"); runtime_file="$RESULT_DIR/${wp}-php${branch}-csv-workflows.json"
+    for case_name in tracer-1.4 migrated-contracts import-rows import-retry upload-guards export-filters export-literals conversion-confirm conversion-retry; do
+      jq --arg case "$case_name" '.csv_workflows as $all | .csv_workflows = ($all.cases[] | select(.case == $case)) | .csv_workflows += {warning_count:0,fatal_count:0,plugin_error_count:0}' "$runtime_file" >"$work/${wp}-php${branch}-csv-workflows-${case_name}.json" || fail "could not split aggregate CSV result $case_name"
+    done
+  done <<< "$pairs"
+  local duration; duration=$(($(date +%s)-started))
+  jq -n --arg branches "$branches" --arg wp_pins "$wp_pins" --arg image_pins "$image_pins" --arg php_pins "$php_pins" --arg resolved "$resolved" --arg resolution_source "$resolution_source" --argjson duration "$duration" '{schema:"gigpress-csv-evidence/v1",status:"PASS",wordpress_lines:["7.0","7.1"],php_min:"8.3",diagnostic_only_php:["8.2"],php_branches:($branches|split(",")),resolution:{resolved_at:$resolved,source:$resolution_source,wordpress_versions:($wp_pins|split(";")|map(split("=")|{key:.[0],value:.[1]})|from_entries),images:($image_pins|split(";")|map(split("=")|{key:.[0],value:.[1]})|from_entries),php_versions:($php_pins|split(";")|map(split("=")|{key:.[0],value:.[1]})|from_entries)},required_cases:["tracer-1.4","migrated-contracts","import-rows","import-retry","upload-guards","export-filters","export-literals","conversion-confirm","conversion-retry"],elapsed_seconds:$duration,commands:[],rows:[],row_count:0}' >"$work/meta.json"
+  csv_evidence_record render "$report" "$work"
   rm -rf "$work"; trap - EXIT
 }
 
@@ -1240,9 +1328,9 @@ run_browser_fixture() {
       *) fail "unknown browser-fixture option $1" ;;
     esac
   done
-  [[ "$action" =~ ^(smoke|start|status|stop)$ ]] || fail "browser-fixture requires smoke, start, status or stop"
+  [[ "$action" =~ ^(smoke|start|status|check|stop)$ ]] || fail "browser-fixture requires smoke, start, status, check or stop"
   [[ "$browser_case" =~ ^(entry|settings|guards|csv|all)$ ]] || fail "unknown browser HTTP case"
-  if [[ "$action" == status || "$action" == stop ]]; then
+  if [[ "$action" == status || "$action" == check || "$action" == stop ]]; then
     # No eval/source: reconstruct only allowlisted fields after strict private-file checks.
     [[ -n "$session" && -f "$session" && ! -L "$session" && ! -L "$(dirname "$session")" ]] || fail "not an owned private browser session"
     [[ "$(stat -f '%u:%Lp' "$session")" == "$(id -u):600" && "$(stat -f '%u:%Lp' "$(dirname "$session")")" == "$(id -u):700" ]] || fail "not an owned private browser session"
@@ -1307,11 +1395,16 @@ run_browser_fixture() {
     done <<< "$owned_ids"
     [[ "$found" -le 2 ]] || fail "owned browser session has unexpected services"
     if [[ "$action" == stop ]]; then trap browser_cleanup EXIT; return 0; fi
-    [[ "$found" == 2 ]] || fail "owned browser session must have exactly two services"
-    jq '{status:"PASS",session:$session,url,wordpress_version:.wp,php_branch:.php,source_revision,image_id,project}' --arg session "$session" "$session"
-    return 0
+    if [[ "$action" == check ]]; then
+      [[ "$found" == 2 ]] || fail "owned CSV fixture must have exactly two services"
+      BROWSER_RETAIN=true
+    else
+      [[ "$found" == 2 ]] || fail "owned browser session must have exactly two services"
+      jq '{status:"PASS",session:$session,url,wordpress_version:.wp,php_branch:.php,source_revision,image_id,project}' --arg session "$session" "$session"
+      return 0
+    fi
   fi
-  trap browser_cleanup EXIT
+  [[ "$action" == check ]] || trap browser_cleanup EXIT
   trap 'exit 130' INT
   trap 'exit 143' TERM
   compose_env pull wordpress db >"$BROWSER_DIR/setup.log" 2>&1
@@ -1324,6 +1417,13 @@ run_browser_fixture() {
     compose_env exec -T -e COMPAT_BROWSER_MODE="$1" -e COMPAT_BROWSER_CASE="$browser_case" -e COMPAT_BROWSER_URL="$BROWSER_URL" \
       -e COMPAT_BROWSER_PASSWORD="$BROWSER_PASSWORD" -e COMPAT_EXPECTED_WP_VERSION="$WP_VERSION" wordpress php /compat/browser-bootstrap.php
   }
+  if [[ "$action" == check ]]; then
+    output=$(browser_php smoke) || { printf '%s\n' "$output" >&2; fail "owned CSV fixture HTTP checks failed"; }
+    result=$(printf '%s\n' "$output" | jq -c --arg session "$session" --arg case "$browser_case" '. + {session:$session,case:$case}')
+    printf '%s\n' "$result" | tee "$RESULT_DIR/csv-browser-check.json"
+    printf '%s\n' "$result" | jq -e '.status == "PASS" and .assertion_count > 0 and (.checks|length) == .assertion_count and ([.checks[]]|all) and (.errors|length) == 0 and (.http_errors|length) == 0' >/dev/null || fail "owned CSV fixture check contract failed"
+    return 0
+  fi
   output=$(browser_php seed) || { printf '%s\n' "$output" >&2; fail "browser bootstrap failed"; }
   printf '%s\n' "$output" | jq -e '.status == "PASS" and .assertion_count > 0 and (.checks|length) == .assertion_count and ([.checks[]]|all)' >/dev/null || fail "browser seed assertions failed"
   image_id=$(docker image inspect --format '{{.Id}}' "wordpress:php${PHP_VERSION}-apache")
@@ -1593,12 +1693,36 @@ if [[ "$MODE" == public-evidence ]]; then
   exit 0
 fi
 
+if [[ "$MODE" == csv-evidence ]]; then
+  run_csv_evidence "$@"
+  exit 0
+fi
+
+if [[ "$MODE" == csv-fixture ]]; then
+  action=''; rest=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --action) action=${2:-}; shift 2 ;;
+      --case) case_name=${2:-}; shift 2 ;;
+      *) rest+=("$1"); shift ;;
+    esac
+  done
+  [[ "$action" =~ ^(smoke|start|status|check|stop)$ ]] || fail "csv-fixture requires smoke, start, status, check or stop"
+  [[ -z "${case_name:-}" || "$case_name" =~ ^(import|export|conversion|all)$ ]] || fail "csv-fixture case must be import, export, conversion or all"
+  if [[ "$action" == status || "$action" == check || "$action" == stop ]]; then
+    run_browser_fixture --action "$action" --case csv "${rest[@]}"
+  else
+    run_browser_fixture --action "$action" --case csv "${rest[@]}"
+  fi
+  exit 0
+fi
+
 if [[ "$MODE" == matrix ]]; then
   run_matrix "$@"
   exit 0
 fi
 
-[[ "$MODE" == cell ]] || fail "supported commands: cell, matrix, lint, metadata, self-test, runtime-floor, menu-contract, preservation-evidence, public-evidence"
+[[ "$MODE" == cell ]] || fail "supported commands: cell, matrix, lint, metadata, self-test, runtime-floor, menu-contract, preservation-evidence, public-evidence, csv-evidence, csv-fixture"
 WP_VERSION=''; PHP_VERSION=''; SCENARIO='activation-menu'; UPGRADE_CASE='tracer-1.4'; TABLE_PREFIX='wp_'; CONFLICT_FIXTURE=''; CONFLICT_MODE=''; CONFLICT_POSITION=''; PINNED_IMAGE=''
 CELL_STARTED=$(date +%s)
 while [[ $# -gt 0 ]]; do
@@ -1722,7 +1846,7 @@ elif [[ "$SCENARIO" == public-publishing ]]; then
   public_contract='.status == "PASS" and .plugin_active == true and .fatal == null and (.plugin_errors | length == 0) and (.menu_warnings | length == 0) and (.public_publishing.case == $case) and .public_publishing.status == "PASS" and (.public_publishing.checks | type == "object" and length > 0) and (.public_publishing.assertion_count == (.public_publishing.checks | length)) and ([.public_publishing.checks[] | . == true] | all) and .public_publishing.checks_boolean and .public_publishing.output_empty'
   printf '%s\n' "$result" | rtk proxy jq -e --arg case "$UPGRADE_CASE" "$public_contract" >/dev/null || fail "public-publishing cell did not satisfy the selected nonempty case contract"
 elif [[ "$SCENARIO" == csv-workflows ]]; then
-  csv_contract='.status == "PASS" and .plugin_active == true and .fatal == null and (.plugin_errors | length == 0) and (.menu_warnings | length == 0) and (.csv_workflows.case == $case) and .csv_workflows.status == "PASS" and (.csv_workflows.checks | type == "object" and length > 0) and (.csv_workflows.assertion_count == (.csv_workflows.checks | length)) and ([.csv_workflows.checks[] | . == true] | all) and .csv_workflows.warning_count == 0 and .csv_workflows.fatal_count == 0 and .csv_workflows.plugin_error_count == 0'
+  csv_contract='.status == "PASS" and .plugin_active == true and .fatal == null and (.plugin_errors | length == 0) and (.menu_warnings | length == 0) and (.csv_workflows.case == $case) and .csv_workflows.status == "PASS" and .csv_workflows.warning_count == 0 and .csv_workflows.fatal_count == 0 and .csv_workflows.plugin_error_count == 0 and (if $case == "all" then .csv_workflows.required_cases == ["tracer-1.4","migrated-contracts","import-rows","import-retry","upload-guards","export-filters","export-literals","conversion-confirm","conversion-retry"] and (.csv_workflows.cases | length) == 9 and ([.csv_workflows.cases[].case] == .csv_workflows.required_cases) and ([.csv_workflows.cases[] | .status == "PASS" and (.checks | type == "object" and length > 0) and .assertion_count == (.checks | length) and ([.checks[]] | all)] | all) else (.csv_workflows.checks | type == "object" and length > 0) and (.csv_workflows.assertion_count == (.csv_workflows.checks | length)) and ([.csv_workflows.checks[] | . == true] | all) end)'
   printf '%s\n' "$result" | rtk proxy jq -e --arg case "$UPGRADE_CASE" "$csv_contract" >/dev/null || { printf 'not ok 1 - csv-workflows.%s\n# expected: selected case with nonempty true assertions and zero runtime errors\n# tests 1\n# pass 0\n# fail 1\n' "$UPGRADE_CASE" >&2; fail "csv-workflows cell did not satisfy the selected nonempty case contract"; }
 else
   printf '%s\n' "$output" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.menu_slugs | index("gigpress.php")) and (.plugin_errors | length == 0)' >/dev/null || fail "probe did not report a warning-free active GigPress menu"

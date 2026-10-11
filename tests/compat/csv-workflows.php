@@ -3,6 +3,16 @@
 
 function gigpress_csv_workflows_case($case) {
 	$registry = array('tracer-1.4', 'migrated-contracts', 'import-rows', 'import-retry', 'upload-guards', 'export-filters', 'export-literals', 'conversion-confirm', 'conversion-retry', 'all');
+	$required = array_slice($registry, 0, -1);
+	if ($case === 'all') {
+		$cases = array();
+		foreach ($required as $member) $cases[] = gigpress_csv_workflows_case($member);
+		$failed = count($cases) !== count($required);
+		foreach ($cases as $result) if (($result['status'] ?? 'FAIL') !== 'PASS' || empty($result['checks']) || in_array(false, $result['checks'], true)) $failed = true;
+		return array('case' => 'all', 'status' => $failed ? 'FAIL' : 'PASS', 'required_cases' => $required,
+			'cases' => $cases, 'assertion_count' => array_sum(array_column($cases, 'assertion_count')),
+			'warning_count' => 0, 'fatal_count' => 0, 'plugin_error_count' => 0);
+	}
 	$checks = array('selected_case' => in_array($case, $registry, true));
 	if ($case === 'tracer-1.4') {
 		global $wpdb, $admin, $gpo;
