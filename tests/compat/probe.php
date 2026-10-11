@@ -36,6 +36,7 @@ $purpose = getenv('COMPAT_PURPOSE') ?: 'activation-menu';
 $upgradeCase = getenv('COMPAT_UPGRADE_CASE') ?: 'tracer-1.4';
 $upgradePreservation = null;
 $administrationWorkflows = null;
+$csvWorkflows = null;
 $publicPublishing = null;
 $publicCase = $upgradeCase;
 $administrationRequiredCases = array('entry-create', 'entry-recovery', 'entry-controls', 'settings-save', 'settings-sections', 'list-single', 'list-navigation', 'list-bulk');
@@ -478,7 +479,7 @@ if ($purpose === 'upgrade-preservation' && $upgradeCase === 'all') {
     echo json_encode($result, JSON_UNESCAPED_SLASHES) . PHP_EOL;
     exit($result['status'] === 'PASS' ? 0 : 1);
 }
-if ($purpose === 'upgrade-preservation' || $purpose === 'public-publishing') {
+if ($purpose === 'upgrade-preservation' || $purpose === 'public-publishing' || $purpose === 'csv-workflows') {
     $fixtureVersion = $upgradeCase === 'versions-1.0-1.2' ? '1.0' : ($upgradeCase === 'versions-1.3-1.5' ? '1.3' : (in_array($upgradeCase, array('current-1.6', 'settings-repeat'), true) ? '1.6' : '1.4'));
     $fixturePath = '/var/www/html/wp-content/plugins/gigpress/tests/compat/fixtures/upgrade-preservation/' . $fixtureVersion . '.php';
     $upgradeFixture = is_readable($fixturePath) ? require $fixturePath : null;
@@ -508,7 +509,7 @@ $skipGigPressActivation = $purpose === 'real-low-live'
     || ($purpose === 'diagnose-menu' && (getenv('COMPAT_SKIP_GIGPRESS_ACTIVATION') ?: '') === '1');
 /* WP_INSTALLING skips active-plugin loading in child probes; activation must
  * include the real plugin afresh before administration cases use its constants. */
-if (in_array($purpose, array('upgrade-preservation', 'administration-workflows', 'public-publishing'), true) && !$skipGigPressActivation) {
+if (in_array($purpose, array('upgrade-preservation', 'administration-workflows', 'public-publishing', 'csv-workflows'), true) && !$skipGigPressActivation) {
     deactivate_plugins($plugin, false, false);
 }
 if (($purpose === 'fixture-activate' || !$fixturePurpose) && !$skipGigPressActivation) {
@@ -520,7 +521,7 @@ if (($purpose === 'fixture-activate' || !$fixturePurpose) && !$skipGigPressActiv
 } elseif (!$skipGigPressActivation && !is_plugin_active($plugin)) {
     $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Controlled fixture lost active state', 'file' => __FILE__, 'line' => __LINE__);
 }
-if ($purpose === 'upgrade-preservation' && !in_array($upgradeCase, array('versions-1.0-1.2', 'versions-1.3-1.5', 'current-1.6', 'settings-repeat'), true)) {
+if (($purpose === 'upgrade-preservation' && !in_array($upgradeCase, array('versions-1.0-1.2', 'versions-1.3-1.5', 'current-1.6', 'settings-repeat'), true)) || $purpose === 'csv-workflows') {
     $snapshot = function () use ($wpdb) {
         $data = array('prefix' => $wpdb->prefix, 'settings' => get_option('gigpress_settings'));
         foreach (array('shows' => 'show_id', 'artists' => 'artist_id', 'venues' => 'venue_id', 'tours' => 'tour_id') as $kind => $id) {
@@ -669,6 +670,18 @@ if ($purpose === 'public-publishing') {
     }
     if (($publicPublishing['status'] ?? 'FAIL') !== 'PASS') {
         $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Public publishing case did not satisfy its fail-closed contract', 'file' => __FILE__, 'line' => __LINE__);
+    }
+}
+if ($purpose === 'csv-workflows') {
+    $csvPath = WP_PLUGIN_DIR . '/gigpress/tests/compat/csv-workflows.php';
+    if (!is_readable($csvPath)) {
+        $csvWorkflows = array('case' => $upgradeCase, 'status' => 'FAIL', 'checks' => array(), 'assertion_count' => 0, 'reason' => 'csv workflow dispatcher module is unreadable');
+    } else {
+        require_once $csvPath;
+        $csvWorkflows = function_exists('gigpress_csv_workflows_case') ? gigpress_csv_workflows_case($upgradeCase) : array('case' => $upgradeCase, 'status' => 'FAIL', 'checks' => array(), 'assertion_count' => 0);
+    }
+    if (($csvWorkflows['status'] ?? 'FAIL') !== 'PASS') {
+        $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'CSV workflow case did not satisfy its fail-closed contract', 'file' => __FILE__, 'line' => __LINE__);
     }
 }
 global $menu;
@@ -892,7 +905,7 @@ if (in_array((getenv('COMPAT_PURPOSE') ?: 'activation-menu'), array('csv-roundtr
     }
 }
 $result = array(
-    'status' => $pluginErrors || ($purpose === 'administration-workflows' && ($administrationWorkflows['status'] ?? '') !== 'PASS') || ($purpose === 'public-publishing' && ($publicPublishing['status'] ?? '') !== 'PASS') ? 'FAIL' : 'PASS',
+    'status' => $pluginErrors || ($purpose === 'administration-workflows' && ($administrationWorkflows['status'] ?? '') !== 'PASS') || ($purpose === 'public-publishing' && ($publicPublishing['status'] ?? '') !== 'PASS') || ($purpose === 'csv-workflows' && ($csvWorkflows['status'] ?? '') !== 'PASS') ? 'FAIL' : 'PASS',
     'wordpress_version' => get_bloginfo('version'),
     'php_version' => PHP_VERSION,
     'plugin_active' => is_plugin_active($plugin),
@@ -907,6 +920,7 @@ $result = array(
     'upgrade_preservation' => $upgradePreservation,
     'administration_workflows' => $administrationWorkflows,
     'public_publishing' => $publicPublishing,
+    'csv_workflows' => $csvWorkflows,
     'fixture_runtime' => $fixtureRuntime,
     'real_plugin_runtime' => $realPluginRuntime,
     'real_plugin_inventory' => $real_plugin_inventory,

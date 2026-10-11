@@ -543,8 +543,8 @@ run_matrix() {
     [[ -n "$conflict_position" ]] || conflict_position=before
     [[ "$conflict_position" == before || "$conflict_position" == after ]] || fail "matrix conflict coverage requires a before or after position"
   fi
-  [[ "$scenario" == activation-menu || "$scenario" == admin-menu || "$scenario" == csv-roundtrip || "$scenario" == full-workflows || "$scenario" == upgrade-preservation || "$scenario" == administration-workflows || "$scenario" == public-publishing ]] || fail "unsupported matrix scenario: $scenario"
-  if [[ "$scenario" == upgrade-preservation || "$scenario" == administration-workflows || "$scenario" == public-publishing ]]; then
+  [[ "$scenario" == activation-menu || "$scenario" == admin-menu || "$scenario" == csv-roundtrip || "$scenario" == full-workflows || "$scenario" == upgrade-preservation || "$scenario" == administration-workflows || "$scenario" == public-publishing || "$scenario" == csv-workflows ]] || fail "unsupported matrix scenario: $scenario"
+  if [[ "$scenario" == upgrade-preservation || "$scenario" == administration-workflows || "$scenario" == public-publishing || "$scenario" == csv-workflows ]]; then
     [[ -n "$upgrade_case" ]] || upgrade_case=all
   else
     [[ -z "$upgrade_case" || "$upgrade_case" == tracer-1.4 ]] || fail "--case is only supported by case-based scenarios"
@@ -574,7 +574,7 @@ run_matrix() {
     [[ -n "$wp_version" ]] || fail "matrix has no pinned WordPress patch for line $line"
     local -a cell_args=(cell --wp "$wp_version" --php "$branch" --scenario "$scenario")
     [[ -z "$image_ids" ]] || cell_args+=(--image-id "$(pinned_value "$image_ids" "$branch")")
-    [[ "$scenario" != upgrade-preservation && "$scenario" != administration-workflows && "$scenario" != public-publishing ]] || cell_args+=(--case "$upgrade_case")
+    [[ "$scenario" != upgrade-preservation && "$scenario" != administration-workflows && "$scenario" != public-publishing && "$scenario" != csv-workflows ]] || cell_args+=(--case "$upgrade_case")
     if [[ -n "$conflict_fixture" ]]; then
       cell_args+=(--conflict-fixture "$conflict_fixture" --conflict-mode "$conflict_mode" --conflict-position "$conflict_position")
     fi
@@ -1622,11 +1622,12 @@ require_value --wp "$WP_VERSION"; require_value --php "$PHP_VERSION"
 case "$SCENARIO" in
   activation-menu|admin-menu|csv-roundtrip|full-workflows) [[ "$UPGRADE_CASE" == tracer-1.4 ]] || fail "--case is only supported by case-based scenarios" ;;
   upgrade-preservation) [[ "$UPGRADE_CASE" =~ ^(tracer-1\.4|safety-1\.4|metadata-classification|versions-1\.0-1\.2|versions-1\.3-1\.5|current-1\.6|settings-repeat|show-lifecycle|optional-request-fields|entity-guards|tour-undo|all)$ ]] || fail "unsupported upgrade-preservation case: $UPGRADE_CASE" ;;
+  csv-workflows) [[ "$UPGRADE_CASE" =~ ^(tracer-1\.4|migrated-contracts|import-rows|import-retry|upload-guards|export-filters|export-literals|conversion-confirm|conversion-retry|all)$ ]] || fail "unsupported csv-workflows case: $UPGRADE_CASE"; TABLE_PREFIX='compat_legacy_' ;;
   administration-workflows) [[ "$UPGRADE_CASE" =~ ^(entry-create|entry-recovery|entry-controls|settings-save|settings-sections|list-single|list-navigation|list-bulk|all)$ ]] || fail "unsupported administration-workflows case: $UPGRADE_CASE" ;;
   public-publishing) [[ "$UPGRADE_CASE" =~ ^(tracer-1\.4|migrated-contracts|layout-main|layout-compact|override-priority|html-json|rss-contract|ical-contract|empty-contracts|all)$ ]] || fail "unsupported public-publishing case: $UPGRADE_CASE"; TABLE_PREFIX='compat_legacy_' ;;
   *) fail "unsupported cell scenario: $SCENARIO" ;;
 esac
-[[ "$SCENARIO" != upgrade-preservation ]] || TABLE_PREFIX='compat_legacy_'
+[[ "$SCENARIO" != upgrade-preservation && "$SCENARIO" != csv-workflows ]] || TABLE_PREFIX='compat_legacy_'
 if [[ -n "$CONFLICT_FIXTURE" || -n "$CONFLICT_MODE" ]]; then
   [[ "$CONFLICT_FIXTURE" == 'tests/compat/fixtures/menu-conflict-plugin.php' && "$CONFLICT_MODE" == order-only ]] || fail "cell conflict coverage requires the order-only fixture"
   [[ -n "$CONFLICT_POSITION" ]] || CONFLICT_POSITION=before
@@ -1671,7 +1672,7 @@ probe_status=$?
 set -e
 if [[ "$probe_status" -ne 0 ]]; then
   printf '%s\n' "$output" >&2
-  if [[ "$SCENARIO" == upgrade-preservation || "$SCENARIO" == administration-workflows ]]; then
+  if [[ "$SCENARIO" == upgrade-preservation || "$SCENARIO" == administration-workflows || "$SCENARIO" == csv-workflows ]]; then
     printf 'not ok 1 - %s.%s\n' "$SCENARIO" "$UPGRADE_CASE" >&2
     printf '# tests 1\n# pass 0\n# fail 1\n' >&2
   fi
@@ -1720,6 +1721,9 @@ elif [[ "$SCENARIO" == upgrade-preservation ]]; then
 elif [[ "$SCENARIO" == public-publishing ]]; then
   public_contract='.status == "PASS" and .plugin_active == true and .fatal == null and (.plugin_errors | length == 0) and (.menu_warnings | length == 0) and (.public_publishing.case == $case) and .public_publishing.status == "PASS" and (.public_publishing.checks | type == "object" and length > 0) and (.public_publishing.assertion_count == (.public_publishing.checks | length)) and ([.public_publishing.checks[] | . == true] | all) and .public_publishing.checks_boolean and .public_publishing.output_empty'
   printf '%s\n' "$result" | rtk proxy jq -e --arg case "$UPGRADE_CASE" "$public_contract" >/dev/null || fail "public-publishing cell did not satisfy the selected nonempty case contract"
+elif [[ "$SCENARIO" == csv-workflows ]]; then
+  csv_contract='.status == "PASS" and .plugin_active == true and .fatal == null and (.plugin_errors | length == 0) and (.menu_warnings | length == 0) and (.csv_workflows.case == $case) and .csv_workflows.status == "PASS" and (.csv_workflows.checks | type == "object" and length > 0) and (.csv_workflows.assertion_count == (.csv_workflows.checks | length)) and ([.csv_workflows.checks[] | . == true] | all) and .csv_workflows.warning_count == 0 and .csv_workflows.fatal_count == 0 and .csv_workflows.plugin_error_count == 0'
+  printf '%s\n' "$result" | rtk proxy jq -e --arg case "$UPGRADE_CASE" "$csv_contract" >/dev/null || { printf 'not ok 1 - csv-workflows.%s\n# expected: selected case with nonempty true assertions and zero runtime errors\n# tests 1\n# pass 0\n# fail 1\n' "$UPGRADE_CASE" >&2; fail "csv-workflows cell did not satisfy the selected nonempty case contract"; }
 else
   printf '%s\n' "$output" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.menu_slugs | index("gigpress.php")) and (.plugin_errors | length == 0)' >/dev/null || fail "probe did not report a warning-free active GigPress menu"
 fi
