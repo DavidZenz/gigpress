@@ -64,6 +64,7 @@ require('admin/artists.php');
 require('admin/venues.php');
 require('admin/tours.php');
 require('admin/settings.php');
+require('admin/csv-export.php');
 require('admin/import-export.php');
 
 require('output/gigpress_shows.php');
@@ -654,52 +655,19 @@ function gigpress_reorder_artists() {
 
 
 function gigpress_export() {
-
-	check_admin_referer('gigpress-action');
-	global $wpdb;
-	require_once(WP_PLUGIN_DIR . '/gigpress/lib/parsecsv.lib.php');
-
-	$further_where = '';
-	switch($_POST['scope']) {
-		case 'upcoming':
-			$further_where = " AND show_expire >= '" . GIGPRESS_NOW . "'";
-			break;
-		case 'past':
-			$further_where = " AND show_expire < '" . GIGPRESS_NOW . "'";
-			break;
+	if (!gigpress_csv_export_authorized()) {
+		echo '<p>' . esc_html(__('You are not authorized to export shows, or the request expired. Reload the page and try again.', 'gigpress')) . '</p>';
+		return false;
 	}
-	if(isset($_POST['artist_id']) && $_POST['artist_id'] != '-1') {
-		$further_where .= ' AND s.show_artist_id = ' . $wpdb->prepare('%d', $_POST['artist_id']) . ' ';
+	$state = gigpress_csv_export_state($_POST);
+	$selection = gigpress_csv_export_selection($state);
+	if (!empty($selection['error']) || empty($selection['count'])) {
+		$args = array('page' => 'gigpress-import-export', 'artist_id' => $state['artist_id'], 'tour_id' => $state['tour_id'], 'scope' => $state['scope'],
+			'export_notice' => !empty($selection['error']) ? 'error' : 'no_matches');
+		wp_safe_redirect(add_query_arg($args, admin_url('admin.php')));
+		return false;
 	}
-	if(isset($_POST['tour_id']) && $_POST['tour_id'] != '-1') {
-		$further_where .= ' AND s.show_tour_id = ' . $wpdb->prepare('%d', $_POST['tour_id']) . ' ';
-	}
-	
-	$name = 'gigpress-export-' . date('Y-m-d') . '.csv';
-	
-	$fields = array(
-		"Date", "Time", "End date", "Artist", "Artist URL", "Venue", "Address", "City", "State", "Postal code", "Country", "Venue phone", "Venue URL", "Admittance", "Price", "Ticket URL", "Ticket phone", "External URL", "Notes", "Tour", "Status", "Related ID", "Related URL"
-	);
-	
-	$shows = $wpdb->get_results("
-		SELECT show_date, show_time, show_expire, artist_name, artist_url, venue_name, venue_address, venue_city, venue_state, venue_postal_code, venue_country, venue_phone, venue_url, show_ages, show_price, show_tix_url, show_tix_phone, show_external_url, show_notes, tour_name, show_status, show_related FROM ". GIGPRESS_VENUES ." as v, " . GIGPRESS_ARTISTS . " as a, " . GIGPRESS_SHOWS . " as s LEFT JOIN " . GIGPRESS_TOURS . " as t ON s.show_tour_id = t.tour_id WHERE show_status != 'deleted' AND s.show_artist_id = a.artist_id AND s.show_venue_id = v.venue_id" . $further_where . " ORDER BY show_date DESC,show_time DESC
-		", ARRAY_A);
-	
-	if($shows) {
-		$export_shows = array();
-		foreach ( $shows as $show ) {
-			$show['show_time'] = ( $show['show_time'][7] == 1 ) ? '' : $show['show_time'];
-			$show['show_expire'] = ( $show['show_date'] == $show['show_expire'] ) ? '' : $show['show_expire'];
-			$show['show_related_url'] = ( $show['show_related'] ) ? gigpress_related_link($show['show_related'], 'url') : '';
-			$export_shows[] = $show;
-		}
-	
-		$export = new parseCSV();
-		$export->output($name, stripslashes_deep($export_shows), $fields, ',');
-	} else {
-		echo('<p>' . __('Nothing to export.', 'gigpress') . '</p>');
-	}
-	
+	gigpress_csv_emit_download($selection);
 }
 
 
