@@ -74,6 +74,14 @@ function gigpress_csv_export_authorized(): bool {
 	return current_user_can('manage_options') && $nonce !== '' && wp_verify_nonce($nonce, 'gigpress-action') !== false;
 }
 
+function gigpress_export_preview() {
+	if (!current_user_can('manage_options')) wp_send_json_error(array('message' => __('You are not authorized to preview exports.', 'gigpress')), 403);
+	check_ajax_referer('gigpress-export-preview', '_ajax_nonce');
+	$selection = gigpress_csv_export_selection(gigpress_csv_export_state($_POST));
+	if (!empty($selection['error'])) wp_send_json_error(array('message' => (string) $selection['error']), 500);
+	wp_send_json_success(array('count' => (int) $selection['count']));
+}
+
 function gigpress_csv_emit_download(array $selection): void {
 	if (!gigpress_csv_export_authorized() || !empty($selection['error']) || empty($selection['count']) || empty($selection['rows'])) return;
 	$csv = gigpress_csv_export_encode($selection['rows']);

@@ -124,9 +124,18 @@ function gigpress_admin_menu() {
 function gigpress_admin_head()	{
 	wp_enqueue_script('jquery');
 	wp_enqueue_script('jquery-ui-sortable');
-	wp_enqueue_script('gigpress-admin-js', plugins_url('scripts/gigpress-admin.js', __FILE__), array('jquery'));
-	wp_localize_script('gigpress-admin-js', 'gigpressAdmin', array('reorderNonce' => wp_create_nonce('gigpress-reorder-artists'), 'reorderError' => __('Artist order could not be updated. Reload and retry.', 'gigpress')));
-	wp_enqueue_style('gigpress-admin-css', plugins_url('css/gigpress-admin.css', __FILE__));
+	wp_enqueue_script('gigpress-admin-js', plugins_url('scripts/gigpress-admin.js', __FILE__), array('jquery'), filemtime(__DIR__ . '/scripts/gigpress-admin.js'));
+	wp_localize_script('gigpress-admin-js', 'gigpressAdmin', array(
+		'reorderNonce' => wp_create_nonce('gigpress-reorder-artists'),
+		'reorderError' => __('Artist order could not be updated. Reload and retry.', 'gigpress'),
+		'exportPreview' => array(
+			'nonce' => wp_create_nonce('gigpress-export-preview'),
+			'template' => __('Artist: %1$s; Tour: %2$s; Date scope: %3$s; matching shows: %4$d.', 'gigpress'),
+			'updating' => __('updating…', 'gigpress'),
+			'error' => __('count unavailable; try reloading the page', 'gigpress'),
+		),
+	));
+	wp_enqueue_style('gigpress-admin-css', plugins_url('css/gigpress-admin.css', __FILE__), array(), filemtime(__DIR__ . '/css/gigpress-admin.css'));
 }
 
 
@@ -736,6 +745,7 @@ add_action('wp_head', 'gigpress_head');
 add_action('admin_post_gigpress_export', 'gigpress_export');
 add_action('admin_post_nopriv_gigpress_export', 'gigpress_export_nopriv');
 add_action('wp_ajax_gigpress_reorder_artists', 'gigpress_reorder_artists');
+add_action('wp_ajax_gigpress_export_preview', 'gigpress_export_preview');
 
 add_filter('custom_menu_order', '__return_true');
 add_filter('menu_order', 'custom_menu_order');

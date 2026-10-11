@@ -2,6 +2,70 @@ $gp=jQuery.noConflict();
 
 $gp(document).ready(function()
 	{
+		var exportFilters = document.querySelector('.gp-import-export .gp-csv-export-filters');
+		var exportDownload = document.querySelector('.gp-import-export .gp-csv-download');
+		var exportSummary = document.getElementById('gp-export-summary');
+		var exportPreview = (window.gigpressAdmin || {}).exportPreview || {};
+		if (exportFilters && exportDownload && exportSummary && exportPreview.nonce && window.ajaxurl) {
+			var exportFields = ['artist_id', 'tour_id', 'scope'];
+			var previewRequest = null;
+			var previewRevision = 0;
+			var selectedLabel = function(id) {
+				var select = document.getElementById(id);
+				return select && select.selectedIndex >= 0 ? select.options[select.selectedIndex].text : '';
+			};
+			var updateExportSummary = function(count) {
+				var values = [selectedLabel('gp-export-artist'), selectedLabel('gp-export-tour'), selectedLabel('gp-export-scope'), String(count)];
+				exportSummary.textContent = String(exportPreview.template || '').replace(/%([1-4])\$[sd]/g, function(match, index) {
+					return values[parseInt(index, 10) - 1];
+				});
+			};
+			var syncExportDownload = function() {
+				exportFields.forEach(function(name) {
+					var selection = exportFilters.querySelector('[name="' + name + '"]');
+					var input = exportDownload.querySelector('[name="' + name + '"]');
+					if (selection && input) input.value = selection.value;
+				});
+			};
+			var refreshExportPreview = function() {
+				var revision = ++previewRevision;
+				if (previewRequest) previewRequest.abort();
+				syncExportDownload();
+				updateExportSummary(exportPreview.updating || '…');
+				exportFilters.classList.add('gp-js-ready');
+				previewRequest = $gp.ajax({
+					url: window.ajaxurl,
+					type: 'POST',
+					dataType: 'json',
+					data: {
+						action: 'gigpress_export_preview',
+						_ajax_nonce: exportPreview.nonce,
+						artist_id: exportFilters.querySelector('[name="artist_id"]').value,
+						tour_id: exportFilters.querySelector('[name="tour_id"]').value,
+						scope: exportFilters.querySelector('[name="scope"]').value
+					}
+				}).done(function(response) {
+					if (revision !== previewRevision) return;
+					if (response && response.success && response.data && Number.isInteger(Number(response.data.count)) && Number(response.data.count) >= 0) {
+						updateExportSummary(Number(response.data.count));
+					} else {
+						updateExportSummary(exportPreview.error || '');
+						exportFilters.classList.remove('gp-js-ready');
+					}
+				}).fail(function(xhr, status) {
+					if (revision !== previewRevision || status === 'abort') return;
+					updateExportSummary(exportPreview.error || '');
+					exportFilters.classList.remove('gp-js-ready');
+				});
+			};
+			exportFilters.classList.add('gp-js-ready');
+			exportFields.forEach(function(name) {
+				var control = exportFilters.querySelector('[name="' + name + '"]');
+				if (control) control.addEventListener('change', refreshExportPreview);
+			});
+			exportDownload.addEventListener('submit', syncExportDownload);
+		}
+
 		// The server renders every correction field for requests without JavaScript.
 		$gp('tr.gigpress-inactive, tbody.gigpress-inactive').hide();
 		var revealEndDate = function() {

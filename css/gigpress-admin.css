@@ -231,6 +231,10 @@ p.gp-trash {
 	max-width: 60em;
 }
 
+.gp-import-export .gp-csv-export-filters.gp-js-ready .gp-csv-export-apply {
+	display: none;
+}
+
 .optiontable th {
 	text-align: left;
 	width: 150px;

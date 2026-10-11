@@ -74,12 +74,15 @@ function gigpress_csv_export_case($case) {
 			&& strpos($page, 'Date scope: Past dates; matching shows: 0.') !== false;
 		$checks['tour_and_scope_retained_with_reset_action'] = preg_match('/<option value="' . $emptyTour . '"[^>]*selected/', $page) === 1
 			&& preg_match('/<option value="past"[^>]*selected/', $page) === 1 && strpos($page, 'reset_filters=1') !== false;
-		$checks['filter_preview_is_get_and_download_keeps_applied_selection'] = preg_match('/<form class="gp-csv-export-filters"[^>]*method="get"/', $page) === 1
-			&& strpos($page, 'name="page" value="gigpress-import-export"') !== false && strpos($page, 'Apply filters') !== false
+		$checks['filter_preview_is_reactive_with_no_js_fallback'] = preg_match('/<form class="gp-csv-export-filters"[^>]*method="get"/', $page) === 1
+			&& strpos($page, 'name="page" value="gigpress-import-export"') !== false && strpos($page, 'gp-csv-export-apply') !== false
+			&& strpos($page, 'id="gp-export-summary"') !== false && strpos($page, 'aria-live="polite"') !== false
+			&& has_action('wp_ajax_gigpress_export_preview', 'gigpress_export_preview') !== false
 			&& preg_match('/<form class="gp-csv-download"[^>]*method="post"/', $page) === 1
 			&& strpos($page, 'name="artist_id" value="' . $emptyArtist . '"') !== false
 			&& strpos($page, 'name="tour_id" value="' . $emptyTour . '"') !== false
-			&& strpos($page, 'name="scope" value="past"') !== false && strpos($page, 'Download CSV') !== false;
+			&& strpos($page, 'name="scope" value="past"') !== false && strpos($page, 'Download CSV') !== false
+			&& strpos(file_get_contents(WP_PLUGIN_DIR . '/gigpress/scripts/gigpress-admin.js'), 'refreshExportPreview') !== false;
 		$checks['status_zero_manual_attention_visible'] = strpos($page, 'Status 0') !== false && strpos($page, 'manual attention') !== false;
 		$result = array('counts' => array('imported' => 1, 'duplicate' => 1, 'rejected' => 1, 'failed' => 1, 'skipped' => 1), 'total' => 5,
 			'records' => array('imported' => array(array('row' => 1, 'identity' => 'Imported — 2032-05-05 — Hall', 'reason' => 'Saved')),

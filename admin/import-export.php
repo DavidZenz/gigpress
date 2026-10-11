@@ -77,7 +77,7 @@ function gigpress_import_export() {
 		<section class="gp-csv-section gp-export-panel" aria-labelledby="gp-csv-export-heading">
 			<h3 id="gp-csv-export-heading"><?php esc_html_e('Export', 'gigpress'); ?></h3>
 			<p><?php esc_html_e('Download matching show records as a CSV file for transfer to another GigPress installation.', 'gigpress'); ?></p>
-			<p><?php esc_html_e('Apply filters to preview the matching show count before downloading.', 'gigpress'); ?></p>
+			<p><?php esc_html_e('The matching show count updates when you change a filter.', 'gigpress'); ?></p>
 			<p class="gp-csv-spreadsheet-note"><?php esc_html_e('Spreadsheet apps may interpret some CSV values when a file is opened directly. For exact values, import selected columns as text.', 'gigpress'); ?></p>
 			<?php if (isset($_GET['export_notice']) && $_GET['export_notice'] === 'no_matches') : ?><div class="notice notice-info" role="status"><p><?php esc_html_e('No shows match these export filters', 'gigpress'); ?>.</p></div><?php endif; ?>
 			<?php if (isset($_GET['export_notice']) && $_GET['export_notice'] === 'error') : ?><div class="notice notice-error" role="status"><p><?php esc_html_e('The export selection could not be read. Reload the page and try again.', 'gigpress'); ?></p></div><?php endif; ?>
@@ -91,9 +91,9 @@ function gigpress_import_export() {
 				<?php foreach ((array) $tours as $tour) echo '<option value="' . esc_attr((int) $tour->tour_id) . '" ' . selected($state['tour_id'], (int) $tour->tour_id, false) . '>' . esc_html($tour->tour_name) . '</option>'; ?></select></p>
 				<p><label for="gp-export-scope"><?php esc_html_e('Date scope', 'gigpress'); ?></label><br /><select id="gp-export-scope" name="scope">
 				<?php foreach ($scopeLabels as $value => $label) echo '<option value="' . esc_attr($value) . '" ' . selected($state['scope'], $value, false) . '>' . esc_html($label) . '</option>'; ?></select></p>
-				<button type="submit" class="button button-secondary"><?php esc_html_e('Apply filters', 'gigpress'); ?></button>
+				<button type="submit" class="button button-secondary gp-csv-export-apply"><?php esc_html_e('Apply filters', 'gigpress'); ?></button>
 			</form>
-			<p class="description" role="status" aria-live="polite"><?php echo esc_html(sprintf(__('Artist: %1$s; Tour: %2$s; Date scope: %3$s; matching shows: %4$d.', 'gigpress'), $artistLabel, $tourLabel, $scopeLabels[$state['scope']], (int) $selection['count'])); ?></p>
+			<p id="gp-export-summary" class="description" role="status" aria-live="polite"><?php echo esc_html(sprintf(__('Artist: %1$s; Tour: %2$s; Date scope: %3$s; matching shows: %4$d.', 'gigpress'), $artistLabel, $tourLabel, $scopeLabels[$state['scope']], (int) $selection['count'])); ?></p>
 			<form class="gp-csv-download" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" method="post">
 				<?php wp_nonce_field('gigpress-action'); ?>
 				<input type="hidden" name="action" value="gigpress_export" />
