@@ -39,6 +39,7 @@ Keep the procedural WordPress administration integration and established CSV sch
 - **D-10:** When no shows match, stay on the page, display “No shows match these export filters” and offer Reset filters. Produce no download. Reset returns to the existing all-artists/all-tours/all-dates defaults.
 - **D-11:** Retain export choices for the current visit, including after downloads or errors. Later visits use the existing defaults. Do not add persistent per-user export preferences.
 - **D-12:** Provide a short visible spreadsheet note plus expandable steps explaining how to import values as text and preserve them when editing for re-import. Retain the CSV transfer contract. The user chose guidance placement; they did not select a new spreadsheet-specific output mode or a transformation of exported values.
+- **D-17:** Planning clarification, 2026-10-11: preserve exact exported values, including formula-like strings and legitimate leading-plus phone numbers, with explicit spreadsheet text-import guidance. The user accepted that direct opening can execute formulas. Do not silently prefix, strip, rewrite or block those values. Verify CSV structure and literal round trips; any spreadsheet safety claim must be limited to the specifically observed text-import workflow, not universal direct-open or save/reopen safety.
 
 ### Legacy records and conversion
 
@@ -51,7 +52,7 @@ Keep the procedural WordPress administration integration and established CSV sch
 
 The user selected all four areas and explicitly chose each substantive decision above; no area was delegated wholesale. Exact supporting copy, spacing, accessible disclosure/focus mechanics, request-state handling, row-number conventions, fixture organization, recovery bookkeeping and safe output encoding are implementation details for research and planning.
 
-Characterize existing CSV parsing, matching, related-post and export semantics before altering them. Research spreadsheet formula handling alongside literal-value preservation and round trips; the selected instructional note does not waive SEC-01 or authorize silently changing stored/exported content. Record any unresolved tradeoff with a concrete proposed behavior during planning. No arbitrary mapping wizard or new export mode was selected.
+Characterize existing CSV parsing, matching, related-post and export semantics before altering them. D-17 resolves the researched spreadsheet formula/literal-transfer tradeoff; it does not waive SEC-01 upload, mutation, HTML-output or CSV-structure controls. No arbitrary mapping wizard or new export mode was selected.
 
 Creating this context authorizes the discussion artifacts and commits; it does not start planning or execution automatically.
 

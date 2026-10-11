@@ -248,3 +248,9 @@ No new export format or value-transformation policy was selected.
 ## Deferred Ideas
 
 None introduced during this discussion.
+
+## Planning clarification — 2026-10-11
+
+Research surfaced the conflict between formula neutralization and unchanged CSV transfers. The parent asked whether to preserve exact values with text-import guidance or block affected downloads and identify show/field. The prompt explained that direct opening may execute formulas and blocking can reject legitimate leading-plus phone numbers.
+
+**User's choice:** “Preserve exact values with text-import guidance (Recommended).” Recorded as D-17 in CONTEXT.md. No new export mode, prefixing, stored transformation or formula-based download block is authorized.
