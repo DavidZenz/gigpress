@@ -1241,7 +1241,7 @@ run_browser_fixture() {
     esac
   done
   [[ "$action" =~ ^(smoke|start|status|stop)$ ]] || fail "browser-fixture requires smoke, start, status or stop"
-  [[ "$browser_case" =~ ^(entry|settings|guards|all)$ ]] || fail "unknown browser HTTP case"
+  [[ "$browser_case" =~ ^(entry|settings|guards|csv|all)$ ]] || fail "unknown browser HTTP case"
   if [[ "$action" == status || "$action" == stop ]]; then
     # No eval/source: reconstruct only allowlisted fields after strict private-file checks.
     [[ -n "$session" && -f "$session" && ! -L "$session" && ! -L "$(dirname "$session")" ]] || fail "not an owned private browser session"

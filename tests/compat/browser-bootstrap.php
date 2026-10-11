@@ -71,6 +71,10 @@ function browser_http($path, $post = null, $jar = 'admin') {
     return $result;
 }
 
+function browser_csv() {
+    return array('owned_multipart_helper_available' => function_exists('browser_multipart_upload'));
+}
+
 function browser_dom($html) {
     $dom = new DOMDocument(); $prior = libxml_use_internal_errors(true);
     $dom->loadHTML('<?xml encoding="UTF-8">' . $html);
@@ -522,7 +526,7 @@ PHP;
 } elseif ($mode === 'smoke') {
     $case = getenv('COMPAT_BROWSER_CASE') ?: 'entry';
     $required = $case === 'all' ? array('entry','settings','guards') : array($case);
-    if (array_diff($required,array('entry','settings','guards'))) throw new RuntimeException('Unknown HTTP case');
+    if (array_diff($required,array('entry','settings','guards','csv'))) throw new RuntimeException('Unknown HTTP case');
     $cases = array(); $checks = array();
     foreach ($required as $name) {
         $started = microtime(true); $values = call_user_func('browser_' . $name);

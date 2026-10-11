@@ -73,10 +73,52 @@ function gigpress_csv_import_case($case) {
 			&& ($storedArtist['artist_name'] ?? null) === $fixture['literals']['artist']
 			&& ($storedShow['show_tix_phone'] ?? null) === '+00012' && ($storedShow['show_notes'] ?? null) === $fixture['literals']['notes'];
 	} elseif ($case === 'import-retry') {
-		$checks['validated_persistence_and_retry_contract'] = function_exists('gigpress_csv_persist_record')
-			&& function_exists('gigpress_csv_import_result');
+		foreach (array(GIGPRESS_SHOWS, GIGPRESS_ARTISTS, GIGPRESS_VENUES, GIGPRESS_TOURS) as $table) $wpdb->query('DELETE FROM ' . $table);
+		$lateRow = $fixture['base']; $lateRow['Artist'] = 'Late Failure Band'; $lateRow['Venue'] = 'Late Failure Hall'; $lateRow['Tour'] = 'Late Failure Tour';
+		$latePrepared = gigpress_csv_validate_record($lateRow, 2, false);
+		$target = 'INSERT INTO `' . GIGPRESS_SHOWS . '`'; $attempted = false;
+		$fail = function ($sql) use (&$attempted, $target) { if (!$attempted && stripos($sql, $target) !== false) { $attempted = true; return 'INTENTIONAL IMPORT FAILURE'; } return $sql; };
+		$suppressedErrors = $wpdb->suppress_errors(true);
+		add_filter('query', $fail, 9999);
+		$failed = gigpress_csv_persist_record($latePrepared);
+		remove_filter('query', $fail, 9999);
+		$wpdb->suppress_errors($suppressedErrors);
+		$afterFailure = gigpress_csv_import_snapshot();
+		$retry = gigpress_csv_persist_record($latePrepared);
+		$afterRetry = gigpress_csv_import_snapshot();
+		$repeat = gigpress_csv_persist_record($latePrepared);
+		$afterRepeat = gigpress_csv_import_snapshot();
+		$checks['late_write_failure_was_attempted_and_reported'] = $attempted && ($failed['group'] ?? '') === 'failed'
+			&& !empty($failed['identity']) && !empty($failed['reason']) && !empty($failed['next_step']);
+		$checks['late_retry_reuses_entities_and_duplicate_is_unchanged'] = count($afterFailure['artists']) === 1
+			&& count($afterFailure['venues']) === 1 && count($afterFailure['tours']) === 1 && count($afterFailure['shows']) === 0
+			&& ($retry['group'] ?? '') === 'imported' && count($afterRetry['artists']) === 1 && count($afterRetry['venues']) === 1
+			&& count($afterRetry['tours']) === 1 && count($afterRetry['shows']) === 1 && ($repeat['group'] ?? '') === 'duplicate' && $afterRepeat === $afterRetry;
+		$readbackRow = $fixture['base']; $readbackRow['Artist'] = 'Readback Failure Band'; $readbackRow['Venue'] = 'Readback Failure Hall';
+		$readbackPrepared = gigpress_csv_validate_record($readbackRow, 3, false); $readbackAttempted = false;
+		$readbackTarget = 'SELECT * FROM ' . GIGPRESS_SHOWS . ' WHERE show_id';
+		$failReadback = function ($sql) use (&$readbackAttempted, $readbackTarget) { if (!$readbackAttempted && stripos($sql, $readbackTarget) !== false) { $readbackAttempted = true; return 'INTENTIONAL READBACK FAILURE'; } return $sql; };
+		$suppressedErrors = $wpdb->suppress_errors(true);
+		add_filter('query', $failReadback, 9999);
+		$readbackFailure = gigpress_csv_persist_record($readbackPrepared);
+		remove_filter('query', $failReadback, 9999);
+		$wpdb->suppress_errors($suppressedErrors);
+		$readbackRetry = gigpress_csv_persist_record($readbackPrepared);
+		$checks['readback_failure_is_failed_then_safe_duplicate_retry'] = $readbackAttempted && ($readbackFailure['group'] ?? '') === 'failed'
+			&& ($readbackRetry['group'] ?? '') === 'duplicate';
+		$expectedCounts = gigpress_csv_import_result(array($failed, $retry, $repeat, $readbackFailure, $readbackRetry));
+		$checks['each_attempt_has_one_terminal_outcome'] = ($expectedCounts['total'] ?? 0) === 5
+			&& array_sum($expectedCounts['counts'] ?? array()) === 5 && ($expectedCounts['counts']['failed'] ?? 0) === 2;
 	} else {
-		$checks['upload_validator_contract'] = function_exists('gigpress_csv_validate_upload');
+		global $gpo;
+		$temp = tempnam(sys_get_temp_dir(), 'gigpress-fabricated-upload-'); file_put_contents($temp, implode(',', $fixture['headers']));
+		$before = gigpress_csv_import_snapshot();
+		$_FILES = array('gp_import' => array('name' => 'shows.csv', 'tmp_name' => $temp, 'error' => UPLOAD_ERR_OK, 'size' => filesize($temp)));
+		$fake = gigpress_csv_validate_upload($_FILES['gp_import'], array('method' => 'POST', 'action' => 'import'));
+		$wrongMethod = gigpress_csv_validate_upload($_FILES['gp_import'], array('method' => 'GET', 'action' => 'import'));
+		$wrongAction = gigpress_csv_validate_upload($_FILES['gp_import'], array('method' => 'POST', 'action' => 'delete'));
+		$after = gigpress_csv_import_snapshot(); @unlink($temp);
+		$checks['fabricated_path_wrong_method_and_action_rejected_without_writes'] = empty($fake['valid']) && empty($wrongMethod['valid']) && empty($wrongAction['valid']) && $before === $after;
 	}
 	$failed = !$checks['selected_case'] || in_array(false, $checks, true);
 	return array('case' => $case, 'status' => $failed ? 'FAIL' : 'PASS', 'checks' => $checks,
