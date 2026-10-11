@@ -32,13 +32,13 @@ Requirements for the first compatibility and UX delivery. Each maps to a roadmap
 
 ### CSV Import and Export
 
-- [ ] **CSV-01**: CSV import and export retain the existing GigPress column format, supported filters, related-post option, and row-handling behavior.
-- [ ] **CSV-02**: Import and export screens clearly label their tasks and report actionable results, including imported, duplicate, skipped, or rejected row counts and reasons where applicable.
+- [x] **CSV-01**: CSV import and export retain the existing GigPress column format, supported filters, related-post option, and row-handling behavior.
+- [x] **CSV-02**: Import and export screens clearly label their tasks and report actionable results, including imported, duplicate, skipped, or rejected row counts and reasons where applicable.
 
 ### Usability and Safety
 
 - [x] **UX-01**: Administration controls changed for this delivery have associated labels, semantic table headings where applicable, keyboard operation, and text-based success and error feedback.
-- [ ] **SEC-01**: Changed administration and import/export paths validate inputs, retain appropriate capability and nonce checks for mutations, and escape output for its destination format.
+- [x] **SEC-01**: Changed administration and import/export paths validate inputs, retain appropriate capability and nonce checks for mutations, and escape output for its destination format.
 
 ## v2 Requirements
 
@@ -75,9 +75,9 @@ Which phases cover which requirements.
 | UX-01 | Phase 3 | Complete |
 | PUB-01 | Phase 4 | Complete |
 | PUB-02 | Phase 4 | Complete |
-| CSV-01 | Phase 5 | Pending |
-| CSV-02 | Phase 5 | Pending |
-| SEC-01 | Phase 5 | Pending |
+| CSV-01 | Phase 5 | Complete |
+| CSV-02 | Phase 5 | Complete |
+| SEC-01 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 15 total

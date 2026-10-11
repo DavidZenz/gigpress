@@ -140,11 +140,11 @@ Required inherited review fixes: [CSV review follow-ups](CSV-REVIEW-FOLLOWUPS.md
   2. Import and export screens clearly label each task and report actionable results, including imported, duplicate, skipped, or rejected row counts and applicable reasons.
   3. Invalid inputs on changed administration and import/export paths are rejected with text feedback; unauthorized or nonce-invalid mutations do not change records, and output is safely encoded for its destination.
 
-**Plans**: 0/5 plans complete in 4 waves
+**Plans**: 1/5 plans executed in 4 waves
 
 Plans:
 **Wave 1**
-- [ ] 05-01-PLAN.md — Establish a populated migrated CSV tracer, shared contracts and recognized-version round trips.
+- [x] 05-01-PLAN.md — Establish a populated migrated CSV tracer, shared contracts and recognized-version round trips.
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 05-02-PLAN.md — Complete import validation, real upload protection, truthful results and safe retries.
@@ -167,4 +167,4 @@ Plans:
 | 2. Data and Upgrade Preservation | 4/4 | Complete    | 2026-10-04 |
 | 3. Administration Workflows | 4/4 | Complete    | 2026-10-05 |
 | 4. Public Publishing | 5/5 | Complete    | 2026-10-11 |
-| 5. CSV Import/Export | 0/5 | Planned | - |
+| 5. CSV Import/Export | 1/5 | In Progress|  |
