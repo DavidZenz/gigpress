@@ -22,11 +22,13 @@ Site owners can manage show information and reliably publish it on their WordPre
 - ✓ Preserve post-upgrade show create/edit/copy/trash/restore, dependency-safe entity deletion, and ownership-safe tour undo — Phase 2
 - ✓ Clear show date/time entry and recoverable validation, retained show-list filtering and selected-only confirmation, and grouped settings preserving stored values — Phase 3, automated evidence plus eight user-reported UAT passes
 - ✓ Changed Phase 3 controls support associated labels, keyboard operation and readable feedback — Phase 3 human acceptance
+- ✓ Preserve public shortcodes, widgets, related-post displays, RSS/iCalendar output, and theme overrides over populated migrated fixtures — Phase 4, source-bound matrix and accepted UAT
+- ✓ Publish readable bundled listings at 320 CSS pixels, with keyboard-usable links without JavaScript and preserved calendar date meanings — Phase 4, accepted browser and Apple Calendar checks
 
 ### Active
 
-- [ ] Preserve established public display, feed, theme-override, and import/export contracts while improving publishing and CSV workflows.
-- [ ] Deliver responsive public show displays and clearer import/export layout and feedback — remaining Phases 4 and 5.
+- [ ] Preserve established CSV import/export contracts, including migrated-data round trips and protected mutations — Phase 5.
+- [ ] Deliver clearer import/export layout and actionable outcome feedback — Phase 5.
 
 ### Out of Scope
 
@@ -45,6 +47,7 @@ Site owners can manage show information and reliably publish it on their WordPre
 
 - Phase 3 has 6384 passing administration assertions across six pinned supported cells, 54 authenticated HTTP checks and 39 PHP syntax checks. Eight user-reported passing UAT checkpoints close manual acceptance; the earlier browser record retains its actual observation limits.
 - Three inherited CSV/conversion review defects remain required Phase 5 fixes in `.planning/CSV-REVIEW-FOLLOWUPS.md`; Phase 3 acceptance does not establish plugin-wide safety.
+- Phase 4 is complete: all 22 UAT checks pass, and canonical verification is passed. The final-source public matrix covers six WordPress/PHP cells, nine cases each and 852 assertions; browser, keyboard and Apple Calendar acceptance remain separate recorded evidence. The user accepted the static privacy assessment on 2026-10-11. The UI review's 17/24 advisory findings remain documented in `04-UI-REVIEW.md`.
 
 ## Constraints
 
@@ -69,10 +72,14 @@ Site owners can manage show information and reliably publish it on their WordPre
 | Keep raw received correction values separate from normalized writes and reuse completed related-record IDs on retry. | Failed saves must remain correctable without duplicate related records. | Implemented and accepted in Phase 3. |
 | Bind trash confirmation to the owner and exact selected IDs, then report verified per-ID outcomes. | Filtering must not expand selection; Cancel must change nothing. | Implemented and accepted in Phase 3. |
 | Keep six settings groups immediately visible and preserve protected, unknown, nested and falsey stored values. | Clear settings navigation must retain existing site configuration and semantics. | Implemented and accepted in Phase 3. |
+| Apply responsive styling automatically only to the complete bundled template set. | Existing theme owners retain layout control and may explicitly adopt bundled styling. | Implemented and accepted in Phase 4 with complete/mixed override checks. |
+| Keep compatible HTML fragments while preparing separate plain values for JSON-LD, RSS and iCalendar. | Each output format needs its own encoding boundary while existing template variables remain usable. | Implemented and verified in Phase 4. |
+| Require browser and calendar-client acceptance against the verified final source. | Automated parser checks cannot establish visual readability or actual client behavior. | Explicitly accepted and completed in Phase 4. |
+| Accept the static privacy assessment for the public publishing paths. | Inspection finds no new server-side outbound HTTP request or provider; existing Calendar and Maps URLs remain visitor-followed links. | User replied `pass` to Phase 4 UAT test 22 on 2026-10-11; no network-level test claimed. |
 
 ## Evolution
 
 After each phase, move completed and confirmed requirements from Active to Validated, move rejected requirements to Out of Scope with a reason, record new requirements and decisions, and update this project description if the product changes. Review all sections at each milestone.
 
 ---
-*Last updated: 2026-10-05 after Phase 3 administration verification and human acceptance.*
+*Last updated: 2026-10-11 after Phase 4 public publishing verification and human acceptance.*

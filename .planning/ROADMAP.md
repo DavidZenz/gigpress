@@ -9,7 +9,7 @@ Modernize GigPress in compatibility-first slices. Establish the WordPress 7.0+ a
 - [x] **Phase 1: Compatibility Baseline and Menu Diagnosis** - Establish supported runtime metadata and warning-free core workflows. (completed 2026-10-04)
 - [x] **Phase 2: Data and Upgrade Preservation** - Keep existing records, relationships, settings, and CRUD behavior usable through updates. (completed 2026-10-04)
 - [x] **Phase 3: Administration Workflows** - Improve show entry, show-list management, and settings while keeping established behavior. (completed 2026-10-05)
-- [ ] **Phase 4: Public Publishing** - Make default show listings responsive and preserve public output and theme override contracts.
+- [x] **Phase 4: Public Publishing** - Make default show listings responsive and preserve public output and theme override contracts. (completed 2026-10-11)
 - [ ] **Phase 5: CSV Import/Export** - Improve task clarity and outcome feedback while preserving CSV behavior and protecting mutations.
 
 ## Phase Details
@@ -106,7 +106,7 @@ Plans:
   2. The bundled show listing is readable at a 320 CSS-pixel viewport without page-level horizontal scrolling, with existing show details and links available.
   3. Child-theme, parent-theme, and `wp-content/gigpress-templates` overrides continue to resolve with their existing filenames, variables, and CSS hooks.
 
-**Plans**: 5/5 plans executed
+**Plans**: 5/5 plans complete
 
 Plans:
 **Wave 1**
@@ -151,5 +151,5 @@ Required inherited review fixes: [CSV review follow-ups](CSV-REVIEW-FOLLOWUPS.md
 | 1. Compatibility Baseline and Menu Diagnosis | 5/5 | Complete    | 2026-10-04 |
 | 2. Data and Upgrade Preservation | 4/4 | Complete    | 2026-10-04 |
 | 3. Administration Workflows | 4/4 | Complete    | 2026-10-05 |
-| 4. Public Publishing | 5/5 | In Progress|  |
+| 4. Public Publishing | 5/5 | Complete    | 2026-10-11 |
 | 5. CSV Import/Export | 0/TBD | Not started | - |

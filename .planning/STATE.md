@@ -1,43 +1,45 @@
 ---
 gsd_state_version: "1.0"
-current_phase: 04
-current_phase_name: Public Publishing
-status: executing
-stopped_at: Completed 04-05-PLAN.md
-last_updated: "2026-10-07T07:23:41.805Z"
-last_activity: 2026-10-06
-last_activity_desc: Phase 04 execution started
-state_head: 22b600f7adfcaee91779ee2fca8c86d7779478dd
+current_phase: 5
+current_phase_name: CSV Import/Export
+status: planning
+stopped_at: Phase 04 complete, ready to plan Phase 5
+last_updated: "2026-10-11T08:32:05.417Z"
+last_activity: 2026-10-11
+last_activity_desc: Phase 04 complete, transitioned to Phase 5
+state_head: 0dfee675848a55dbdc349d492f4d3a5edd03c6c7
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 18
   completed_plans: 18
-  percent: 60
+  percent: 80
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-10-05)
+See: .planning/PROJECT.md (updated 2026-10-11)
 
 **Core value:** Site owners can manage show information and reliably publish it on their WordPress sites.
-**Current focus:** Phase 04 — Public Publishing
+**Current focus:** Phase 05 — CSV Import/Export
 
 ## Current Position
 
-Phase: 04 (Public Publishing) — READY TO EXECUTE
-Plan: 1 of 5
-Status: Ready to execute
-Last activity: 2026-10-06 — Phase 04 execution started
+Phase: 5 — CSV Import/Export
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-10-11 — Phase 04 complete, transitioned to Phase 5
 
-Progress: [██████░░░░] 60%
+Progress: [████████░░] 80%
+
+Planned work: [████████████████████] 18/18 plans (100%); Phase 05 is not yet planned.
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
+- Total plans completed: 18
 - Average duration: -
 - Total execution time: -
 
@@ -48,6 +50,7 @@ Progress: [██████░░░░] 60%
 | 01 | 5 | - | - |
 | 02 | 4 | - | - |
 | 03 | 4 | - | - |
+| 04 | 5 | - | - |
 
 **Recent Trend:**
 - Last 5 plans: none
@@ -120,6 +123,8 @@ Recent decisions affecting current work:
 - [Phase 04-public-publishing]: Preserve the feed endpoints, filter membership, event order, item identities, and UID construction while serializing from plain values.
 - [Phase 04-public-publishing]: Treat browser and calendar-client acceptance as a separate blocking gate for Plan 04-05; HTTP evidence does not set phase acceptance or Nyquist compliance.
 - [Phase 04-public-publishing]: Normalize equivalent HTML entities in subscription URL assertions before comparing saved destinations.
+- [Phase 04]: All 22 UAT rows pass; explicit acceptance of the static privacy assessment closes the sole human verification decision on 2026-10-11.
+- [Phase 04]: Canonical verification passes against unchanged implementation source; browser/client evidence remains separate from automated checks.
 
 ### Pending Todos
 
@@ -129,16 +134,17 @@ None yet.
 
 - [Phase 01] The unavailable live site's callback identity for the reported warning remains unproven; the controlled fixture is not evidence of the live actor.
 - [Phase 05] Verify CSV import/export edge cases and mutation protection with representative fixtures; close required CR-04 unsafe notices, CR-05 conversion write-loss and CR-07 status-format defects from CSV-REVIEW-FOLLOWUPS.md.
+- [Phase 04 advisory] Public UI review remains 17/24: grouped subscription names/targets/focus and desktop cancelled-text contrast need improvement. These are documented quality findings, not PUB-01/PUB-02 completion blockers.
 
 ## Deferred Items
 
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
-| Verification | Exercise public displays, theme overrides, RSS, and iCalendar on populated migrated Phase 02 fixtures. | Pending Phase 04 | Phase 02 | Current |
+| Verification | Exercise public displays, theme overrides, RSS, and iCalendar on populated migrated Phase 02 fixtures. | Completed Phase 04, 2026-10-11 | Phase 02 | Current |
 | Verification | Exercise CSV import/export contracts and round trips on populated migrated Phase 02 fixtures. | Pending Phase 05 | Phase 02 | Current |
 
 ## Session Continuity
 
-Last session: 2026-10-06T09:36:50.085Z
-Stopped at: Completed 04-05-PLAN.md
+Last session: 2026-10-11T08:32:05Z
+Stopped at: Phase 04 complete, ready to plan Phase 5
 Resume file: None
