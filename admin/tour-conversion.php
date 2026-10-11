@@ -44,7 +44,7 @@ function gigpress_tour_conversion_get_intent($token, $owner_id) {
 	if (!is_string($token) || !preg_match('/\A[a-f0-9]{40}\z/', $token)) return false;
 	$intent = get_transient(gigpress_tour_conversion_intent_key($token));
 	if (!is_array($intent) || !hash_equals((string) ($intent['token'] ?? ''), $token)
-		|| (int) ($intent['owner'] ?? 0) !== (int) $owner_id || (int) ($intent['expires'] ?? 0) < time()) return false;
+		|| (int) ($intent['owner'] ?? 0) !== (int) $owner_id || (int) ($intent['expires'] ?? 0) <= time()) return false;
 	return $intent;
 }
 
@@ -114,7 +114,7 @@ function gigpress_tour_conversion_entry($intent, $tour) {
 	foreach ($tour['shows'] as $show) {
 		$original = array('artist_id' => (int) $show['original']['artist_id'], 'tour_id' => (int) $show['original']['tour_id']);
 		$entry['shows'][(int) $show['show_id']] = array('original' => $original,
-			'intended' => array('artist_id' => 0, 'tour_id' => 0), 'latest' => null, 'ownership' => 'unverified', 'readback' => false, 'error' => '');
+			'intended' => array('artist_id' => 0, 'tour_id' => 0), 'latest' => null, 'ownership' => 'unverified', 'write_applied' => false, 'readback' => false, 'error' => '');
 	}
 	return $entry;
 }
@@ -129,6 +129,19 @@ function gigpress_tour_conversion_process_tour($intent, $tour) {
 	if (!isset($journal[$key]) && !gigpress_tour_conversion_journal_write($key, $entry)) return array('status' => 'failed', 'stage' => 'journal-start', 'reason' => 'journal_write_failed', 'tour_id' => $tour_id);
 	if (!empty($entry['terminal'])) return array('status' => 'complete', 'tour_id' => $tour_id, 'artist_id' => (int) $entry['target_artist_id']);
 	$source = $wpdb->get_row($wpdb->prepare('SELECT tour_id, tour_name, tour_status FROM ' . GIGPRESS_TOURS . ' WHERE tour_id = %d', $tour_id), ARRAY_A);
+	if (!$source && in_array($entry['stage'] ?? '', array('references-reassigned', 'source-deleted'), true)) {
+		$verified = true;
+		foreach ($entry['shows'] as $show_id => $showState) {
+			if (gigpress_tour_conversion_current_show($show_id) !== $showState['intended'] || empty($showState['readback']) || $showState['ownership'] !== 'owned') $verified = false;
+		}
+		if ($verified) {
+			$entry['stage'] = 'source-deleted';
+			if (!gigpress_tour_conversion_journal_write($key, $entry)) return array('status' => 'failed', 'stage' => 'journal-complete', 'reason' => 'journal_write_failed_after_delete', 'tour_id' => $tour_id);
+			$entry['terminal'] = true; $entry['stage'] = 'complete';
+			if (!gigpress_tour_conversion_journal_write($key, $entry)) return array('status' => 'failed', 'stage' => 'journal-complete', 'reason' => 'journal_write_failed_after_delete', 'tour_id' => $tour_id);
+			return array('status' => 'complete', 'tour_id' => $tour_id, 'artist_id' => (int) $entry['target_artist_id']);
+		}
+	}
 	if (!$source || $source['tour_name'] !== $tour['name'] || $source['tour_status'] !== 'active') return array('status' => 'failed', 'stage' => 'source-check', 'reason' => 'source_changed', 'tour_id' => $tour_id);
 	if ((int) $entry['target_artist_id'] > 0) $target = gigpress_tour_conversion_resolve_target($tour['name'], false, (int) $entry['target_artist_id']);
 	else $target = gigpress_tour_conversion_resolve_target($tour['name'], true);
@@ -142,19 +155,34 @@ function gigpress_tour_conversion_process_tour($intent, $tour) {
 		$current = gigpress_tour_conversion_current_show($show_id);
 		$showState['latest'] = $current;
 		if ($current === null) { $showState['ownership'] = 'conflict'; $showState['error'] = 'show_missing'; }
-		elseif ($current === $showState['intended'] && !empty($showState['readback'])) { $showState['ownership'] = 'owned'; }
+		elseif ($current === $showState['intended'] && !empty($showState['readback'])) {
+			$showState['ownership'] = 'owned'; $showState['error'] = '';
+			if (!gigpress_tour_conversion_journal_write($key, $entry)) { $showState['error'] = 'journal_write_failed'; break; }
+		}
+		elseif ($current === $showState['intended'] && !empty($showState['write_applied'])) {
+			/* The journal proves this conditional write was applied; this fresh readback completes proof after an interrupted read. */
+			$showState['latest'] = gigpress_tour_conversion_current_show($show_id);
+			if ($showState['latest'] === $showState['intended']) {
+				$showState['readback'] = true; $showState['ownership'] = 'owned'; $showState['error'] = '';
+				if (!gigpress_tour_conversion_journal_write($key, $entry)) { $showState['error'] = 'journal_write_failed'; break; }
+			} else { $showState['ownership'] = 'conflict'; $showState['error'] = 'intervening_reassignment'; }
+		}
 		elseif ($current !== $showState['original']) { $showState['ownership'] = 'conflict'; $showState['error'] = 'intervening_reassignment'; }
 		else {
 			$showState['ownership'] = 'owned';
 			if (gigpress_tour_conversion_fault('update-before', $tour_id, $show_id)) { $showState['error'] = 'update_failed'; continue; }
 			$changed = $wpdb->update(GIGPRESS_SHOWS, array('show_artist_id' => $entry['target_artist_id'], 'show_tour_id' => 0),
 				array('show_id' => $show_id, 'show_artist_id' => $showState['original']['artist_id'], 'show_tour_id' => $tour_id), array('%d', '%d'), array('%d', '%d', '%d'));
-			if ($changed === false || $changed !== 1 || gigpress_tour_conversion_fault('update-after', $tour_id, $show_id)) { $showState['error'] = 'update_failed'; continue; }
+			if ($changed === false || $changed !== 1) { $showState['error'] = 'update_failed'; continue; }
+			$showState['write_applied'] = true;
+			if (!gigpress_tour_conversion_journal_write($key, $entry)) { $showState['error'] = 'journal_write_failed'; break; }
 			$current = gigpress_tour_conversion_current_show($show_id);
+			if (gigpress_tour_conversion_fault('show-readback', $tour_id, $show_id)) $current = null;
 			$showState['latest'] = $current;
 			if ($current !== $showState['intended']) { $showState['error'] = 'update_readback_mismatch'; continue; }
 			$showState['readback'] = true; $showState['ownership'] = 'owned'; $showState['error'] = '';
 			if (!gigpress_tour_conversion_journal_write($key, $entry)) { $showState['error'] = 'journal_write_failed'; break; }
+			if (gigpress_tour_conversion_fault('update-after', $tour_id, $show_id)) { $showState['error'] = 'update_interrupted_after_readback'; gigpress_tour_conversion_journal_write($key, $entry); continue; }
 		}
 		if ($showState['ownership'] === 'conflict' || $showState['error'] !== '') gigpress_tour_conversion_journal_write($key, $entry);
 	}
@@ -178,9 +206,10 @@ function gigpress_tour_conversion_process_tour($intent, $tour) {
 	if (gigpress_tour_conversion_fault('delete-before', $tour_id)) return array('status' => 'failed', 'stage' => 'source-delete', 'reason' => 'source_delete_failed', 'tour_id' => $tour_id);
 	$deleted = $wpdb->delete(GIGPRESS_TOURS, array('tour_id' => $tour_id, 'tour_name' => $tour['name']), array('%d', '%s'));
 	$sourceAfter = $wpdb->get_var($wpdb->prepare('SELECT tour_id FROM ' . GIGPRESS_TOURS . ' WHERE tour_id = %d', $tour_id));
-	if ($deleted !== 1 || $sourceAfter || gigpress_tour_conversion_fault('delete-after', $tour_id)) return array('status' => 'failed', 'stage' => 'source-delete', 'reason' => 'source_delete_readback_failed', 'tour_id' => $tour_id);
+	if ($deleted !== 1 || $sourceAfter) return array('status' => 'failed', 'stage' => 'source-delete', 'reason' => 'source_delete_readback_failed', 'tour_id' => $tour_id);
 	$entry['stage'] = 'source-deleted';
 	if (!gigpress_tour_conversion_journal_write($key, $entry)) return array('status' => 'failed', 'stage' => 'journal-complete', 'reason' => 'journal_write_failed_after_delete', 'tour_id' => $tour_id);
+	if (gigpress_tour_conversion_fault('delete-after', $tour_id)) return array('status' => 'failed', 'stage' => 'source-delete', 'reason' => 'source_deleted_before_interruption', 'tour_id' => $tour_id);
 	$entry['terminal'] = true; $entry['stage'] = 'complete';
 	if (!gigpress_tour_conversion_journal_write($key, $entry)) return array('status' => 'failed', 'stage' => 'journal-complete', 'reason' => 'journal_write_failed_after_delete', 'tour_id' => $tour_id);
 	return array('status' => 'complete', 'tour_id' => $tour_id, 'artist_id' => (int) $entry['target_artist_id']);
