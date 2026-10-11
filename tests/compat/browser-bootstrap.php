@@ -106,6 +106,20 @@ function browser_csv() {
     $form = browser_http($page);
     $fields = browser_form($form['html'], '//form[.//input[@name="gpaction" and @value="import"]]');
     $checks['rendered_import_nonce'] = $form['status'] === 200 && !empty($fields['_wpnonce']) && ($fields['gpaction'] ?? '') === 'import';
+    $xpath = browser_dom($form['html']);
+    $sections = $xpath->query('//section[contains(concat(" ",normalize-space(@class)," ")," gp-csv-section ")]');
+    $checks['stacked_import_export_route_ready'] = $sections->length === 2
+        && $xpath->query('//section[contains(@class,"gp-import-panel")]//button[normalize-space()="Import shows"]')->length === 1
+        && $xpath->query('//section[contains(@class,"gp-export-panel")]//button[normalize-space()="Download CSV"]')->length === 1
+        && $xpath->query('//section[contains(@class,"gp-export-panel")]//select[@name="artist_id"]')->length === 1
+        && $xpath->query('//section[contains(@class,"gp-export-panel")]//select[@name="tour_id"]')->length === 1
+        && $xpath->query('//section[contains(@class,"gp-export-panel")]//select[@name="scope"]')->length === 1;
+    $checks['scoped_text_import_guidance_route_ready'] = strpos($form['html'], 'Import spreadsheet values as text') !== false
+        && strpos($form['html'], 'These steps describe Excel text import; they are not universal spreadsheet-safety guarantees.') !== false;
+    $conversionPage = browser_http('/wp-admin/admin.php?page=gigpress-artists');
+    $conversionXPath = browser_dom($conversionPage['html']);
+    $checks['conversion_preview_route_ready'] = $conversionPage['status'] === 200
+        && $conversionXPath->query('//form[.//input[@name="gpaction" and @value="tour-conversion-preview"]]')->length === 1;
     $fixture = WP_PLUGIN_DIR . '/gigpress/tests/compat/fixtures/shows.csv';
     $before = browser_snapshot();
     $tempsBefore = glob(sys_get_temp_dir() . '/php*') ?: array();

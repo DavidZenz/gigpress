@@ -65,6 +65,7 @@ require('admin/venues.php');
 require('admin/tours.php');
 require('admin/settings.php');
 require('admin/csv-export.php');
+require('admin/csv.php');
 require('admin/import-export.php');
 
 require('output/gigpress_shows.php');
