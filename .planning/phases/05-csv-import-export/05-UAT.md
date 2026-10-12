@@ -3,7 +3,7 @@ status: complete
 phase: 05-csv-import-export
 source: 05-01-SUMMARY.md, 05-02-SUMMARY.md, 05-03-SUMMARY.md, 05-04-SUMMARY.md, 05-05-SUMMARY.md
 started: 2026-10-12T13:42:53Z
-updated: 2026-10-12T13:42:53Z
+updated: 2026-10-12T13:50:26Z
 ---
 
 ## Current Test
@@ -42,20 +42,20 @@ expected: Preview identifies the tour and reference counts; Cancel leaves it unc
 result: pass
 evidence: User confirmed the Browser Tour preview and Cancel behavior, then ran the no-match conversion and confirmed success, one new artist, source-tour removal, and all 26 show references retained. Automated conversion evidence covers the other matching, ambiguity, and retry cases. See 05-BROWSER.md decisions D-14 through D-16.
 
-### 7. JavaScript-disabled layout and fallback
-expected: With JavaScript disabled, Import remains first, Export remains visible below it, and the no-JavaScript fallback is operable.
-result: skipped
-reason: The user confirmed JavaScript-off inspection is unavailable in the Codex integrated browser and explicitly waived this check for the current acceptance on 2026-10-12. The behavior remains untested; source inspection is recorded separately and is not treated as a browser pass. This is a temporary acceptance waiver, not a test result.
+### 7. D-01 observation waiver
+expected: When JavaScript-off inspection is unavailable, the current acceptance can proceed only with the user's explicit temporary waiver, while the browser evidence continues to identify the behavior as untested.
+result: pass
+evidence: The user explicitly asked to record the unavailable observation and accept the checks for now. `05-BROWSER.md` records D-01 as “Waived for now (not tested).” This verifies the waiver record, not the JavaScript-disabled product behavior.
 
 ## Summary
 
 total: 7
-passed: 6
+passed: 7
 issues: 0
 pending: 0
-skipped: 1
+skipped: 0
 blocked: 0
 
 ## Gaps
 
-None reported. Test 7 is an explicitly waived observation, not a product issue or a passing test. The optional spreadsheet-client workflow was not part of this acceptance and remains unobserved.
+None reported. The JavaScript-disabled behavior remains untested and waived for this acceptance; test 7 passes only because the user-approved waiver is recorded accurately. The optional spreadsheet-client workflow was not part of this acceptance and remains unobserved.

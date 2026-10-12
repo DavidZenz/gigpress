@@ -97,8 +97,8 @@ status: complete
 
 ### Acceptance disposition (2026-10-12)
 
-- At the user's request, the Phase 05 conversational acceptance is recorded complete with a temporary waiver for D-01. The UAT record marks D-01 skipped with the reason that JavaScript-off inspection is unavailable in the Codex integrated browser and that the user explicitly waived it for this acceptance.
-- D-01 remains untested; the waiver does not claim that JavaScript-disabled behavior passed. D-02 through D-17 retain their recorded passing evidence. No spreadsheet-client workflow is claimed.
+- At the user's request, the Phase 05 conversational acceptance is recorded complete with a temporary waiver for D-01. The UAT marks the waiver-recording check passed because the user explicitly accepted it for now; the browser evidence continues to mark D-01 itself waived and untested.
+- The waiver does not claim that JavaScript-disabled behavior passed. D-02 through D-17 retain their recorded passing evidence. No spreadsheet-client workflow is claimed.
 
 ## Task Commits
 
