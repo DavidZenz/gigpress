@@ -92,7 +92,7 @@ status: complete
 
 - The user identified macOS and the Codex app integrated browser; its version is not exposed. The observed fixture is the OrbStack-hosted site at `http://127.0.0.1:32768`.
 - D-02 is now user-confirmed after the column reference was corrected to show all 23 ordered rows with formats and examples. D-03, D-04, D-08 through D-16 also have observations in `05-BROWSER.md`; D-09 through D-11 and D-14 through D-16 pass.
-- D-06 and D-07 passed after the user uploaded a one-row impossible-date CSV and confirmed the row guidance and recovery actions. D-01, D-05 mixed outcomes, and D-17 remain pending or partial. No spreadsheet-client workflow is claimed.
+- D-06 and D-07 passed after the user uploaded a one-row impossible-date CSV and confirmed the row guidance and recovery actions. D-17 passed when the user pasted the actual all-dates export showing the leading-zero postal code, leading-plus phone values, and formula-like note unchanged. D-01 and D-05 mixed outcomes remain pending or partial. No spreadsheet-client workflow is claimed.
 - After the D-02 source correction, the focused `export-literals` case passed and the 54-row matrix was rebuilt, validated, and corruption-tested again.
 
 ## Task Commits
