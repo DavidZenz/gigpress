@@ -5,6 +5,39 @@ function gigpress_csv_columns() {
 	return array('Date', 'Time', 'End date', 'Artist', 'Artist URL', 'Venue', 'Address', 'City', 'State', 'Postal code', 'Country', 'Venue phone', 'Venue URL', 'Admittance', 'Price', 'Ticket URL', 'Ticket phone', 'External URL', 'Notes', 'Tour', 'Status', 'Related ID', 'Related URL');
 }
 
+function gigpress_csv_reference() {
+	$fields = array(
+		'Date' => array(__('Required date in YYYY-MM-DD format.', 'gigpress'), '2026-10-03'),
+		'Time' => array(__('Leave blank for no time, or use 24-hour HH:MM:SS. Use 00:00:00 for actual midnight.', 'gigpress'), '19:30:00'),
+		'End date' => array(__('Leave blank for a single-day show, or use YYYY-MM-DD on or after Date.', 'gigpress'), '2026-10-04'),
+		'Artist' => array(__('Required text.', 'gigpress'), 'The Example Band'),
+		'Artist URL' => array(__('Optional URL.', 'gigpress'), 'https://example.test/artist'),
+		'Venue' => array(__('Required text.', 'gigpress'), 'The Test Hall'),
+		'Address' => array(__('Optional text.', 'gigpress'), '1 Example Street'),
+		'City' => array(__('Required text.', 'gigpress'), 'Vienna'),
+		'State' => array(__('Optional text.', 'gigpress'), 'Vienna'),
+		'Postal code' => array(__('Optional text; preserve leading zeroes.', 'gigpress'), '01010'),
+		'Country' => array(__('Required country name or code.', 'gigpress'), 'Austria / AT'),
+		'Venue phone' => array(__('Optional text; preserve a leading plus sign.', 'gigpress'), '+43 1 555 0100'),
+		'Venue URL' => array(__('Optional URL.', 'gigpress'), 'https://example.test/venue'),
+		'Admittance' => array(__('Optional text.', 'gigpress'), 'All ages'),
+		'Price' => array(__('Optional text.', 'gigpress'), '€24'),
+		'Ticket URL' => array(__('Optional URL.', 'gigpress'), 'https://tickets.example.test/show'),
+		'Ticket phone' => array(__('Optional text; preserve a leading plus sign.', 'gigpress'), '+43 1 555 0123'),
+		'External URL' => array(__('Optional URL.', 'gigpress'), 'https://example.test/event'),
+		'Notes' => array(__('Optional text; CSV quoting preserves commas, quotes, and line breaks.', 'gigpress'), '"Doors open, 19:00"'),
+		'Tour' => array(__('Optional text.', 'gigpress'), 'Autumn Tour'),
+		'Status' => array(__('Blank defaults to Active; otherwise use Active, Sold Out, or Cancelled.', 'gigpress'), 'active / soldout / cancelled'),
+		'Related ID' => array(__('Optional positive WordPress post ID; used only when related-post import is checked.', 'gigpress'), '123'),
+		'Related URL' => array(__('Optional exported reference URL; import associations use Related ID.', 'gigpress'), 'https://example.test/post/123'),
+	);
+	$reference = array();
+	foreach (gigpress_csv_columns() as $column) {
+		if (isset($fields[$column])) $reference[] = array('column' => $column, 'format' => $fields[$column][0], 'example' => $fields[$column][1]);
+	}
+	return $reference;
+}
+
 function gigpress_csv_statuses() { return array('active', 'soldout', 'cancelled'); }
 
 function gigpress_csv_scalar($row, $column) {

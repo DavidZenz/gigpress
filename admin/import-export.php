@@ -70,8 +70,14 @@ function gigpress_import_export() {
 			}
 			?>
 			<details class="gp-csv-help"><summary><?php esc_html_e('CSV column reference', 'gigpress'); ?></summary>
-				<p><?php esc_html_e('Keep these 23 columns in this exact order:', 'gigpress'); ?></p>
-				<ol class="gp-csv-columns"><?php foreach (gigpress_csv_columns() as $column) echo '<li>' . esc_html($column) . '</li>'; ?></ol>
+				<p><?php esc_html_e('Keep these 23 columns in this exact order. Values are imported as text; leave optional fields blank when unused.', 'gigpress'); ?></p>
+				<div class="gp-csv-reference-wrap" role="region" aria-label="<?php esc_attr_e('CSV column formats and examples', 'gigpress'); ?>" tabindex="0">
+					<table class="widefat striped gp-csv-reference">
+						<caption><?php esc_html_e('CSV columns, accepted formats, and examples', 'gigpress'); ?></caption>
+						<thead><tr><th scope="col"><?php esc_html_e('Column', 'gigpress'); ?></th><th scope="col"><?php esc_html_e('Format', 'gigpress'); ?></th><th scope="col"><?php esc_html_e('Example', 'gigpress'); ?></th></tr></thead>
+						<tbody><?php foreach (gigpress_csv_reference() as $field) echo '<tr><th scope="row">' . esc_html($field['column']) . '</th><td>' . esc_html($field['format']) . '</td><td><code>' . esc_html($field['example']) . '</code></td></tr>'; ?></tbody>
+					</table>
+				</div>
 			</details>
 		</section>
 		<section class="gp-csv-section gp-export-panel" aria-labelledby="gp-csv-export-heading">

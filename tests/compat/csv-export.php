@@ -69,6 +69,12 @@ function gigpress_csv_export_case($case) {
 			&& strpos($page, 'destination site') !== false;
 		$checks['native_disclosures_and_bounded_spreadsheet_guidance'] = strpos($page, '<details') !== false && strpos($page, '<summary') !== false
 			&& stripos($page, 'Data &gt; From Text/CSV') !== false && strpos($page, 'not universal') !== false;
+		$reference = function_exists('gigpress_csv_reference') ? gigpress_csv_reference() : array();
+		$referenceColumns = array_map(function ($field) { return $field['column'] ?? null; }, $reference);
+		$checks['column_reference_lists_all_formats_and_examples_in_canonical_order'] = $referenceColumns === gigpress_csv_columns() && count($reference) === 23
+			&& strpos($page, '<th scope="col">Column</th>') !== false && strpos($page, '<th scope="col">Format</th>') !== false && strpos($page, '<th scope="col">Example</th>') !== false
+			&& strpos($page, 'YYYY-MM-DD') !== false && strpos($page, '00:00:00') !== false && strpos($page, 'soldout') !== false
+			&& strpos($page, '+43 1 555 0100') !== false && strpos($page, 'CSV quoting preserves commas') !== false;
 		$checks['empty_selection_notice_and_artist_retained'] = strpos($page, 'No shows match these export filters') !== false
 			&& preg_match('/<option value="' . $emptyArtist . '"[^>]*selected/', $page) === 1
 			&& strpos($page, 'Date scope: Past dates; matching shows: 0.') !== false;

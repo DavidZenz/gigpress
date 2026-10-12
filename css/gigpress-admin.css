@@ -209,9 +209,29 @@ p.gp-trash {
 	font-weight: 600;
 }
 
-.gp-import-export .gp-csv-columns {
-	columns: 2;
-	max-width: 48em;
+.gp-import-export .gp-csv-reference-wrap {
+	max-width: 72em;
+	overflow-x: auto;
+}
+
+.gp-import-export .gp-csv-reference {
+	min-width: 52em;
+	margin-top: .75em;
+}
+
+.gp-import-export .gp-csv-reference caption {
+	padding: .75em;
+	text-align: left;
+	font-weight: 600;
+}
+
+.gp-import-export .gp-csv-reference th,
+.gp-import-export .gp-csv-reference td {
+	vertical-align: top;
+}
+
+.gp-import-export .gp-csv-reference td:last-child {
+	white-space: nowrap;
 }
 
 .gp-import-export .gp-csv-result-group {
