@@ -88,6 +88,13 @@ status: complete
 - Rebuilt and validated the Phase 04 public matrix (852 assertions, six cells, zero warnings/fatals/plugin errors) and Phase 02 preservation matrix (11 cases across six cells). Phase 02's earlier `show-lifecycle` failure came from stale test expectations: the test expected the retired one-click conversion to mutate data and omitted the required POST action for import. The updated test verifies safe legacy rejection and current request guards; the 05-04 conversion cases had passed and remain disclosed as separate evidence.
 - Recorded the owned human fixture URL and session path. Browser/version, all D-01 through D-17 observations, and any spreadsheet-client workflow remain pending; no client behavior is claimed.
 
+### Human acceptance follow-up (2026-10-12)
+
+- The user identified macOS and the Codex app integrated browser; its version is not exposed. The observed fixture is the OrbStack-hosted site at `http://127.0.0.1:32768`.
+- D-02 is now user-confirmed after the column reference was corrected to show all 23 ordered rows with formats and examples. D-03, D-04, D-08 through D-16 also have observations in `05-BROWSER.md`; D-09 through D-11 and D-14 through D-16 pass.
+- D-01, D-05 through D-07, and D-17 remain pending or partial. No spreadsheet-client workflow is claimed.
+- After the D-02 source correction, the focused `export-literals` case passed and the 54-row matrix was rebuilt, validated, and corruption-tested again.
+
 ## Task Commits
 
 1. **Task 05-05-01:** `26ff1de` — exact CSV evidence producer and validator.

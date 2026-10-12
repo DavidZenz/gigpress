@@ -157,6 +157,13 @@ None - no external service configuration required.
 - Plan 05-03 is complete; the parallel Wave 3 plan 05-04 can proceed.
 - `export-filters`, `export-literals`, `tracer-1.4`, and `migrated-contracts` passed on WordPress 7.1.2 / PHP 8.3.35.
 
+## Post-completion correction (2026-10-12)
+
+- D-02 originally rendered column names without the planned formats and examples. Replaced the list with an accessible 23-row table generated in canonical CSV order, including accepted formats and representative values.
+- User confirmed the disclosure opens and is readable in the Codex app integrated browser on macOS; browser version is not exposed.
+- The `export-literals` contract now checks the table headings, all 23 ordered rows, and representative format/example guidance. The focused PHP 8.3.35 check passed, then the complete 54-row Phase 05 matrix was rebuilt and validated.
+- This correction was committed separately from the original plan commits.
+
 ## Self-Check: PASSED
 
 - All seven planned source/test files exist.

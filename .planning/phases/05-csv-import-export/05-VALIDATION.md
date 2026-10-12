@@ -7,7 +7,7 @@ requirements:
   - CSV-01
   - CSV-02
   - SEC-01
-updated: 2026-10-11
+updated: 2026-10-12
 ---
 
 # Phase 05 Validation Strategy
@@ -65,11 +65,11 @@ Wave 3 is intentionally parallel: 05-03 and 05-04 have no overlapping modified f
 
 ## Execution results for Plan 05-05
 
-The final-source CSV producer built 54 rows (nine exact cases across six WordPress/PHP cells); validation and all 12 corruption checks passed. The owned `csv-fixture --action smoke --wp 7.1.2 --php 8.3 --case all` passed 14 checks and cleaned up its temporary services. The final-source Phase 04 public report built and validated all six cells/nine cases (852 assertions, zero warnings/fatals/plugin errors); its 22 corruption checks passed.
+The final-source CSV producer rebuilt 54 rows (nine exact cases across six WordPress/PHP cells) after the D-02 table correction; validation and all 12 corruption checks passed. The focused `export-literals` rerun passed on WordPress 7.1.2 / PHP 8.3.35 with the new 23-column format/example contract. The owned `csv-fixture --action smoke --wp 7.1.2 --php 8.3 --case all` passed 14 checks and cleaned up its temporary services. The final-source Phase 04 public report built and validated all six cells/nine cases (852 assertions, zero warnings/fatals/plugin errors); its 22 corruption checks passed.
 
 The exact Phase 02 preservation matrix passed all 11 cases in all six cells. Diagnosis showed its old lifecycle assertions expected the retired one-click tour conversion and called CSV import without the required POST action; the test now verifies safe legacy rejection and current request guards. The refreshed report distinguishes the historical full-workflows evidence, which was not rerun in this task.
 
-The owned fixture is running at `http://127.0.0.1:32819` with session `/var/folders/1l/t8mktk5j58g75tthg0q79qhw0000gn/T//gigpress-browser-bkTGXa/session.json`. Browser/version and all D-01 through D-17 rows remain pending human observation; no spreadsheet client has been observed.
+The fixture observed by the user is running in OrbStack at `http://127.0.0.1:32768`, with session `/var/folders/1l/t8mktk5j58g75tthg0q79qhw0000gn/T//gigpress-browser-iZKiGu/session.json`. The user identified macOS and the Codex app integrated browser; its version is not exposed. D-02 is now a user-confirmed pass, and D-03, D-04, D-08 through D-16 have recorded outcomes in `05-BROWSER.md`. D-01, D-05 through D-07, and D-17 remain pending or partial. No spreadsheet client has been observed.
 
 ## Exact Phase 05 evidence registry
 
@@ -93,11 +93,11 @@ All rows begin pending. Record them in `05-BROWSER.md`; never infer them from th
 
 | ID | Decision coverage | Observation | Required identity | Status |
 |----|-------------------|-------------|-------------------|--------|
-| H-05-01 | D-01, D-02, D-03, D-04 | With JavaScript disabled, Import is first, Export remains visible, disclosure is operable, related-post is visible/unchecked with exact-ID explanation, and labels are exact. | Browser/version + fixture session | Pending |
-| H-05-02 | D-05, D-06, D-07, D-08, D-13 | Actual multipart upload shows all four outcome counts/details, row/identity/reason/guidance, show-list/another-upload, correction/retry, duplicate no-overwrite, and status handling. | Browser/version + fixture session + fixture name | Pending |
-| H-05-03 | D-09, D-10, D-11 | Nonempty export shows actual artist/tour/all-dates-or-upcoming-or-past scope/count and downloads matching rows; empty export produces no download, retains the current choices and offers Reset filters; choosing Reset restores All artists/All tours/All dates, while a later visit starts at those defaults. | Browser/version + fixture session + downloaded file hash | Pending |
-| H-05-04 | D-12, D-17 | Visible note and disclosure describe the bounded text-import workflow; exact formula-like/leading-plus values are retained. If a spreadsheet is exercised, record text-import/save/re-import only for the named client. | Browser/version; optional spreadsheet client/version and saved-file hash | Pending |
-| H-05-05 | D-14, D-15, D-16 | Preview lists complete names/counts; Cancel is unchanged; Confirm/retry covers exact-one, none, ambiguity, independent failure, retained evidence, and final reassignment/deletion. | Browser/version + fixture session + before/after identifiers | Pending |
+| H-05-01 | D-01, D-02, D-03, D-04 | With JavaScript disabled, Import is first, Export remains visible, disclosure is operable, related-post is visible/unchecked with exact-ID explanation, and labels are exact. | Codex app integrated browser on macOS (version not exposed) + fixture URL | Partial: D-02 through D-04 pass; D-01 pending |
+| H-05-02 | D-05, D-06, D-07, D-08, D-13 | Actual multipart upload shows all four outcome counts/details, row/identity/reason/guidance, show-list/another-upload, correction/retry, duplicate no-overwrite, and status handling. | Codex app integrated browser on macOS (version not exposed) + fixture URL + fixture name | Partial: D-08 and D-13 pass; D-05 mixed outcomes and D-06/D-07 pending |
+| H-05-03 | D-09, D-10, D-11 | Nonempty export shows actual artist/tour/all-dates-or-upcoming-or-past scope/count and downloads matching rows; empty export produces no download, retains the current choices and offers Reset filters; choosing Reset restores All artists/All tours/All dates, while a later visit starts at those defaults. | Codex app integrated browser on macOS (version not exposed) + fixture URL + user-confirmed downloaded scopes | Pass |
+| H-05-04 | D-12, D-17 | Visible note and disclosure describe the bounded text-import workflow; exact formula-like/leading-plus values are retained. If a spreadsheet is exercised, record text-import/save/re-import only for the named client. | Codex app integrated browser on macOS (version not exposed); no spreadsheet client used | Partial: D-12 pass; D-17 browser download observation pending; client workflow unobserved |
+| H-05-05 | D-14, D-15, D-16 | Preview lists complete names/counts; Cancel is unchanged; Confirm/retry covers exact-one, none, ambiguity, independent failure, retained evidence, and final reassignment/deletion. | Codex app integrated browser on macOS (version not exposed) + fixture URL + user-confirmed 26-show outcome | Pass |
 
 D-17 exact CSV values are retained by the automated contract. The observed HTTP smoke confirms only route readiness and text-import guidance presence; it does not observe a spreadsheet client. Excel-specific workflow and optional client acceptance remain pending. Direct-open interpretation risk remains accepted; no rewrite/block transformation is introduced.
 
