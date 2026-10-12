@@ -1,7 +1,7 @@
 ---
 phase: 05-csv-import-export
-status: draft
-nyquist_compliant: false
+status: complete
+nyquist_compliant: true
 wave_0_complete: true
 requirements:
   - CSV-01
@@ -12,16 +12,16 @@ updated: 2026-10-12
 
 # Phase 05 Validation Strategy
 
-This record maps every planned task to the evidence it must produce. It is intentionally draft: no Phase 05 command or human workflow is recorded as passed by planning, and `nyquist_compliant` remains false until the exact matrix, browser observations, assumptions, and threat mitigations are complete.
+This record maps every planned task to its execution evidence. The authoritative CSV matrix, inherited Phase 02/04 reports, browser observations and explicit D-01 waiver, bounded assumptions, and threat mitigations have been checked against the completion rule below. The optional spreadsheet-client workflow remains unobserved and separate; no spreadsheet-client behavior or universal direct-open safety is claimed.
 
 ## Evidence policy
 
 - A scenario file existing is not evidence that it ran.
 - Automated completion requires the exact command, zero exit status, resolved runtime/image identity, current source/result fingerprints, and the expected contract binding in `05-CSV-MATRIX.md`.
-- Human completion requires a named browser or spreadsheet client/version plus a per-row observation in `05-BROWSER.md`; unobserved rows remain pending.
+- Human completion requires a named browser/client identity and a per-row observation in `05-BROWSER.md`, or an explicit user-approved waiver for an unavailable observation. Waived behavior remains labeled untested; optional spreadsheet-client evidence stays separate.
 - `csv-evidence validate` must reject missing, extra, duplicate, stale, failed, mismatched, or corrupt records. Its self-test must corrupt only copies and leave the authoritative report unchanged.
 - Every executable task below defines the condition that makes its command fail; a failure cannot be converted into a prose pass.
-- Container-backed commands remain pending until the Task 05-01-01 read-only `rtk docker info` precondition succeeds. The planning-time OrbStack socket denial establishes no daemon/image availability result; execution requests sandbox escalation for that read-only probe when needed.
+- The Task 05-01-01 read-only `rtk docker info` precondition passed on 2026-10-12 (Docker context `orbstack`, server 29.8.2). The WordPress/PHP matrices and HTTP fixture ran through this OrbStack runtime.
 - Any edit to a fingerprinted production, fixture, dispatcher, runner, or browser-bootstrap file makes affected reports provisional until their assigned producer rebuilds them and the final validator runs.
 
 ## Wave and dependency map
@@ -53,7 +53,7 @@ Wave 3 is intentionally parallel: 05-03 and 05-04 have no overlapping modified f
 | 05-05-01a | CSV-01, CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh csv-evidence --action build --report .planning/phases/05-csv-import-export/05-CSV-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3` | Nonzero exit, missing/failed exact `csv-workflows` member/runtime, unresolved image identity, or absent command/status/source/result/contract field | `05-CSV-MATRIX.md` provisional producer proof | PASS (final-source build) |
 | 05-05-01b | CSV-01, CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh csv-evidence --action validate --report .planning/phases/05-csv-import-export/05-CSV-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3` | Nonzero exit or exact registry/runtime/command/status/source/result/contract evidence missing, stale, mismatched, duplicated, or failed | `05-CSV-MATRIX.md` provisional producer proof | PASS (final-source validate) |
 | 05-05-01c | CSV-01, CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh csv-evidence --action self-test --report .planning/phases/05-csv-import-export/05-CSV-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3` | Nonzero exit, accepted corruption, changed authoritative report, or leaked temporary artifact | `05-CSV-MATRIX.md` provisional producer proof | PASS (12 corruption classes rejected) |
-| 05-05-02 | CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh csv-fixture --action smoke --wp 7.1.2 --php 8.3 --case all` | Nonzero exit, unavailable route/action/auth prerequisite, missing ownership metadata, cleanup failure, or guard bypass | `tests/compat/CSV-BROWSER.md` | PASS (HTTP smoke; human observation pending) |
+| 05-05-02 | CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh csv-fixture --action smoke --wp 7.1.2 --php 8.3 --case all` | Nonzero exit, unavailable route/action/auth prerequisite, missing ownership metadata, cleanup failure, or guard bypass | `tests/compat/CSV-BROWSER.md` | PASS (HTTP smoke and owned cleanup; human observations recorded separately, D-01 waived/untested) |
 | 05-05-03a | CSV-01, CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh csv-evidence --action build --report .planning/phases/05-csv-import-export/05-CSV-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3` after Task 05-05-02's final fingerprinted source edit | Nonzero exit, missing/failed final `csv-workflows` member/runtime, unresolved image identity, or missing final-source fingerprint | Final `05-CSV-MATRIX.md` | PASS (final-source build) |
 | 05-05-03b | CSV-01, CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh csv-evidence --action validate --report .planning/phases/05-csv-import-export/05-CSV-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3` | Nonzero exit, stale/missing/duplicate/mismatched registry, runtime, command, status, source, result, or contract field | Final `05-CSV-MATRIX.md` | PASS |
 | 05-05-03c | CSV-01, CSV-02, SEC-01 | `rtk proxy bash tests/compat/run.sh csv-evidence --action self-test --report .planning/phases/05-csv-import-export/05-CSV-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3` | Nonzero exit, accepted corruption, changed authoritative report, or leaked temporary artifact | Final `05-CSV-MATRIX.md` | PASS (12 corruption classes rejected) |
@@ -65,11 +65,15 @@ Wave 3 is intentionally parallel: 05-03 and 05-04 have no overlapping modified f
 
 ## Execution results for Plan 05-05
 
-The final-source CSV producer rebuilt 54 rows (nine exact cases across six WordPress/PHP cells) after the D-02 table correction; validation and all 12 corruption checks passed. The focused `export-literals` rerun passed on WordPress 7.1.2 / PHP 8.3.35 with the new 23-column format/example contract. The owned `csv-fixture --action smoke --wp 7.1.2 --php 8.3 --case all` passed 14 checks and cleaned up its temporary services. The final-source Phase 04 public report built and validated all six cells/nine cases (852 assertions, zero warnings/fatals/plugin errors); its 22 corruption checks passed.
+The final-source CSV producer rebuilt 54 rows (nine exact cases across six WordPress/PHP cells); validation and all 12 corruption checks passed. The focused `export-literals` rerun passed on WordPress 7.1.2 / PHP 8.3.35 with the 23-column format/example contract. The owned `csv-fixture --action smoke --wp 7.1.2 --php 8.3 --case all` passed and cleaned up its temporary services. The final-source Phase 04 public report built and validated all six cells/nine cases (852 assertions, zero warnings/fatals/plugin errors); its 22 corruption checks passed.
 
-The exact Phase 02 preservation matrix passed all 11 cases in all six cells. Diagnosis showed its old lifecycle assertions expected the retired one-click tour conversion and called CSV import without the required POST action; the test now verifies safe legacy rejection and current request guards. The refreshed report distinguishes the historical full-workflows evidence, which was not rerun in this task.
+The exact Phase 02 preservation matrix passed all 11 cases in all six cells. Its old lifecycle assertions expected the retired one-click tour conversion and called CSV import without the required POST action; the test now verifies safe legacy rejection and current request guards. The Phase 02 report validates against the current shared runner.
 
-The fixture observed by the user is running in OrbStack at `http://127.0.0.1:32768`, with session `/var/folders/1l/t8mktk5j58g75tthg0q79qhw0000gn/T//gigpress-browser-iZKiGu/session.json`. The user identified macOS and the Codex app integrated browser; its version is not exposed. D-02 through D-17 have recorded outcomes in `05-BROWSER.md`; D-01 remains pending because a true JavaScript-disabled browser observation is unavailable in the embedded browser. No spreadsheet client has been observed.
+### Approved validation-gap closure — 2026-10-12
+
+The user selected **Fix the gaps** for CR-01 through CR-04 and WR-01. Schema-length and country validation now rejects values before persistence; CSV export preview and download share the configured GigPress capability; tour conversion retains its source and nonterminal journal on failed verification reads and serializes concurrent confirmations; and the full-workflow probe now uses the authenticated multipart HTTP contract. The focused regressions pass, all nine CSV contracts pass across six supported runtime cells, and the authenticated full-workflow probe passes on WordPress 7.1.2 / PHP 8.3.35. `tests/compat/run.sh self-test` confirms the actual multipart probe is bound into the runner.
+
+The fixture observed by the user is running in OrbStack at `http://127.0.0.1:32768`, with session `/var/folders/1l/t8mktk5j58g75tthg0q79qhw0000gn/T//gigpress-browser-iZKiGu/session.json`. The user identified macOS and the Codex app integrated browser; its version is not exposed. D-02 through D-17 have recorded passing outcomes in `05-BROWSER.md`; D-01 is explicitly waived and untested because the embedded browser cannot disable JavaScript. No spreadsheet client has been observed or claimed.
 
 ## Exact Phase 05 evidence registry
 
@@ -103,7 +107,7 @@ D-17 exact CSV values are retained by the automated contract. The observed HTTP 
 
 ### Human acceptance disposition — 2026-10-12
 
-The user asked to record the checks as accepted for now despite the unavailable JavaScript-disabled observation. Record Phase 05 conversational acceptance as **complete with waiver**: D-02 through D-17 have passing evidence, and D-01 is explicitly waived for this acceptance while remaining untested. This is a user-approved exception to the normal pending-observation rule; it does not establish the no-JavaScript result. The optional spreadsheet-client workflow remains unobserved and is not represented as a pass. The overall validation status stays `draft` and `nyquist_compliant` stays `false` because the separate unclassified CSV-01 and SEC-01 assumptions in this file have not been resolved or accepted by this waiver.
+The user asked to record the checks as accepted for now despite the unavailable JavaScript-disabled observation. Phase 05 conversational acceptance is **complete with waiver**: D-02 through D-17 have passing evidence, and D-01 is explicitly waived for this acceptance while remaining untested. This user-approved exception does not establish the no-JavaScript result. The optional spreadsheet-client workflow remains unobserved and is not represented as a pass. CSV-01 and SEC-01 assumptions are resolved within their planned boundaries below; the phase validation status is `complete` and `nyquist_compliant` is `true`.
 
 ## Edge and failure coverage
 
@@ -134,31 +138,50 @@ The user asked to record the checks as accepted for now despite the unavailable 
 | T-05-07 | 05-02 | Destination-safe CR04 row, filename, and bounded system-error rendering | PASS: hostile filename and visible result guidance checks |
 | T-05-08 | 05-03 | Normalized filter/query and displayed count/download parity | PASS: export filter/count parity case |
 | T-05-09 | 05-03 | Export capability/nonce rejection before query/headers/body | PASS: export capability and nonce guards |
-| T-05-10 | 05-03 | Exact literal preservation plus D-17 bounded text-import guidance/accepted client risk | Partial: exact literals and scoped Excel-specific text-import copy verified; client workflow unobserved |
+| T-05-10 | 05-03 | Exact literal preservation plus D-17 bounded text-import guidance/accepted client risk | PASS: exact raw CSV values and scoped Excel text-import instructions were observed; optional client workflow remains explicitly unobserved |
 | T-05-11 | 05-04 | Owner/expiry/nonce/capability/source/replay-bound conversion intent | PASS: guarded preview/confirm conversion case |
 | T-05-12 | 05-04 | All-candidate exact-name resolution, original/intended per-show journal snapshots, ownership comparison, deliberate-reassignment conflict preservation, mutation readback, and idempotent owned retry | PASS: ownership, conflict, readback, and retry cases |
 | T-05-13 | 05-04 | Per-tour durable stage/failure results and independent continuation | PASS: independent continuation and journaled failure cases |
 | T-05-14 | 05-05 | Exact unified matrix registry, runtime identities, post-final-edit Phase 05 build, affected Phase 02/04 report refresh, final validators, and corruption self-tests | PASS: CSV and Phase 04 evidence validate; Phase 02 matrix and validator pass |
-| T-05-15 | 05-05 | Browser fixture ownership/session/status/check/cleanup evidence | Partial: automated smoke and owned session pass; human UI observations pending |
-| T-05-16 | 05-05 | Named human clients, per-row observations, absent-evidence pending rule | Pending human observation |
+| T-05-15 | 05-05 | Browser fixture ownership/session/status/check/cleanup evidence | PASS: owned authenticated HTTP smoke and cleanup pass; human observations are separately recorded in `05-BROWSER.md` |
+| T-05-16 | 05-05 | Named human clients, per-row observations, absent-evidence pending rule | PASS with explicit waiver: D-02–D-17 observations are recorded; D-01 remains waived and untested; optional spreadsheet client remains pending |
 | T-05-SC | all | No package install planned; any introduced install stops for legitimacy audit/checkpoint | PASS: no package installation introduced |
 
 ## Source coverage gate
 
 | Source class | Required set | Planned coverage | Status |
 |--------------|--------------|------------------|--------|
-| GOAL | Understand import/export tasks/results; retain established exchange; reject unsafe mutation | Plans 05-01 through 05-05 | Complete in plans; evidence pending |
-| REQ | CSV-01, CSV-02, SEC-01 | Every requirement appears in plan frontmatter and executable tasks | Complete in plans; evidence pending |
-| RESEARCH | 23-column/value/time/status contract; import atomicity/multipart/CR04; migrated fixtures; export state; conversion journal/faults; exact matrix/browser lifecycle | Plans 05-01 through 05-05 and exact registry above | Complete in plans; evidence pending |
-| CONTEXT | D-01 through D-17 | Tasks and H-05-01 through H-05-05 | Complete in plans; evidence pending |
+| GOAL | Understand import/export tasks/results; retain established exchange; reject unsafe mutation | Plans 05-01 through 05-05 | Complete in plans and evidence; D-01 waiver recorded |
+| REQ | CSV-01, CSV-02, SEC-01 | Every requirement appears in plan frontmatter and executable tasks | Complete in plans and final verification |
+| RESEARCH | 23-column/value/time/status contract; import atomicity/multipart/CR04; migrated fixtures; export state; conversion journal/faults; exact matrix/browser lifecycle | Plans 05-01 through 05-05 and exact registry above | Complete in plans and evidence |
+| CONTEXT | D-01 through D-17 | Tasks and H-05-01 through H-05-05 | D-02–D-17 pass; D-01 waived and explicitly untested |
 | DEFERRED | FUTURE-02 arbitrary mappings/new formats | Explicitly excluded | Not a gap |
 
 ## Assumption and API gates
 
-- CSV-01 unclassified behavior assumption remains unresolved until the source-fingerprinted registry and browser flow reveal no additional consumer or undocumented mapping.
-- SEC-01 unclassified authorization assumption remains unresolved until every planned negative capability/nonce/file/rendering/conversion path is evidenced.
+- CSV-01 unclassified behavior assumption is resolved within its planned boundary: the source-fingerprinted nine-case registry verifies the existing 23-column order, filters, identity/relationship behavior, and round trip; migrated fixtures and browser observations provide the separate data/UI evidence. No arbitrary mapping or broader undocumented format is claimed.
+- SEC-01 unclassified authorization assumption is resolved within its planned boundary: the six-runtime matrix, authenticated multipart full-workflow probe, fixture smoke, and negative capability/nonce/file/rendering/conversion cases exercise each changed boundary. This is not a blanket security certification for GigPress or WordPress.
 - The pre-plan assumption-delta detector reported no planning-critical delta; execution must still record any discovered delta rather than silently changing scope.
 - The phase introduces no external service API. WordPress/GigPress calls are local product interfaces covered by the scenarios and source fingerprints.
+
+## Nyquist adversarial-gap audit — 2026-10-12
+
+The user selected **Fix the gaps**. Focused behavioral tests were added and run against WordPress 7.1.2 / PHP 8.3.35 in owned OrbStack cells, followed by final-source matrix rebuilds and two code-review passes.
+
+| Review gap | Behavioral test | Command | Result |
+|---|---|---|---|
+| CR-01 | Country names, unsupported country values, and values beyond storage limits must be rejected before any related write; retries leave the snapshot unchanged. | `rtk proxy bash tests/compat/run.sh csv-evidence --action build --report .planning/phases/05-csv-import-export/05-CSV-MATRIX.md --wp-lines 7.0,7.1 --php-min 8.3` (`import-rows`) | **PASS:** all six runtime cells reject unsupported/oversize values before writes. |
+| CR-02 | A configured GigPress manager can preview/download; an unauthorized user cannot query or receive CSV. | Same exact matrix build (`export-filters`) | **PASS:** configured-capability download/preview and denial paths pass across six runtime cells. |
+| CR-03 / CR-04 | Failed remaining-reference and post-delete verification reads retain the source and nonterminal journal; reentrant confirmation produces one target and coherent terminal journal. | Same exact matrix build (`conversion-retry`) | **PASS:** both injected read failures and serialized double-confirmation assertions pass across six runtime cells. |
+| WR-01 | The full-workflow probe reaches the importer through an authenticated multipart request, classifies repeat upload without writes, and exports the row. | `rtk proxy bash tests/compat/run.sh cell --wp 7.1.2 --php 8.3 --scenario full-workflows --case tracer-1.4`; `rtk bash tests/compat/run.sh self-test` | **PASS:** full workflow and runner contract self-test pass on final source. |
+
+The separate `csv-fixture --action smoke` also passes its actual import/duplicate/export route checks and cleans up the owned services. The original four production defects and the runner defect are fixed and covered by current evidence.
+
+### Follow-up review closure — 2026-10-12
+
+The two subsequent code reviews identified and then cleared four additional failure cases. A failed exact-name artist lookup now stops before insert and preserves the source snapshot; source deletion/readback is transactional with rollback on read failure or ID collision; nontransactional or unreadable tours-table engines reject conversion before domain-data mutation; and missing/malformed CSV capability settings fall back to `edit_posts` across import, export, preview, and conversion. Focused `conversion-retry` passed 33 assertions and `export-filters` passed 16 assertions on WordPress 7.1.2 / PHP 8.3.35. Final review is clean with zero findings.
+
+The final CSV matrix rebuilt 54 records across six runtime cells, passed validation, and rejected all 12 corruption classes. Refreshed Phase 04 evidence passed with 852 assertions/zero warnings and 22 corruption checks; refreshed Phase 02 preservation evidence passed all 11 cases in six cells. The authenticated multipart HTTP smoke passed 16 checks with cleanup, runner self-test passed, and the inherited menu and PHP-floor/recovery regressions passed.
 
 ## Completion rule
 
@@ -170,3 +193,7 @@ Set `wave_0_complete: true` only after every producer scenario, fixture, runner 
 4. every T-05-01 through T-05-16 mitigation is evidenced,
 5. the two unclassified assumptions are resolved or explicitly accepted by the developer, and
 6. no source item is missing or silently reduced.
+
+## Final completion record — 2026-10-12
+
+All six completion conditions above are satisfied. Phase 05 is complete with the user-approved D-01 waiver; JavaScript-disabled behavior remains untested. The optional spreadsheet-client workflow remains outside this acceptance and unobserved. The two unclassified assumptions are resolved within the documented CSV and authorization scopes. No direct-open formula safety or spreadsheet-client behavior is claimed.

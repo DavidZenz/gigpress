@@ -26,13 +26,13 @@
     {
       "number": "5",
       "name": "CSV Import/Export",
-      "status": "in_progress"
+      "status": "complete"
     }
   ],
   "next": {
-    "command": "/gsd:progress --next",
-    "label": "Advance to the next step",
-    "reason": "Phase 05 of 5 · 80% · executing"
+    "command": "/gsd:new-milestone",
+    "label": "Start a new milestone",
+    "reason": "All phases complete — start a new milestone"
   },
-  "updated_at": "2026-10-11T12:04:25.394Z"
+  "updated_at": "2026-10-12T21:27:30.635Z"
 }

@@ -11,7 +11,7 @@ requires:
 provides:
   - Exact nine-case CSV evidence across six pinned WordPress/PHP runtime cells
   - Corruption-tested CSV and refreshed Phase 02/04 evidence reports
-  - Owned CSV browser fixture and a pending human-acceptance record
+  - Owned CSV browser fixture and accepted human-acceptance record with explicit D-01 waiver
 affects: [05-csv-import-export, verification]
 actuals:
   tokens: 148551
@@ -38,7 +38,7 @@ key-files:
 key-decisions:
   - "Treat all as an aggregate selector; record exactly nine independently fingerprinted CSV case results per runtime."
   - "Keep formula-like and leading-plus values exact; Excel-specific text-import acceptance stays pending until observed in a named client/version."
-  - "Keep Phase 05 validation draft and Nyquist false while browser/client observations and assumptions remain unresolved."
+  - "Keep the D-01 no-JavaScript waiver explicit and untested; keep the optional spreadsheet-client workflow separate from exact raw-CSV acceptance."
 patterns-established:
   - "Evidence validation recomputes source/result hashes and rejects corruption in copied records."
   - "Browser evidence distinguishes authenticated HTTP smoke from actual named-browser observations."
@@ -61,9 +61,12 @@ coverage:
   - id: D2
     description: Human browser and optional spreadsheet-client acceptance
     requirement: CSV-02
-    verification: []
+    verification:
+      - kind: human
+        ref: "05-BROWSER.md H-05-01 through H-05-05; 05-UAT.md tests 1-7"
+        status: pass
     human_judgment: true
-    rationale: "The fixture smoke is authenticated HTTP evidence; JavaScript-disabled browser workflows and spreadsheet text-import/save/re-import outcomes require a named human-observed client and version."
+    rationale: "The user confirmed the browser workflows and explicitly waived D-01 for now. D-01 remains untested; no spreadsheet text-import/save/re-import behavior is claimed, and the optional client row stays pending."
 duration: 64min
 completed: 2026-10-11
 status: complete
@@ -86,7 +89,7 @@ status: complete
 - Built and validated 54 exact CSV records covering nine registered cases across WordPress 7.0.7/7.1.3 and PHP 8.3/8.4/8.5; the 12-class corruption self-test passed.
 - Added an owned fixture lifecycle and verified the authenticated multipart smoke. The first smoke revealed a missing `admin/csv.php` include on the Import/Export screen; loading that file fixed the route, and the rerun passed all checks and cleaned up its containers.
 - Rebuilt and validated the Phase 04 public matrix (852 assertions, six cells, zero warnings/fatals/plugin errors) and Phase 02 preservation matrix (11 cases across six cells). Phase 02's earlier `show-lifecycle` failure came from stale test expectations: the test expected the retired one-click conversion to mutate data and omitted the required POST action for import. The updated test verifies safe legacy rejection and current request guards; the 05-04 conversion cases had passed and remain disclosed as separate evidence.
-- Recorded the owned human fixture URL and session path. Browser/version, all D-01 through D-17 observations, and any spreadsheet-client workflow remain pending; no client behavior is claimed.
+- Recorded the owned human fixture URL and session path. D-02 through D-17 have passing browser observations; D-01 is waived and untested; no spreadsheet-client behavior is claimed.
 
 ### Human acceptance follow-up (2026-10-12)
 
@@ -99,6 +102,16 @@ status: complete
 
 - At the user's request, the Phase 05 conversational acceptance is recorded complete with a temporary waiver for D-01. The UAT marks the waiver-recording check passed because the user explicitly accepted it for now; the browser evidence continues to mark D-01 itself waived and untested.
 - The waiver does not claim that JavaScript-disabled behavior passed. D-02 through D-17 retain their recorded passing evidence. No spreadsheet-client workflow is claimed.
+
+### Review-gap closure follow-up (2026-10-12)
+
+- CR-01: import validation now enforces schema-sized UTF-8 text, Notes byte capacity, and supported two-letter country codes before persistence. `import-rows` passes in all six CSV matrix runtime cells.
+- CR-02: the preview and download use the configured GigPress capability; configured-manager success and unauthorized denial pass in `export-filters` across all six cells.
+- CR-03/CR-04: verification read errors retain the source tour and nonterminal journal, while an atomic option-backed mutex serializes confirmations. Both fault-injection cases pass in `conversion-retry` across all six cells.
+- WR-01: the legacy full-workflow probe now logs in, loads the real import form/nonce, posts a multipart upload, repeats it without mutation, and downloads through the admin-post endpoint. The final-source WordPress 7.1.2 / PHP 8.3.35 probe and runner self-test pass.
+- The final Phase 05 matrix has 54 passing records (nine exact CSV cases across six runtimes), validates its source/result fingerprints, and rejects all 12 corruption classes. Refreshed Phase 02 and Phase 04 reports validate; Phase 04 also rejects all 22 corruption classes.
+- Follow-up review fixes cover target-lookup errors, transactional deletion verification and rollback, refusal on nontransactional tour storage, and the `edit_posts` fallback for missing capability settings. The focused conversion suite passes 33 assertions, export/import capability parity passes 16 assertions, and final code review reports zero findings.
+- Regression checks pass for the real multipart workflow and cleanup, runner self-test, menu contract, and PHP 8.3 → diagnostic PHP 8.2 → PHP 8.3 recovery on WordPress 7.0 and 7.1.
 
 ## Task Commits
 
@@ -119,7 +132,7 @@ status: complete
 
 - Keep all nine CSV cases as distinct evidence records; `all` is only the aggregate runner selector.
 - Preserve exact CSV values and accept direct-open formula risk. The UI's text-import guidance is Excel-specific, and its spreadsheet-client workflow remains pending until a named client/version is observed.
-- Keep Phase 05's validation status as `draft` and `nyquist_compliant: false` while browser/client rows and the two assumptions remain unresolved.
+- Mark Phase 05 complete with Nyquist compliance true after all evidence and the user-approved D-01 waiver are recorded; keep the optional spreadsheet-client workflow separate and unobserved.
 
 ## Deviations from Plan
 
@@ -147,7 +160,7 @@ status: complete
 
 - Initial CSV browser smoke failed at the Import/Export route due to the missing shared CSV include. The route was fixed and the smoke passed.
 - The pre-conversion `show-lifecycle` failure was reproduced during the initial Phase 02 refresh, then diagnosed as a stale compatibility-test contract. The current final-source matrix passes; the historical failure remains documented in the Phase 02 and 05-04 evidence.
-- Human browser and spreadsheet-client observation has not been performed. The fixture remains available at `http://127.0.0.1:32819`; its session is listed in `05-BROWSER.md`.
+- The unavailable JavaScript-disabled behavior is explicitly waived and untested; the optional spreadsheet-client workflow remains unobserved. The user-reviewed fixture was at `http://127.0.0.1:32768`; its session is listed in `05-BROWSER.md`.
 
 ## User Setup Required
 
@@ -155,8 +168,8 @@ No external service configuration is required. Human acceptance requires access 
 
 ## Next Phase Readiness
 
-- Plan 05-05 evidence work is recorded. Phase 05 itself remains in draft with Nyquist compliance false until a human records the required browser observations and the unresolved assumptions are addressed.
-- Keep every unobserved D-01 through D-17 row and the optional spreadsheet-client row pending. Do not infer those outcomes from the HTTP smoke or compatibility matrix.
+- Plan 05-05 evidence work and the follow-up gap closure are recorded. Phase 05 is complete with Nyquist compliance true and the user's temporary D-01 waiver; the JavaScript-disabled behavior remains explicitly untested.
+- D-02 through D-17 retain their passing observations. The optional spreadsheet-client workflow remains unobserved and is not inferred from the HTTP smoke or compatibility matrix.
 
 ---
 *Phase: 05-csv-import-export*

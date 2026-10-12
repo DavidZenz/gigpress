@@ -10,7 +10,7 @@ Modernize GigPress in compatibility-first slices. Establish the WordPress 7.0+ a
 - [x] **Phase 2: Data and Upgrade Preservation** - Keep existing records, relationships, settings, and CRUD behavior usable through updates. (completed 2026-10-04)
 - [x] **Phase 3: Administration Workflows** - Improve show entry, show-list management, and settings while keeping established behavior. (completed 2026-10-05)
 - [x] **Phase 4: Public Publishing** - Make default show listings responsive and preserve public output and theme override contracts. (completed 2026-10-11)
-- [ ] **Phase 5: CSV Import/Export** - Improve task clarity and outcome feedback while preserving CSV behavior and protecting mutations.
+- [x] **Phase 5: CSV Import/Export** - Improve task clarity and outcome feedback while preserving CSV behavior and protecting mutations. (completed 2026-10-12)
 
 ## Phase Details
 
@@ -140,7 +140,7 @@ Required inherited review fixes: [CSV review follow-ups](CSV-REVIEW-FOLLOWUPS.md
   2. Import and export screens clearly label each task and report actionable results, including imported, duplicate, skipped, or rejected row counts and applicable reasons.
   3. Invalid inputs on changed administration and import/export paths are rejected with text feedback; unauthorized or nonce-invalid mutations do not change records, and output is safely encoded for its destination.
 
-**Plans**: 5/5 plans executed in 4 waves
+**Plans**: 5/5 plans complete in 4 waves
 
 Plans:
 **Wave 1**
@@ -167,4 +167,4 @@ Plans:
 | 2. Data and Upgrade Preservation | 4/4 | Complete    | 2026-10-04 |
 | 3. Administration Workflows | 4/4 | Complete    | 2026-10-05 |
 | 4. Public Publishing | 5/5 | Complete    | 2026-10-11 |
-| 5. CSV Import/Export | 5/5 | In Progress|  |
+| 5. CSV Import/Export | 5/5 | Complete    | 2026-10-12 |
