@@ -1,0 +1,419 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#wp--skip-link--target"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e7]:
+        - paragraph [ref=e8]:
+          - link "Synthetic GigPress Public Fixture" [ref=e9] [cursor=pointer]:
+            - /url: http://127.0.0.1:32791
+        - navigation [ref=e11]:
+          - list [ref=e16]:
+            - list [ref=e17]:
+              - listitem [ref=e18]:
+                - link "GigPress Child Theme Override" [ref=e19] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32791/?page_id=17
+              - listitem [ref=e20]:
+                - link "GigPress Compact Surfaces" [ref=e21] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32791/?page_id=16
+              - listitem [ref=e22]:
+                - link "GigPress Complete Theme Override" [ref=e23] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32791/?page_id=20
+              - listitem [ref=e24]:
+                - link "GigPress Mixed Theme Override" [ref=e25] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32791/?page_id=21
+              - listitem [ref=e26]:
+                - link "GigPress Parent Theme Override" [ref=e27] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32791/?page_id=18
+              - listitem [ref=e28]:
+                - link "GigPress Public Listing" [ref=e29] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32791/
+              - listitem [ref=e30]:
+                - link "GigPress wp-content Override" [ref=e31] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32791/?page_id=19
+              - listitem [ref=e32]:
+                - link "Sample Page" [ref=e33] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32791/?page_id=2
+    - main [ref=e34]:
+      - generic [ref=e35]:
+        - heading "GigPress Public Listing" [level=1] [ref=e36]
+        - generic [ref=e37]:
+          - heading [level=3] [ref=e38]:
+            - text: The Reconstructed Band
+            - generic [ref=e39]:
+              - link "The Reconstructed Band RSS" [ref=e40] [cursor=pointer]:
+                - /url: http://127.0.0.1:32791/?feed=gigpress&artist=41
+              - link "The Reconstructed Band iCalendar" [ref=e41] [cursor=pointer]:
+                - /url: webcal://127.0.0.1:32791/?feed=gigpress-ical&artist=41
+          - table [ref=e42]:
+            - rowgroup [ref=e43]:
+              - row [ref=e44]:
+                - columnheader "Date" [ref=e45]
+                - columnheader "City" [ref=e46]
+                - columnheader "Venue" [ref=e47]
+                - columnheader "Country" [ref=e48]
+            - rowgroup [ref=e49]:
+              - row [ref=e50]:
+                - 'columnheader "Tour: Preservation Tour" [ref=e51]'
+            - rowgroup [ref=e52]:
+              - row [ref=e53]:
+                - cell "04/05/31 – 04/07/31" [ref=e54]
+                - cell "Vienna, AT" [ref=e55]
+                - cell [ref=e56]:
+                  - link "Archive Hall" [ref=e57] [cursor=pointer]:
+                    - /url: https://venues.example.test/archive
+                - cell "Austria" [ref=e58]
+              - row [ref=e59]:
+                - 'cell "Time: 8:30pm. Add to Google Calendar | Download iCalendar Admission: 24.00. Age restrictions: All Ages. Box office: +43-1-555-0109. Address: 7 Evidence Way. Venue phone: +43-1-555-0100. Complete reconstructed active show Related post. Saved Label" [ref=e60]':
+                  - generic [ref=e61]: "Time: 8:30pm."
+                  - generic [ref=e62]:
+                    - link "Add to Google Calendar" [ref=e63] [cursor=pointer]:
+                      - /url: http://www.google.com/calendar/event?action=TEMPLATE&text=The+Reconstructed+Band+at+Archive+Hall&dates=20310405T203000Z/20310407T203000Z&sprop=website:http%3A%2F%2F127.0.0.1%3A32791&sprop=name:The+Reconstructed+Band&location=Archive+Hall%2C+7+Evidence+Way%2C+Vienna%2C+AT&details=Tour%3A+Preservation+Tour.+Price%3A+24.00.+Box+office%3A+%2B43-1-555-0109.+Venue+phone%3A+%2B43-1-555-0100.+Notes%3A+Complete+reconstructed+active+show+All+Ages&trp=true;
+                    - text: "|"
+                    - link "Download iCalendar" [ref=e64] [cursor=pointer]:
+                      - /url: http://127.0.0.1:32791/?feed=gigpress-ical&show_id=109
+                  - generic [ref=e65]: "Admission: 24.00."
+                  - generic [ref=e66]: "Age restrictions: All Ages."
+                  - generic [ref=e67]: "Box office: +43-1-555-0109."
+                  - generic [ref=e68]:
+                    - text: "Address:"
+                    - link "7 Evidence Way" [ref=e69] [cursor=pointer]:
+                      - /url: http://maps.google.com/maps?&q=7+Evidence+Way,Vienna,AT,AT
+                    - text: .
+                  - generic [ref=e70]: "Venue phone: +43-1-555-0100."
+                  - generic [ref=e71]: Complete reconstructed active show
+                  - link "Related post." [ref=e73] [cursor=pointer]:
+                    - /url: http://127.0.0.1:32791/?p=12
+                  - link "Saved Label" [ref=e75] [cursor=pointer]:
+                    - /url: https://tickets.example.test/109
+          - heading [level=3] [ref=e76]:
+            - text: Æther Orchestra 東京xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            - generic [ref=e77]:
+              - link "Æther Orchestra 東京xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx RSS" [ref=e78] [cursor=pointer]:
+                - /url: http://127.0.0.1:32791/?feed=gigpress&artist=701
+              - link "Æther Orchestra 東京xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx iCalendar" [ref=e79] [cursor=pointer]:
+                - /url: webcal://127.0.0.1:32791/?feed=gigpress-ical&artist=701
+          - table [ref=e80]:
+            - rowgroup [ref=e81]:
+              - row [ref=e82]:
+                - columnheader "Date" [ref=e83]
+                - columnheader "City" [ref=e84]
+                - columnheader "Venue" [ref=e85]
+                - columnheader "Country" [ref=e86]
+            - rowgroup [ref=e87]:
+              - row [ref=e88]:
+                - cell "05/10/31 – 05/12/31" [ref=e89]
+                - cell "Vienna, AT" [ref=e90]
+                - cell "LongVenueunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbroken" [ref=e91]
+                - cell "Austria" [ref=e92]
+              - row [ref=e93]:
+                - cell [ref=e94]:
+                  - generic [ref=e95]:
+                    - link "Add to Google Calendar" [ref=e96] [cursor=pointer]:
+                      - /url: http://www.google.com/calendar/event?action=TEMPLATE&text=%C3%86ther+Orchestra+%E6%9D%B1%E4%BA%ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx+at+LongVenueunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbroken&dates=20310510/20310513&sprop=website:http%3A%2F%2F127.0.0.1%3A32791&sprop=name:%C3%86ther+Orchestra+%E6%9D%B1%E4%BA%ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&location=LongVenueunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbroken%2C+Long+address+address-address-address-address-address-address-address-address-address-address-address-address-address-address-address-address-address-address-address-address-%2C+Vienna%2C+AT&details=Price%3A+24.00.+Box+office%3A+%2B43+555+0180.+Venue+phone%3A+%2B43+555+0101.+Notes%3A+%3Cp%3EDoors+at+%3Cstrong%3E19%3A00%3C%2Fstrong%3E%3C%2Fp%3E%3Cul%3E%3Cli%3EReadable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+Readable+long+detail+%3C%2Fli%3E%3C%2Ful%3E+All+Ages&trp=true;
+                    - text: "|"
+                    - link "Download iCalendar" [ref=e97] [cursor=pointer]:
+                      - /url: http://127.0.0.1:32791/?feed=gigpress-ical&show_id=801
+                  - generic [ref=e98]: "Admission: 24.00."
+                  - generic [ref=e99]: "Age restrictions: All Ages."
+                  - generic [ref=e100]: "Box office: +43 555 0180."
+                  - generic [ref=e101]:
+                    - text: "Address:"
+                    - link "Long address address-address-address-address-address-address-address-address-address-address-address-address-address-address-address-address-address-address-address-address-" [ref=e102] [cursor=pointer]:
+                      - /url: http://maps.google.com/maps?&q=Long+address+address-address-address-address-address-address-address-address-address-address-address-address-address-address-address-address-address-address-address-address-,Vienna,AT,1010,AT
+                    - text: .
+                  - generic [ref=e103]: "Venue phone: +43 555 0101."
+                  - generic [ref=e104]:
+                    - paragraph [ref=e105]:
+                      - text: Doors at
+                      - strong [ref=e106]: 19:00
+                    - list [ref=e107]:
+                      - listitem [ref=e108]: Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail Readable long detail
+                  - link "Saved Label" [ref=e110] [cursor=pointer]:
+                    - /url: https://tickets.example.test/saved-801
+            - rowgroup [ref=e111]:
+              - row [ref=e112]:
+                - cell "05/14/31" [ref=e113]
+                - cell "Graz" [ref=e114]
+                - cell "Status Hall" [ref=e115]
+                - cell "Austria" [ref=e116]
+              - row [ref=e117]:
+                - 'cell "Time: 12:00am. Add to Google Calendar | Download iCalendar Admission: Free. Address: 1 Public Way. Sold-out details remain visible. Sold Out" [ref=e118]':
+                  - generic [ref=e119]: "Time: 12:00am."
+                  - generic [ref=e120]:
+                    - link "Add to Google Calendar" [ref=e121] [cursor=pointer]:
+                      - /url: http://www.google.com/calendar/event?action=TEMPLATE&text=%C3%86ther+Orchestra+%E6%9D%B1%E4%BA%ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx+at+Status+Hall&dates=20310514T000000Z/20310514T000000Z&sprop=website:http%3A%2F%2F127.0.0.1%3A32791&sprop=name:%C3%86ther+Orchestra+%E6%9D%B1%E4%BA%ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&location=Status+Hall%2C+1+Public+Way%2C+Graz%2C+AT&details=Price%3A+Free.+Notes%3A+Sold-out+details+remain+visible.+&trp=true;
+                    - text: "|"
+                    - link "Download iCalendar" [ref=e122] [cursor=pointer]:
+                      - /url: http://127.0.0.1:32791/?feed=gigpress-ical&show_id=802
+                  - generic [ref=e123]: "Admission: Free."
+                  - generic [ref=e124]:
+                    - text: "Address:"
+                    - link "1 Public Way" [ref=e125] [cursor=pointer]:
+                      - /url: http://maps.google.com/maps?&q=1+Public+Way,Graz,8010,AT
+                    - text: .
+                  - generic [ref=e126]: Sold-out details remain visible.
+                  - strong [ref=e128]: Sold Out
+          - heading [level=3] [ref=e129]:
+            - text: <a href="https://artists.example.test/feed">A&B <Orchestra> “quoted” 東京🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻 Second line</a>
+            - generic [ref=e130]:
+              - link "A&B <Orchestra> “quoted” 東京🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻 Second line RSS" [ref=e131] [cursor=pointer]:
+                - /url: http://127.0.0.1:32791/?feed=gigpress&artist=1891
+              - link "A&B <Orchestra> “quoted” 東京🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻 Second line iCalendar" [ref=e132] [cursor=pointer]:
+                - /url: webcal://127.0.0.1:32791/?feed=gigpress-ical&artist=1891
+          - table [ref=e133]:
+            - rowgroup [ref=e134]:
+              - row [ref=e135]:
+                - columnheader "Date" [ref=e136]
+                - columnheader "City" [ref=e137]
+                - columnheader "Venue" [ref=e138]
+                - columnheader "Country" [ref=e139]
+            - rowgroup [ref=e140]:
+              - row [ref=e141]:
+                - 'columnheader "Tour: Notes & <More> \"Tour\"" [ref=e142]'
+            - rowgroup [ref=e143]:
+              - row [ref=e144]:
+                - cell "06/10/31" [ref=e145]
+                - cell "Wien & <City> Second line, AT" [ref=e146]
+                - cell [ref=e147]:
+                  - link "Hall & <Room> \"Vienna\"" [ref=e148] [cursor=pointer]:
+                    - /url: https://venues.example.test/feed
+                - cell "Austria" [ref=e149]
+              - row [ref=e150]:
+                - 'cell "Time: 7:30pm. Add to Google Calendar | Download iCalendar Admission: 24 & <free>. Age restrictions: All ages & <12. Box office: +43 \"box\". Address: 1 & <2> \"Way\". Venue phone: +43 & 555. Doors open & music CDATA closer: ]]> BEGIN:VEVENT X-Injected: no Backslash \\route, commas ; semicolons. End. Saved Label More information" [ref=e151]':
+                  - generic [ref=e152]: "Time: 7:30pm."
+                  - generic [ref=e153]:
+                    - link "Add to Google Calendar" [ref=e154] [cursor=pointer]:
+                      - /url: http://www.google.com/calendar/event?action=TEMPLATE&text=A%26B+%3COrchestra%3E+%22quoted%22+%E6%9D%B1%E4%BA%AC%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%0D%0ASecond+line+at+Hall+%26+%3CRoom%3E+%22Vienna%22&dates=20310610T193000Z/20310610T193000Z&sprop=website:http%3A%2F%2F127.0.0.1%3A32791&sprop=name:A%26B+%3COrchestra%3E+%22quoted%22+%E6%9D%B1%E4%BA%AC%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%0D%0ASecond+line&location=Hall+%26+%3CRoom%3E+%22Vienna%22%2C+1+%26+%3C2%3E+%22Way%22%2C+Wien+%26+%3CCity%3E%0ASecond+line%2C+AT&details=Tour%3A+Notes+%26+%3CMore%3E+%22Tour%22.+Price%3A+24+%26+%3Cfree%3E.+Box+office%3A+%2B43+%22box%22.+Venue+phone%3A+%2B43+%26+555.+Notes%3A+%3Cp%3EDoors+%3Cstrong%3Eopen%3C%2Fstrong%3E+%26amp%3B+music%3C%2Fp%3E%0D%0ACDATA+closer%3A+%5D%5D%3E%0ABEGIN%3AVEVENT%0AX-Injected%3A+no%0ABackslash+%5Croute%2C+commas+%3B+semicolons.%0AEnd.+All+ages+%26amp%3B+%26lt%3B12&trp=true;
+                    - text: "|"
+                    - link "Download iCalendar" [ref=e155] [cursor=pointer]:
+                      - /url: http://127.0.0.1:32791/?feed=gigpress-ical&show_id=1891
+                  - generic [ref=e156]: "Admission: 24 & <free>."
+                  - generic [ref=e157]: "Age restrictions: All ages & <12."
+                  - generic [ref=e158]: "Box office: +43 \"box\"."
+                  - generic [ref=e159]:
+                    - text: "Address:"
+                    - link "1 & <2> \"Way\"" [ref=e160] [cursor=pointer]:
+                      - /url: http://maps.google.com/maps?&q=1+%26+%3C2%3E+%22Way%22,Wien+%26+%3CCity%3ESecond+line,AT,1010,AT
+                    - text: .
+                  - generic [ref=e161]: "Venue phone: +43 & 555."
+                  - generic [ref=e162]:
+                    - paragraph [ref=e163]:
+                      - text: Doors
+                      - strong [ref=e164]: open
+                      - text: "& music"
+                    - text: "CDATA closer: ]]> BEGIN:VEVENT X-Injected: no Backslash \\route, commas ; semicolons. End."
+                  - link "Saved Label" [ref=e166] [cursor=pointer]:
+                    - /url: https://tickets.example.test/1891?a=1&b=2
+                  - link "More information" [ref=e168] [cursor=pointer]:
+                    - /url: https://events.example.test/1891?a=1&b=2
+            - rowgroup [ref=e169]:
+              - row [ref=e170]:
+                - cell "06/11/31 – 06/13/31" [ref=e171]
+                - cell "Wien & <City> Second line, AT" [ref=e172]
+                - cell [ref=e173]:
+                  - link "Hall & <Room> \"Vienna\"" [ref=e174] [cursor=pointer]:
+                    - /url: https://venues.example.test/feed
+                - cell "Austria" [ref=e175]
+              - row [ref=e176]:
+                - 'cell "Add to Google Calendar | Download iCalendar Admission: 31. Address: 1 & <2> \"Way\". Venue phone: +43 & 555. Second item &" [ref=e177]':
+                  - generic [ref=e178]:
+                    - link "Add to Google Calendar" [ref=e179] [cursor=pointer]:
+                      - /url: http://www.google.com/calendar/event?action=TEMPLATE&text=A%26B+%3COrchestra%3E+%22quoted%22+%E6%9D%B1%E4%BA%AC%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%0D%0ASecond+line+at+Hall+%26+%3CRoom%3E+%22Vienna%22&dates=20310611/20310614&sprop=website:http%3A%2F%2F127.0.0.1%3A32791&sprop=name:A%26B+%3COrchestra%3E+%22quoted%22+%E6%9D%B1%E4%BA%AC%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%0D%0ASecond+line&location=Hall+%26+%3CRoom%3E+%22Vienna%22%2C+1+%26+%3C2%3E+%22Way%22%2C+Wien+%26+%3CCity%3E%0ASecond+line%2C+AT&details=Tour%3A+Notes+%26+%3CMore%3E+%22Tour%22.+Price%3A+31.+Venue+phone%3A+%2B43+%26+555.+Notes%3A+Second+item+%26+%3Cordered%3E+&trp=true;
+                    - text: "|"
+                    - link "Download iCalendar" [ref=e180] [cursor=pointer]:
+                      - /url: http://127.0.0.1:32791/?feed=gigpress-ical&show_id=1892
+                  - generic [ref=e181]: "Admission: 31."
+                  - generic [ref=e182]:
+                    - text: "Address:"
+                    - link "1 & <2> \"Way\"" [ref=e183] [cursor=pointer]:
+                      - /url: http://maps.google.com/maps?&q=1+%26+%3C2%3E+%22Way%22,Wien+%26+%3CCity%3ESecond+line,AT,1010,AT
+                    - text: .
+                  - generic [ref=e184]: "Venue phone: +43 & 555."
+                  - generic [ref=e185]: Second item &
+            - rowgroup [ref=e186]:
+              - row [ref=e187]:
+                - cell "06/14/31" [ref=e188]
+                - cell "Wien & <City> Second line, AT" [ref=e189]
+                - cell [ref=e190]:
+                  - link "Hall & <Room> \"Vienna\"" [ref=e191] [cursor=pointer]:
+                    - /url: https://venues.example.test/feed
+                - cell "Austria" [ref=e192]
+              - row [ref=e193]:
+                - 'cell "Time: 12:00am. Add to Google Calendar | Download iCalendar Admission: 32. Address: 1 & <2> \"Way\". Venue phone: +43 & 555. Actual midnight &" [ref=e194]':
+                  - generic [ref=e195]: "Time: 12:00am."
+                  - generic [ref=e196]:
+                    - link "Add to Google Calendar" [ref=e197] [cursor=pointer]:
+                      - /url: http://www.google.com/calendar/event?action=TEMPLATE&text=A%26B+%3COrchestra%3E+%22quoted%22+%E6%9D%B1%E4%BA%AC%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%0D%0ASecond+line+at+Hall+%26+%3CRoom%3E+%22Vienna%22&dates=20310614T000000Z/20310614T000000Z&sprop=website:http%3A%2F%2F127.0.0.1%3A32791&sprop=name:A%26B+%3COrchestra%3E+%22quoted%22+%E6%9D%B1%E4%BA%AC%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%0D%0ASecond+line&location=Hall+%26+%3CRoom%3E+%22Vienna%22%2C+1+%26+%3C2%3E+%22Way%22%2C+Wien+%26+%3CCity%3E%0ASecond+line%2C+AT&details=Tour%3A+Notes+%26+%3CMore%3E+%22Tour%22.+Price%3A+32.+Venue+phone%3A+%2B43+%26+555.+Notes%3A+Actual+midnight+%26+%3Ckept%3E+&trp=true;
+                    - text: "|"
+                    - link "Download iCalendar" [ref=e198] [cursor=pointer]:
+                      - /url: http://127.0.0.1:32791/?feed=gigpress-ical&show_id=1893
+                  - generic [ref=e199]: "Admission: 32."
+                  - generic [ref=e200]:
+                    - text: "Address:"
+                    - link "1 & <2> \"Way\"" [ref=e201] [cursor=pointer]:
+                      - /url: http://maps.google.com/maps?&q=1+%26+%3C2%3E+%22Way%22,Wien+%26+%3CCity%3ESecond+line,AT,1010,AT
+                    - text: .
+                  - generic [ref=e202]: "Venue phone: +43 & 555."
+                  - generic [ref=e203]: Actual midnight &
+            - rowgroup [ref=e204]:
+              - row [ref=e205]:
+                - cell "06/15/31 – 06/17/31" [ref=e206]
+                - cell "Wien & <City> Second line, AT" [ref=e207]
+                - cell [ref=e208]:
+                  - link "Hall & <Room> \"Vienna\"" [ref=e209] [cursor=pointer]:
+                    - /url: https://venues.example.test/feed
+                - cell "Austria" [ref=e210]
+              - row [ref=e211]:
+                - 'cell "Time: 8:00pm. Add to Google Calendar | Download iCalendar Admission: 33. Address: 1 & <2> \"Way\". Venue phone: +43 & 555. Timed multi-day &" [ref=e212]':
+                  - generic [ref=e213]: "Time: 8:00pm."
+                  - generic [ref=e214]:
+                    - link "Add to Google Calendar" [ref=e215] [cursor=pointer]:
+                      - /url: http://www.google.com/calendar/event?action=TEMPLATE&text=A%26B+%3COrchestra%3E+%22quoted%22+%E6%9D%B1%E4%BA%AC%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%0D%0ASecond+line+at+Hall+%26+%3CRoom%3E+%22Vienna%22&dates=20310615T200000Z/20310617T200000Z&sprop=website:http%3A%2F%2F127.0.0.1%3A32791&sprop=name:A%26B+%3COrchestra%3E+%22quoted%22+%E6%9D%B1%E4%BA%AC%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%F0%9F%8E%BB%0D%0ASecond+line&location=Hall+%26+%3CRoom%3E+%22Vienna%22%2C+1+%26+%3C2%3E+%22Way%22%2C+Wien+%26+%3CCity%3E%0ASecond+line%2C+AT&details=Tour%3A+Notes+%26+%3CMore%3E+%22Tour%22.+Price%3A+33.+Venue+phone%3A+%2B43+%26+555.+Notes%3A+Timed+multi-day+%26+%3Ckept%3E+&trp=true;
+                    - text: "|"
+                    - link "Download iCalendar" [ref=e216] [cursor=pointer]:
+                      - /url: http://127.0.0.1:32791/?feed=gigpress-ical&show_id=1894
+                  - generic [ref=e217]: "Admission: 33."
+                  - generic [ref=e218]:
+                    - text: "Address:"
+                    - link "1 & <2> \"Way\"" [ref=e219] [cursor=pointer]:
+                      - /url: http://maps.google.com/maps?&q=1+%26+%3C2%3E+%22Way%22,Wien+%26+%3CCity%3ESecond+line,AT,1010,AT
+                    - text: .
+                  - generic [ref=e220]: "Venue phone: +43 & 555."
+                  - generic [ref=e221]: Timed multi-day &
+          - heading [level=3] [ref=e222]:
+            - text: <a href="">Æther Orchestra 東京xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx <a href="javascript:alert(8)" onclick="alert(9)">unsafe link</a><img src=x onerror=alert(10)><script id="injected">alert(1)</script> & Ampersand & <tag> “quote” ;comma, | pipe Second line</a>
+            - generic [ref=e223]:
+              - link "Æther Orchestra 東京xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx <a href=\"javascript:alert(8)\" onclick=\"alert(9)\">unsafe link</a><img src=x onerror=alert(10)><script id=\"injected\">alert(1)</script> & Ampersand & <tag> “quote” ;comma, | pipe Second line RSS" [ref=e224] [cursor=pointer]:
+                - /url: http://127.0.0.1:32791/?feed=gigpress&artist=891
+              - link "Æther Orchestra 東京xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx <a href=\"javascript:alert(8)\" onclick=\"alert(9)\">unsafe link</a><img src=x onerror=alert(10)><script id=\"injected\">alert(1)</script> & Ampersand & <tag> “quote” ;comma, | pipe Second line iCalendar" [ref=e225] [cursor=pointer]:
+                - /url: webcal://127.0.0.1:32791/?feed=gigpress-ical&artist=891
+          - table [ref=e226]:
+            - rowgroup [ref=e227]:
+              - row [ref=e228]:
+                - columnheader "Date" [ref=e229]
+                - columnheader "City" [ref=e230]
+                - columnheader "Venue" [ref=e231]
+                - columnheader "Country" [ref=e232]
+            - rowgroup [ref=e233]:
+              - row [ref=e234]:
+                - cell "06/10/31" [ref=e235]
+                - cell "Wien & <script>city</script>, AT" [ref=e236]
+                - cell [ref=e237]:
+                  - link "LongVenueunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbr <b>unsafe</b> & Ampersand & <tag> \"quote\" ;comma, | pipe Second line" [ref=e238] [cursor=pointer]:
+                    - /url: ""
+                - cell "Austria" [ref=e239]
+              - row [ref=e240]:
+                - 'cell "Time: 7:30pm. Add to Google Calendar | Download iCalendar Admission: 24 & <free>. Age restrictions: All ages & <12. Address: 1 <img src=x onerror=alert(1)> Public Way. Venue phone: +43 555 0199. Doors at 19:00 All ages First line BEGIN:VEVENT X-Injected: yes <![CDATA[]]> alert(2) Related post. Saved Label More information" [ref=e241]':
+                  - generic [ref=e242]: "Time: 7:30pm."
+                  - generic [ref=e243]:
+                    - link "Add to Google Calendar" [ref=e244] [cursor=pointer]:
+                      - /url: http://www.google.com/calendar/event?action=TEMPLATE&text=%C3%86ther+Orchestra+%E6%9D%B1%E4%BA%ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx+%3Ca+href%3D%22javascript%3Aalert%288%29%22+onclick%3D%22alert%289%29%22%3Eunsafe+link%3C%2Fa%3E%3Cimg+src%3Dx+onerror%3Dalert%2810%29%3E%3Cscript+id%3D%22injected%22%3Ealert%281%29%3C%2Fscript%3E+%26+Ampersand+%26+%3Ctag%3E+%22quote%22+%3Bcomma%2C+%7C+pipe%0D%0ASecond+line+at+LongVenueunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbr+%3Cb%3Eunsafe%3C%2Fb%3E+%26+Ampersand+%26+%3Ctag%3E+%22quote%22+%3Bcomma%2C+%7C+pipe%0D%0ASecond+line&dates=20310610T193000Z/20310610T193000Z&sprop=website:http%3A%2F%2F127.0.0.1%3A32791&sprop=name:%C3%86ther+Orchestra+%E6%9D%B1%E4%BA%ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx+%3Ca+href%3D%22javascript%3Aalert%288%29%22+onclick%3D%22alert%289%29%22%3Eunsafe+link%3C%2Fa%3E%3Cimg+src%3Dx+onerror%3Dalert%2810%29%3E%3Cscript+id%3D%22injected%22%3Ealert%281%29%3C%2Fscript%3E+%26+Ampersand+%26+%3Ctag%3E+%22quote%22+%3Bcomma%2C+%7C+pipe%0D%0ASecond+line&location=LongVenueunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbrokenunbr+%3Cb%3Eunsafe%3C%2Fb%3E+%26+Ampersand+%26+%3Ctag%3E+%22quote%22+%3Bcomma%2C+%7C+pipe%0D%0ASecond+line%2C+1+%3Cimg+src%3Dx+onerror%3Dalert%281%29%3E+Public+Way%2C+Wien+%26+%3Cscript%3Ecity%3C%2Fscript%3E%2C+AT&details=Price%3A+24+%26+%3Cfree%3E.+Notes%3A+%3Cp%3EDoors+at+%3Cstrong%3E19%3A00%3C%2Fstrong%3E%3C%2Fp%3E%3Cul%3E%3Cli%3EAll+ages%3C%2Fli%3E%3C%2Ful%3EFirst+line%0D%0ABEGIN%3AVEVENT%0D%0AX-Injected%3A+yes%0A%3C%21%5BCDATA%5B%3C%2Fscript%3E%5D%5D%3E%0A%3C%2Fscript%3E%3Cscript+id%3D%22notes-injected%22%3Ealert%282%29%3C%2Fscript%3E+All+ages+%26amp%3B+%26lt%3B12&trp=true;
+                    - text: "|"
+                    - link "Download iCalendar" [ref=e245] [cursor=pointer]:
+                      - /url: http://127.0.0.1:32791/?feed=gigpress-ical&show_id=891
+                  - generic [ref=e246]: "Admission: 24 & <free>."
+                  - generic [ref=e247]: "Age restrictions: All ages & <12."
+                  - generic [ref=e248]:
+                    - text: "Address:"
+                    - link "1 <img src=x onerror=alert(1)> Public Way" [ref=e249] [cursor=pointer]:
+                      - /url: http://maps.google.com/maps?&q=1+%3Cimg+src%3Dx+onerror%3Dalert%281%29%3E+Public+Way,Wien+%26+%3Cscript%3Ecity%3C%2Fscript%3E,AT,1010,AT
+                    - text: .
+                  - generic [ref=e250]: "Venue phone: +43 555 0199."
+                  - generic [ref=e251]:
+                    - paragraph [ref=e252]:
+                      - text: Doors at
+                      - strong [ref=e253]: 19:00
+                    - list [ref=e254]:
+                      - listitem [ref=e255]: All ages
+                    - text: "First line BEGIN:VEVENT X-Injected: yes <![CDATA[]]> alert(2)"
+                  - link "Related post." [ref=e257] [cursor=pointer]:
+                    - /url: http://127.0.0.1:32791/?p=13
+                  - link "Saved Label" [ref=e259] [cursor=pointer]:
+                    - /url: https://tickets.example.test/109
+                  - link "More information" [ref=e261] [cursor=pointer]:
+                    - /url: ""
+          - heading [level=3] [ref=e262]:
+            - text: Second Layout Artist
+            - generic [ref=e263]:
+              - link "Second Layout Artist RSS" [ref=e264] [cursor=pointer]:
+                - /url: http://127.0.0.1:32791/?feed=gigpress&artist=702
+              - link "Second Layout Artist iCalendar" [ref=e265] [cursor=pointer]:
+                - /url: webcal://127.0.0.1:32791/?feed=gigpress-ical&artist=702
+          - table [ref=e266]:
+            - rowgroup [ref=e267]:
+              - row [ref=e268]:
+                - columnheader "Date" [ref=e269]
+                - columnheader "City" [ref=e270]
+                - columnheader "Venue" [ref=e271]
+                - columnheader "Country" [ref=e272]
+            - rowgroup [ref=e273]:
+              - row [ref=e274]:
+                - cell "05/16/31" [ref=e275]
+                - cell "Graz" [ref=e276]
+                - cell "Status Hall" [ref=e277]
+                - cell "Austria" [ref=e278]
+              - row [ref=e279]:
+                - 'cell "Add to Google Calendar | Download iCalendar Admission: 15.00. Address: 1 Public Way. Cancelled details remain visible. Cancelled" [ref=e280]':
+                  - generic [ref=e281]:
+                    - link "Add to Google Calendar" [ref=e282] [cursor=pointer]:
+                      - /url: http://www.google.com/calendar/event?action=TEMPLATE&text=Second+Layout+Artist+at+Status+Hall&dates=20310516/20310516&sprop=website:http%3A%2F%2F127.0.0.1%3A32791&sprop=name:Second+Layout+Artist&location=Status+Hall%2C+1+Public+Way%2C+Graz%2C+AT&details=Price%3A+15.00.+Notes%3A+Cancelled+details+remain+visible.+&trp=true;
+                    - text: "|"
+                    - link "Download iCalendar" [ref=e283] [cursor=pointer]:
+                      - /url: http://127.0.0.1:32791/?feed=gigpress-ical&show_id=803
+                  - generic [ref=e284]: "Admission: 15.00."
+                  - generic [ref=e285]:
+                    - text: "Address:"
+                    - link "1 Public Way" [ref=e286] [cursor=pointer]:
+                      - /url: http://maps.google.com/maps?&q=1+Public+Way,Graz,8010,AT
+                    - text: .
+                  - generic [ref=e287]: Cancelled details remain visible.
+                  - strong [ref=e289]: Cancelled
+          - paragraph [ref=e290]:
+            - text: "Subscribe:"
+            - link "RSS" [ref=e291] [cursor=pointer]:
+              - /url: http://127.0.0.1:32791/?feed=gigpress
+            - text: "|"
+            - link "iCal" [ref=e292] [cursor=pointer]:
+              - /url: webcal://127.0.0.1:32791/?feed=gigpress-ical
+    - contentinfo [ref=e293]:
+      - generic [ref=e295]:
+        - generic [ref=e296]:
+          - heading [level=2] [ref=e299]:
+            - link "Synthetic GigPress Public Fixture" [ref=e300] [cursor=pointer]:
+              - /url: http://127.0.0.1:32791
+          - generic [ref=e301]:
+            - navigation "2" [ref=e302]:
+              - list [ref=e303]:
+                - listitem [ref=e304]:
+                  - link "Blog" [ref=e305] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=e306]:
+                  - link "About" [ref=e307] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=e308]:
+                  - link "FAQs" [ref=e309] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=e310]:
+                  - link "Authors" [ref=e311] [cursor=pointer]:
+                    - /url: "#"
+            - navigation "3" [ref=e312]:
+              - list [ref=e313]:
+                - listitem [ref=e314]:
+                  - link "Events" [ref=e315] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=e316]:
+                  - link "Shop" [ref=e317] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=e318]:
+                  - link "Patterns" [ref=e319] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=e320]:
+                  - link "Themes" [ref=e321] [cursor=pointer]:
+                    - /url: "#"
+        - generic [ref=e323]:
+          - paragraph [ref=e324]: Twenty Twenty-Five
+          - paragraph [ref=e325]:
+            - text: Designed with
+            - link "WordPress" [ref=e326] [cursor=pointer]:
+              - /url: https://wordpress.org

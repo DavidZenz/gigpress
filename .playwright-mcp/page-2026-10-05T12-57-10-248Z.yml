@@ -1,0 +1,180 @@
+- generic [active] [ref=e1]:
+  - link "Skip to content" [ref=e2] [cursor=pointer]:
+    - /url: "#wp--skip-link--target"
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e7]:
+        - paragraph [ref=e8]:
+          - link "Synthetic GigPress Public Fixture" [ref=e9] [cursor=pointer]:
+            - /url: http://127.0.0.1:32789
+        - navigation [ref=e11]:
+          - list [ref=e16]:
+            - list [ref=e17]:
+              - listitem [ref=e18]:
+                - link "GigPress Child Theme Override" [ref=e19] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32789/?page_id=17
+              - listitem [ref=e20]:
+                - link "GigPress Compact Surfaces" [ref=e21] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32789/?page_id=16
+              - listitem [ref=e22]:
+                - link "GigPress Complete Theme Override" [ref=e23] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32789/?page_id=20
+              - listitem [ref=e24]:
+                - link "GigPress Mixed Theme Override" [ref=e25] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32789/?page_id=21
+              - listitem [ref=e26]:
+                - link "GigPress Parent Theme Override" [ref=e27] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32789/?page_id=18
+              - listitem [ref=e28]:
+                - link "GigPress Public Listing" [ref=e29] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32789/
+              - listitem [ref=e30]:
+                - link "GigPress wp-content Override" [ref=e31] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32789/?page_id=19
+              - listitem [ref=e32]:
+                - link "Sample Page" [ref=e33] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32789/?page_id=2
+    - main [ref=e34]:
+      - generic [ref=e35]:
+        - heading "GigPress Public Listing" [level=1] [ref=e36]
+        - generic [ref=e37]:
+          - heading [level=3] [ref=e38]:
+            - text: The Reconstructed Band
+            - generic [ref=e39]:
+              - link "The Reconstructed Band RSS" [ref=e40] [cursor=pointer]:
+                - /url: http://127.0.0.1:32789/?feed=gigpress&artist=41
+              - link "The Reconstructed Band iCalendar" [ref=e41] [cursor=pointer]:
+                - /url: webcal://127.0.0.1:32789/?feed=gigpress-ical&artist=41
+          - table [ref=e42]:
+            - rowgroup [ref=e43]:
+              - row [ref=e44]:
+                - columnheader "Owner start" [ref=e45]
+            - rowgroup [ref=e46]:
+              - row [ref=e47]:
+                - 'columnheader "Tour: Preservation Tour" [ref=e48]'
+            - rowgroup [ref=e49]:
+              - row [ref=e50]:
+                - cell "04/05/31" [ref=e51]
+          - heading [level=3] [ref=e52]:
+            - text: Æther Orchestra 東京xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+            - generic [ref=e53]:
+              - link "Æther Orchestra 東京xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx RSS" [ref=e54] [cursor=pointer]:
+                - /url: http://127.0.0.1:32789/?feed=gigpress&artist=701
+              - link "Æther Orchestra 東京xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx iCalendar" [ref=e55] [cursor=pointer]:
+                - /url: webcal://127.0.0.1:32789/?feed=gigpress-ical&artist=701
+          - table [ref=e56]:
+            - rowgroup [ref=e57]:
+              - row [ref=e58]:
+                - columnheader "Owner start" [ref=e59]
+            - rowgroup [ref=e60]:
+              - row [ref=e61]:
+                - cell "05/10/31" [ref=e62]
+            - rowgroup [ref=e63]:
+              - row [ref=e64]:
+                - cell "05/14/31" [ref=e65]
+          - heading [level=3] [ref=e66]:
+            - text: <a href="https://artists.example.test/feed">A&B <Orchestra> “quoted” 東京🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻 Second line</a>
+            - generic [ref=e67]:
+              - link "A&B <Orchestra> “quoted” 東京🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻 Second line RSS”><img decoding=":
+                - /url: http://127.0.0.1:32789/?feed=gigpress&artist=1891
+              - link "A&B <Orchestra> “quoted” 東京🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻🎻 Second line iCalendar”><img decoding=":
+                - /url: webcal://127.0.0.1:32789/?feed=gigpress-ical&artist=1891
+          - table [ref=e68]:
+            - rowgroup [ref=e69]:
+              - row [ref=e70]:
+                - columnheader "Owner start" [ref=e71]
+            - rowgroup [ref=e72]:
+              - row [ref=e73]:
+                - 'columnheader "Tour: Notes & <More> \"Tour\"" [ref=e74]'
+            - rowgroup [ref=e75]:
+              - row [ref=e76]:
+                - cell "06/10/31" [ref=e77]
+            - rowgroup [ref=e78]:
+              - row [ref=e79]:
+                - cell "06/11/31" [ref=e80]
+            - rowgroup [ref=e81]:
+              - row [ref=e82]:
+                - cell "06/14/31" [ref=e83]
+            - rowgroup [ref=e84]:
+              - row [ref=e85]:
+                - cell "06/15/31" [ref=e86]
+          - heading [level=3] [ref=e87]:
+            - text: <a href="">Æther Orchestra 東京xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx The Script </script><script id="injected">alert(1)</script> & Ampersand & <tag> “quote” ;comma, | pipe Second line</a>
+            - generic [ref=e88]:
+              - link "alert(1) & Ampersand & “quote” ;comma, | pipe Second line RSS”>" [ref=e89] [cursor=pointer]:
+                - /url: http://127.0.0.1:32789/?feed=gigpress&artist=891
+                - text: alert(1) & Ampersand &
+                - generic [ref=e90]: “quote” ;comma, | pipe Second line RSS”>
+              - link "alert(1) & Ampersand & “quote” ;comma, | pipe Second line iCalendar”>" [ref=e91] [cursor=pointer]:
+                - /url: webcal://127.0.0.1:32789/?feed=gigpress-ical&artist=891
+                - text: alert(1) & Ampersand &
+                - generic [ref=e92]: “quote” ;comma, | pipe Second line iCalendar”>
+          - table [ref=e93]:
+            - rowgroup [ref=e94]:
+              - row [ref=e95]:
+                - columnheader "Owner start" [ref=e96]
+            - rowgroup [ref=e97]:
+              - row [ref=e98]:
+                - cell "06/10/31" [ref=e99]
+          - heading [level=3] [ref=e100]:
+            - text: Second Layout Artist
+            - generic [ref=e101]:
+              - link "Second Layout Artist RSS" [ref=e102] [cursor=pointer]:
+                - /url: http://127.0.0.1:32789/?feed=gigpress&artist=702
+              - link "Second Layout Artist iCalendar" [ref=e103] [cursor=pointer]:
+                - /url: webcal://127.0.0.1:32789/?feed=gigpress-ical&artist=702
+          - table [ref=e104]:
+            - rowgroup [ref=e105]:
+              - row [ref=e106]:
+                - columnheader "Owner start" [ref=e107]
+            - rowgroup [ref=e108]:
+              - row [ref=e109]:
+                - cell "05/16/31" [ref=e110]
+          - paragraph [ref=e111]:
+            - text: "Subscribe:"
+            - link "RSS" [ref=e112] [cursor=pointer]:
+              - /url: http://127.0.0.1:32789/?feed=gigpress
+            - text: "|"
+            - link "iCal" [ref=e113] [cursor=pointer]:
+              - /url: webcal://127.0.0.1:32789/?feed=gigpress-ical
+    - contentinfo [ref=e114]:
+      - generic [ref=e116]:
+        - generic [ref=e117]:
+          - heading [level=2] [ref=e120]:
+            - link "Synthetic GigPress Public Fixture" [ref=e121] [cursor=pointer]:
+              - /url: http://127.0.0.1:32789
+          - generic [ref=e122]:
+            - navigation "2" [ref=e123]:
+              - list [ref=e124]:
+                - listitem [ref=e125]:
+                  - link "Blog" [ref=e126] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=e127]:
+                  - link "About" [ref=e128] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=e129]:
+                  - link "FAQs" [ref=e130] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=e131]:
+                  - link "Authors" [ref=e132] [cursor=pointer]:
+                    - /url: "#"
+            - navigation "3" [ref=e133]:
+              - list [ref=e134]:
+                - listitem [ref=e135]:
+                  - link "Events" [ref=e136] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=e137]:
+                  - link "Shop" [ref=e138] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=e139]:
+                  - link "Patterns" [ref=e140] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=e141]:
+                  - link "Themes" [ref=e142] [cursor=pointer]:
+                    - /url: "#"
+        - generic [ref=e144]:
+          - paragraph [ref=e145]: Twenty Twenty-Five
+          - paragraph [ref=e146]:
+            - text: Designed with
+            - link "WordPress" [ref=e147] [cursor=pointer]:
+              - /url: https://wordpress.org

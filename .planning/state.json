@@ -1,0 +1,38 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": null,
+  "phases": [
+    {
+      "number": "1",
+      "name": "Compatibility Baseline and Menu Diagnosis",
+      "status": "complete"
+    },
+    {
+      "number": "2",
+      "name": "Data and Upgrade Preservation",
+      "status": "complete"
+    },
+    {
+      "number": "3",
+      "name": "Administration Workflows",
+      "status": "complete"
+    },
+    {
+      "number": "4",
+      "name": "Public Publishing",
+      "status": "complete"
+    },
+    {
+      "number": "5",
+      "name": "CSV Import/Export",
+      "status": "in_progress"
+    }
+  ],
+  "next": {
+    "command": "/gsd:progress --next",
+    "label": "Advance to the next step",
+    "reason": "Phase 05 of 5 · 80% · executing"
+  },
+  "updated_at": "2026-10-11T12:04:25.394Z"
+}

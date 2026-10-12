@@ -1,0 +1,128 @@
+- generic [active] [ref=f2e1]:
+  - link "Skip to content" [ref=f2e2] [cursor=pointer]:
+    - /url: "#wp--skip-link--target"
+  - generic [ref=f2e3]:
+    - banner [ref=f2e4]:
+      - generic [ref=f2e7]:
+        - paragraph [ref=f2e8]:
+          - link "Synthetic GigPress Public Fixture" [ref=f2e9] [cursor=pointer]:
+            - /url: http://127.0.0.1:32798
+        - navigation [ref=f2e11]:
+          - list [ref=f2e16]:
+            - list [ref=f2e17]:
+              - listitem [ref=f2e18]:
+                - link "GigPress Child Theme Override" [ref=f2e19] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32798/?page_id=18
+              - listitem [ref=f2e20]:
+                - link "GigPress Compact Surfaces" [ref=f2e21] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32798/?page_id=17
+              - listitem [ref=f2e22]:
+                - link "GigPress Complete Theme Override" [ref=f2e23] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32798/?page_id=21
+              - listitem [ref=f2e24]:
+                - link "GigPress Mixed Theme Override" [ref=f2e25] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32798/?page_id=22
+              - listitem [ref=f2e26]:
+                - link "GigPress Parent Theme Override" [ref=f2e27] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32798/?page_id=19
+              - listitem [ref=f2e28]:
+                - link "GigPress Public Listing" [ref=f2e29] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32798/
+              - listitem [ref=f2e30]:
+                - link "GigPress wp-content Override" [ref=f2e31] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32798/?page_id=20
+              - listitem [ref=f2e32]:
+                - link "Sample Page" [ref=f2e33] [cursor=pointer]:
+                  - /url: http://127.0.0.1:32798/?page_id=2
+    - main [ref=f2e34]:
+      - generic [ref=f2e35]:
+        - heading "GigPress Child Theme Override" [level=1] [ref=f2e36]
+        - generic [ref=f2e37]:
+          - table [ref=f2e38]:
+            - rowgroup [ref=f2e39]:
+              - row [ref=f2e40]:
+                - columnheader "Owner start" [ref=f2e41]
+            - rowgroup [ref=f2e42]:
+              - row [ref=f2e43]:
+                - 'columnheader "Tour: Preservation Tour" [ref=f2e44]'
+            - rowgroup [ref=f2e45]:
+              - row [ref=f2e46]:
+                - cell "04/05/31" [ref=f2e47]
+            - rowgroup [ref=f2e48]:
+              - row [ref=f2e49]:
+                - cell "05/10/31" [ref=f2e50]
+            - rowgroup [ref=f2e51]:
+              - row [ref=f2e52]:
+                - cell "05/14/31" [ref=f2e53]
+            - rowgroup [ref=f2e54]:
+              - row [ref=f2e55]:
+                - cell "05/16/31" [ref=f2e56]
+            - rowgroup [ref=f2e57]:
+              - row [ref=f2e58]:
+                - 'columnheader "Tour: Notes & <More> \"Tour\"" [ref=f2e59]'
+            - rowgroup [ref=f2e60]:
+              - row [ref=f2e61]:
+                - cell "06/10/31" [ref=f2e62]
+            - rowgroup [ref=f2e63]:
+              - row [ref=f2e64]:
+                - cell "06/10/31" [ref=f2e65]
+            - rowgroup [ref=f2e66]:
+              - row [ref=f2e67]:
+                - 'columnheader "Tour: Notes & <More> \"Tour\"" [ref=f2e68]'
+            - rowgroup [ref=f2e69]:
+              - row [ref=f2e70]:
+                - cell "06/11/31" [ref=f2e71]
+            - rowgroup [ref=f2e72]:
+              - row [ref=f2e73]:
+                - cell "06/14/31" [ref=f2e74]
+            - rowgroup [ref=f2e75]:
+              - row [ref=f2e76]:
+                - cell "06/15/31" [ref=f2e77]
+          - paragraph [ref=f2e78]:
+            - text: "Subscribe:"
+            - link "RSS" [ref=f2e79] [cursor=pointer]:
+              - /url: http://127.0.0.1:32798/?feed=gigpress
+            - text: "|"
+            - link "iCal" [ref=f2e80] [cursor=pointer]:
+              - /url: webcal://127.0.0.1:32798/?feed=gigpress-ical
+    - contentinfo [ref=f2e81]:
+      - generic [ref=f2e83]:
+        - generic [ref=f2e84]:
+          - heading [level=2] [ref=f2e87]:
+            - link "Synthetic GigPress Public Fixture" [ref=f2e88] [cursor=pointer]:
+              - /url: http://127.0.0.1:32798
+          - generic [ref=f2e89]:
+            - navigation "2" [ref=f2e90]:
+              - list [ref=f2e91]:
+                - listitem [ref=f2e92]:
+                  - link "Blog" [ref=f2e93] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=f2e94]:
+                  - link "About" [ref=f2e95] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=f2e96]:
+                  - link "FAQs" [ref=f2e97] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=f2e98]:
+                  - link "Authors" [ref=f2e99] [cursor=pointer]:
+                    - /url: "#"
+            - navigation "3" [ref=f2e100]:
+              - list [ref=f2e101]:
+                - listitem [ref=f2e102]:
+                  - link "Events" [ref=f2e103] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=f2e104]:
+                  - link "Shop" [ref=f2e105] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=f2e106]:
+                  - link "Patterns" [ref=f2e107] [cursor=pointer]:
+                    - /url: "#"
+                - listitem [ref=f2e108]:
+                  - link "Themes" [ref=f2e109] [cursor=pointer]:
+                    - /url: "#"
+        - generic [ref=f2e111]:
+          - paragraph [ref=f2e112]: Twenty Twenty-Five
+          - paragraph [ref=f2e113]:
+            - text: Designed with
+            - link "WordPress" [ref=f2e114] [cursor=pointer]:
+              - /url: https://wordpress.org
