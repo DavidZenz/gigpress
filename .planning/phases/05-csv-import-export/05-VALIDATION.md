@@ -93,13 +93,17 @@ All rows begin pending. Record them in `05-BROWSER.md`; never infer them from th
 
 | ID | Decision coverage | Observation | Required identity | Status |
 |----|-------------------|-------------|-------------------|--------|
-| H-05-01 | D-01, D-02, D-03, D-04 | With JavaScript disabled, Import is first, Export remains visible, disclosure is operable, related-post is visible/unchecked with exact-ID explanation, and labels are exact. | Codex app integrated browser on macOS (version not exposed) + fixture URL | Partial: D-02 through D-04 pass; user confirmed D-01 is unavailable in this browser and the actual no-JavaScript observation remains pending |
+| H-05-01 | D-01, D-02, D-03, D-04 | With JavaScript disabled, Import is first, Export remains visible, disclosure is operable, related-post is visible/unchecked with exact-ID explanation, and labels are exact. | Codex app integrated browser on macOS (version not exposed) + fixture URL | Accepted with user-approved temporary waiver: D-02 through D-04 pass; D-01 remains unobserved and is not claimed as tested |
 | H-05-02 | D-05, D-06, D-07, D-08, D-13 | Actual multipart upload shows all four outcome counts/details, row/identity/reason/guidance, show-list/another-upload, correction/retry, duplicate no-overwrite, and status handling. | Codex app integrated browser on macOS (version not exposed) + fixture URL + fixture name | Pass: direct browser inspection confirmed the 1/1/1/1 counts, expanded row details, correction/retry guidance, and recovery actions; D-06, D-07, D-08, and D-13 also pass |
 | H-05-03 | D-09, D-10, D-11 | Nonempty export shows actual artist/tour/all-dates-or-upcoming-or-past scope/count and downloads matching rows; empty export produces no download, retains the current choices and offers Reset filters; choosing Reset restores All artists/All tours/All dates, while a later visit starts at those defaults. | Codex app integrated browser on macOS (version not exposed) + fixture URL + user-confirmed downloaded scopes | Pass |
 | H-05-04 | D-12, D-17 | Visible note and disclosure describe the bounded text-import workflow; exact formula-like/leading-plus values are retained. If a spreadsheet is exercised, record text-import/save/re-import only for the named client. | Codex app integrated browser on macOS (version not exposed); no spreadsheet client used | Pass: D-12 and D-17 pass; optional client workflow remains unobserved |
 | H-05-05 | D-14, D-15, D-16 | Preview lists complete names/counts; Cancel is unchanged; Confirm/retry covers exact-one, none, ambiguity, independent failure, retained evidence, and final reassignment/deletion. | Codex app integrated browser on macOS (version not exposed) + fixture URL + user-confirmed 26-show outcome | Pass |
 
-D-17 exact CSV values are retained by the automated contract. The observed HTTP smoke confirms only route readiness and text-import guidance presence; it does not observe a spreadsheet client. Excel-specific workflow and optional client acceptance remain pending. Direct-open interpretation risk remains accepted; no rewrite/block transformation is introduced.
+D-17 exact CSV values are retained by the automated contract. The observed HTTP smoke confirms only route readiness and text-import guidance presence; it does not observe a spreadsheet client. Excel-specific workflow and optional client acceptance remain unobserved. Direct-open interpretation risk remains accepted; no rewrite/block transformation is introduced.
+
+### Human acceptance disposition — 2026-10-12
+
+The user asked to record the checks as accepted for now despite the unavailable JavaScript-disabled observation. Record Phase 05 conversational acceptance as **complete with waiver**: D-02 through D-17 have passing evidence, and D-01 is explicitly waived for this acceptance while remaining untested. This is a user-approved exception to the normal pending-observation rule; it does not establish the no-JavaScript result. The optional spreadsheet-client workflow remains unobserved and is not represented as a pass. The overall validation status stays `draft` and `nyquist_compliant` stays `false` because the separate unclassified CSV-01 and SEC-01 assumptions in this file have not been resolved or accepted by this waiver.
 
 ## Edge and failure coverage
 
@@ -162,7 +166,7 @@ Set `wave_0_complete: true` only after every producer scenario, fixture, runner 
 
 1. after the final fingerprinted source change, the exact Phase 05 build succeeds and its validate/self-test commands accept only the current matrix evidence,
 2. refreshed Phase 04 public build/validate/self-test and refreshed Phase 02 upgrade-preservation matrix/report validation succeed against the final shared runner,
-3. H-05-01 through H-05-05 contain named observations or an explicitly accepted pending external-client row consistent with D-17,
+3. H-05-01 through H-05-05 contain named observations or explicit user-approved waivers for unavailable observations, with any pending external-client row kept separate and consistent with D-17,
 4. every T-05-01 through T-05-16 mitigation is evidenced,
 5. the two unclassified assumptions are resolved or explicitly accepted by the developer, and
 6. no source item is missing or silently reduced.

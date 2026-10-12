@@ -1,6 +1,6 @@
 ---
 phase: 05-csv-import-export
-status: pending-human-observation
+status: accepted-with-waiver
 browser: Codex app integrated browser
 browser_version: not exposed
 operating_system: macOS
@@ -12,11 +12,11 @@ fixture_session: /var/folders/1l/t8mktk5j58g75tthg0q79qhw0000gn/T//gigpress-brow
 
 # Phase 05 CSV Browser Acceptance
 
-Browser observations below were recorded in the Codex app integrated browser on macOS; its browser version is not exposed. The evidence column identifies user reports or direct browser inspection. Automated container/HTTP evidence does not fill human-observation rows. D-17 retains exact CSV values and accepts direct-open formula risk. The UI's text-import steps are explicitly Excel-specific; no spreadsheet-client workflow has been observed, so client acceptance remains pending and no client-specific outcome is claimed.
+Browser observations below were recorded in the Codex app integrated browser on macOS; its browser version is not exposed. The evidence column identifies user reports or direct browser inspection. Automated container/HTTP evidence does not fill human-observation rows. On 2026-10-12, the user explicitly accepted the Phase 05 checks for now with a temporary waiver for D-01 because JavaScript-off inspection is unavailable in this browser. D-01 remains untested; this waiver is not evidence that the no-JavaScript behavior passed. D-17 retains exact CSV values and accepts direct-open formula risk. The UI's text-import steps are explicitly Excel-specific; no spreadsheet-client workflow has been observed, so no client-specific outcome is claimed.
 
 | Decision | Required observation | Browser/client identity | Result/evidence | Status |
 |---|---|---|---|---|
-| D-01 | With JavaScript disabled, Import is first and Export remains visible below it. | Codex app integrated browser on macOS; version not exposed | The user confirmed JavaScript-off inspection is unavailable in the embedded browser. Source inspection confirms Import precedes Export and that the disclosure and Apply filters fallback are server-rendered; CSS hides Apply filters only after JavaScript adds `gp-js-ready`. This is source evidence, not an actual JavaScript-disabled browser observation. | Pending |
+| D-01 | With JavaScript disabled, Import is first and Export remains visible below it. | Codex app integrated browser on macOS; version not exposed | The user confirmed JavaScript-off inspection is unavailable in the embedded browser. Source inspection confirms Import precedes Export and that the disclosure and Apply filters fallback are server-rendered; CSS hides Apply filters only after JavaScript adds `gp-js-ready`. This is source evidence, not an actual JavaScript-disabled browser observation. The user explicitly waived this check for the current acceptance on 2026-10-12. | Waived for now (not tested) |
 | D-02 | Essential CSV requirements are visible; the column reference disclosure opens and lists formats/examples accessibly. | Codex app integrated browser on macOS; version not exposed | User confirmed the disclosure opens and is readable, with all 23 ordered rows and Format/Example columns. Automated `export-literals` check confirms the canonical column order and representative date/time/status/phone/CSV-quoting guidance. | Pass |
 | D-03 | Related-post checkbox is visible and unchecked; destination-site exact post ID explanation is clear. | User-provided page text; Codex app integrated browser on macOS; version not exposed | User pasted the page showing the checkbox option and the explanation “Related post IDs must identify exact posts on this destination site.” | Pass |
 | D-04 | Action labels are exactly “Import shows” and “Download CSV.” | User-provided page text; Codex app integrated browser on macOS; version not exposed | User pasted the page with the exact Import shows and Download CSV labels. | Pass |
@@ -38,12 +38,12 @@ Browser observations below were recorded in the Codex app integrated browser on 
 ## Required observation steps
 
 1. Start the owned fixture using the commands in `tests/compat/CSV-BROWSER.md`. Record the returned loopback URL, private session path, actual browser/version and operating system.
-2. In that browser, disable JavaScript and inspect the import-first stacked screen, disclosure keyboard access, unchecked related-post option and exact labels.
+2. In that browser, disable JavaScript and inspect the import-first stacked screen, disclosure keyboard access, unchecked related-post option and exact labels. If the user explicitly waives an unavailable observation, record it as waived and untested; do not describe the behavior as observed or passed.
 3. Upload the deterministic CSV using the form. Record the four outcome counts, row details, retry affordances and whether matching rows remain unchanged.
 4. Download all-dates, upcoming and past exports. Record selected scope and count, downloaded-file hashes, the 23-column order, exact formula-like/leading-plus literals, status, time and date values.
 5. Submit an empty selection. Confirm there is no download, current choices remain selected, Reset filters is available and choosing it restores All artists / All tours / All dates. Revisit to confirm defaults.
 6. Preview then Cancel conversion and compare snapshots. Preview then Confirm the exact-one, no-match, ambiguous, independent-failure and retry cases; record affected row/tour/artist identifiers and final outcomes.
-7. Only if a spreadsheet client is actually used, name its version and record text-import, save and re-import results. Do not mark any unobserved item accepted.
+7. Only if a spreadsheet client is actually used, name its version and record text-import, save and re-import results. Keep unobserved behavior untested; an explicit user waiver records acceptance only, not test evidence.
 
 ## Baseline note
 

@@ -92,8 +92,13 @@ status: complete
 
 - The user identified macOS and the Codex app integrated browser; its version is not exposed. The observed fixture is the OrbStack-hosted site at `http://127.0.0.1:32768`.
 - D-02 is now user-confirmed after the column reference was corrected to show all 23 ordered rows with formats and examples. D-03, D-04, D-08 through D-16 also have observations in `05-BROWSER.md`; D-09 through D-11 and D-14 through D-16 pass.
-- D-05 passed after a real multipart upload displayed all four outcome groups and their expanded row details together; its one-request failure trigger was removed immediately afterward. D-06 and D-07 passed after the user uploaded a one-row impossible-date CSV and confirmed the row guidance and recovery actions. D-17 passed when the user pasted the actual all-dates export showing the leading-zero postal code, leading-plus phone values, and formula-like note unchanged. The user confirmed the embedded browser cannot provide a JavaScript-off check, so D-01 remains pending. No spreadsheet-client workflow is claimed.
+- D-05 passed after a real multipart upload displayed all four outcome groups and their expanded row details together; its one-request failure trigger was removed immediately afterward. D-06 and D-07 passed after the user uploaded a one-row impossible-date CSV and confirmed the row guidance and recovery actions. D-17 passed when the user pasted the actual all-dates export showing the leading-zero postal code, leading-plus phone values, and formula-like note unchanged. The user confirmed the embedded browser cannot provide a JavaScript-off check. The acceptance disposition below records the later temporary waiver for D-01 without claiming that it was tested. No spreadsheet-client workflow is claimed.
 - After the D-02 source correction, the focused `export-literals` case passed and the 54-row matrix was rebuilt, validated, and corruption-tested again.
+
+### Acceptance disposition (2026-10-12)
+
+- At the user's request, the Phase 05 conversational acceptance is recorded complete with a temporary waiver for D-01. The UAT record marks D-01 skipped with the reason that JavaScript-off inspection is unavailable in the Codex integrated browser and that the user explicitly waived it for this acceptance.
+- D-01 remains untested; the waiver does not claim that JavaScript-disabled behavior passed. D-02 through D-17 retain their recorded passing evidence. No spreadsheet-client workflow is claimed.
 
 ## Task Commits
 
