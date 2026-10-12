@@ -22,18 +22,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-10-11)
 
 **Core value:** Site owners can manage show information and reliably publish it on their WordPress sites.
-**Current focus:** Phase 05 — CSV Import/Export
+**Current focus:** Milestone complete — all five phases delivered
 
 ## Current Position
 
-Phase: 05
-Plan: Not started
+Phase: 05 — CSV Import/Export (complete)
+Plan: 05-05 — complete
 Status: All phases complete
 Last activity: 2026-10-12 — Phase 05 complete
 
 Progress: [██████████] 100%
 
-Planned work: 23/23 plan executions recorded (80% phase progress). Phase 05 remains in progress until its browser/client observations and unresolved assumptions are reviewed; do not treat the phase as complete.
+Planned work: 23/23 plan executions recorded across all five phases. Phase 05 acceptance and verification are complete; the D-01 JavaScript-disabled observation remains explicitly waived and untested, and the optional spreadsheet-client workflow remains unobserved.
 
 ## Performance Metrics
 
@@ -155,7 +155,6 @@ None yet.
 ### Blockers/Concerns
 
 - [Phase 01] The unavailable live site's callback identity for the reported warning remains unproven; the controlled fixture is not evidence of the live actor.
-- [Phase 05] Verify CSV import/export edge cases and mutation protection with representative fixtures; close required CR-04 unsafe notices, CR-05 conversion write-loss and CR-07 status-format defects from CSV-REVIEW-FOLLOWUPS.md.
 - [Phase 04 advisory] Public UI review remains 17/24: grouped subscription names/targets/focus and desktop cancelled-text contrast need improvement. These are documented quality findings, not PUB-01/PUB-02 completion blockers.
 
 ## Deferred Items
@@ -163,10 +162,10 @@ None yet.
 | Category | Item | Status | Deferred At | Milestone |
 |----------|------|--------|-------------|-----------|
 | Verification | Exercise public displays, theme overrides, RSS, and iCalendar on populated migrated Phase 02 fixtures. | Completed Phase 04, 2026-10-11 | Phase 02 | Current |
-| Verification | Exercise CSV import/export contracts and round trips on populated migrated Phase 02 fixtures. | Pending Phase 05 | Phase 02 | Current |
+| Verification | Exercise CSV import/export contracts and round trips on populated migrated Phase 02 fixtures. | Completed Phase 05, 2026-10-12 | Phase 02 | Current |
 
 ## Session Continuity
 
-Last session: 2026-10-11T13:09:48.725Z
+Last session: 2026-10-12T21:27:30.617Z
 Stopped at: Phase 05 complete — all phases complete
-Resume file: .planning/phases/05-csv-import-export/05-BROWSER.md
+Resume file: none — milestone complete
