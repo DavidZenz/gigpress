@@ -69,13 +69,19 @@ function gigpress_csv_export_encode(array $rows): string {
 }
 
 function gigpress_csv_export_authorized(): bool {
-	global $gpo;
 	$nonce = isset($_POST['_wpnonce']) && is_scalar($_POST['_wpnonce']) ? (string) wp_unslash($_POST['_wpnonce']) : '';
-	return current_user_can('manage_options') && $nonce !== '' && wp_verify_nonce($nonce, 'gigpress-action') !== false;
+	return gigpress_csv_user_can_manage() && $nonce !== '' && wp_verify_nonce($nonce, 'gigpress-action') !== false;
+}
+
+function gigpress_csv_user_can_manage(): bool {
+	global $gpo;
+	$capability = $gpo['user_level'] ?? 'edit_posts';
+	if (!is_string($capability) || $capability === '') $capability = 'edit_posts';
+	return current_user_can($capability);
 }
 
 function gigpress_export_preview() {
-	if (!current_user_can('manage_options')) wp_send_json_error(array('message' => __('You are not authorized to preview exports.', 'gigpress')), 403);
+	if (!gigpress_csv_user_can_manage()) wp_send_json_error(array('message' => __('You are not authorized to preview exports.', 'gigpress')), 403);
 	check_ajax_referer('gigpress-export-preview', '_ajax_nonce');
 	$selection = gigpress_csv_export_selection(gigpress_csv_export_state($_POST));
 	if (!empty($selection['error'])) wp_send_json_error(array('message' => (string) $selection['error']), 500);

@@ -57,6 +57,29 @@ function gigpress_csv_import_case($case) {
 			&& ($shortParsed['records'][0]['group'] ?? '') === 'rejected' && ($shortParsed['records'][0]['row'] ?? 0) === 2
 			&& strpos($shortParsed['records'][0]['identity'] ?? '', $literalRow['Artist']) !== false;
 		$checks['record_width_and_utf8_validation'] = is_array($parsed) && count($parsed['records'] ?? array()) === 1;
+		/* Values must be rejected before persistence when the schema cannot retain them. */
+		foreach (array(GIGPRESS_SHOWS, GIGPRESS_ARTISTS, GIGPRESS_VENUES, GIGPRESS_TOURS) as $table) $wpdb->query('DELETE FROM ' . $table);
+		$beforeBoundedValidation = gigpress_csv_import_snapshot();
+		$boundedCases = array(
+			'country_name' => array('Country', 'Austria'), 'unsupported_country' => array('Country', 'ZZ'),
+			'artist' => array('Artist', str_repeat('A', 256)), 'artist_url' => array('Artist URL', str_repeat('u', 256)),
+			'venue' => array('Venue', str_repeat('V', 256)), 'address' => array('Address', str_repeat('A', 256)),
+			'city' => array('City', str_repeat('C', 256)), 'state' => array('State', str_repeat('S', 256)),
+			'postal_code' => array('Postal code', str_repeat('P', 33)), 'venue_phone' => array('Venue phone', str_repeat('1', 256)),
+			'venue_url' => array('Venue URL', str_repeat('u', 256)), 'admittance' => array('Admittance', str_repeat('A', 256)),
+			'price' => array('Price', str_repeat('P', 256)), 'ticket_url' => array('Ticket URL', str_repeat('u', 256)),
+			'ticket_phone' => array('Ticket phone', str_repeat('1', 256)), 'external_url' => array('External URL', str_repeat('u', 256)),
+			'tour' => array('Tour', str_repeat('T', 256)), 'status' => array('Status', str_repeat('x', 33)),
+			'notes' => array('Notes', str_repeat('N', 65536)),
+		);
+		$boundedOutcomes = array();
+		foreach ($boundedCases as $name => $caseSpec) { $row = $fixture['base']; $row[$caseSpec[0]] = $caseSpec[1]; $boundedOutcomes[$name] = gigpress_csv_import_records(array($row)); }
+		$afterBoundedValidation = gigpress_csv_import_snapshot();
+		$allBoundedRejected = count($boundedOutcomes) === count($boundedCases) && !array_filter($boundedOutcomes, function ($outcome) {
+			return (($outcome['counts']['rejected'] ?? 0) !== 1) || (($outcome['total'] ?? 0) !== 1);
+		});
+		$checks['schema_bounded_values_rejected_before_all_writes_and_retry_is_clean'] = $allBoundedRejected
+			&& $beforeBoundedValidation === $afterBoundedValidation;
 		foreach (array(GIGPRESS_SHOWS, GIGPRESS_ARTISTS, GIGPRESS_VENUES, GIGPRESS_TOURS) as $table) $wpdb->query('DELETE FROM ' . $table);
 		$literalPrepared = gigpress_csv_validate_record($literalRow, 2, false);
 		$beforeInvalid = gigpress_csv_import_snapshot();

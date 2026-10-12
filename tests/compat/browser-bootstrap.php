@@ -66,7 +66,8 @@ function browser_http($path, $post = null, $jar = 'admin') {
     if ($post !== null) curl_setopt_array($handle, array(CURLOPT_POST => true, CURLOPT_POSTFIELDS => http_build_query($post)));
     $html = curl_exec($handle);
     if ($html === false) throw new RuntimeException('Fixture HTTP transport failed: ' . curl_error($handle));
-    $result = array('html' => $html, 'status' => curl_getinfo($handle, CURLINFO_RESPONSE_CODE), 'url' => curl_getinfo($handle, CURLINFO_EFFECTIVE_URL));
+    $result = array('html' => $html, 'status' => curl_getinfo($handle, CURLINFO_RESPONSE_CODE), 'url' => curl_getinfo($handle, CURLINFO_EFFECTIVE_URL),
+        'content_type' => (string) curl_getinfo($handle, CURLINFO_CONTENT_TYPE));
     unset($handle);
     return $result;
 }
@@ -130,6 +131,13 @@ function browser_csv() {
         && strpos($upload['content_type'], 'text/html') !== false && strpos($upload['html'], 'Show imported and verified.') !== false
         && count($after['shows']) === count($before['shows']) + 1 && $row && $row['show_notes'] === 'Quoted, durable notes'
         && $row['show_tix_phone'] === '+1-555-0101';
+	$duplicate = browser_multipart_upload($page, $fields, 'gp_import', $fixture, 'browser-multipart-repeat.csv');
+	$exportForm = browser_form(browser_http($page)['html'], '//form[contains(concat(" ",normalize-space(@class)," ")," gp-csv-download ")]');
+	$export = browser_http('/wp-admin/admin-post.php', $exportForm);
+	$checks['multipart_full_workflow_duplicate_is_classified_without_overwrite'] = $duplicate['status'] === 200
+		&& strpos($duplicate['html'], '1 duplicates') !== false && strpos($duplicate['html'], 'A matching show already exists') !== false;
+	$checks['multipart_full_workflow_export_returns_imported_row'] = $export['status'] === 200
+		&& strpos($export['content_type'] ?? '', 'text/csv') !== false && strpos($export['html'] ?? '', 'The Compatibility Band') !== false;
     $beforeHostile = browser_snapshot();
     $hostile = browser_multipart_upload($page, $fields, 'gp_import', $fixture, '<img src=x onerror=alert(1)>.txt');
     $afterHostile = browser_snapshot();
@@ -171,6 +179,38 @@ function browser_csv() {
         && strpos($oversize['html'], 'no larger than ' . size_format($limit)) !== false && $beforeLarge === $afterLarge;
     $tempsAfter = glob(sys_get_temp_dir() . '/php*') ?: array();
     $checks['multipart_temporary_uploads_cleaned'] = array_values(array_diff($tempsAfter, $tempsBefore)) === array();
+    return $checks;
+}
+
+function browser_full_workflow() {
+    global $wpdb;
+    $page = '/wp-admin/admin.php?page=gigpress-import-export';
+    if (is_file('/tmp/gigpress-browser-admin.cookies')) @unlink('/tmp/gigpress-browser-admin.cookies');
+    $checks = array('compat_admin_authenticated' => browser_login('compat-admin', 'admin'));
+    $form = browser_http($page);
+    $fields = browser_form($form['html'], '//form[.//input[@name="gpaction" and @value="import"]]');
+    $checks['actual_import_form_and_nonce'] = $form['status'] === 200 && !empty($fields['_wpnonce']) && ($fields['gpaction'] ?? '') === 'import';
+    $fixture = WP_PLUGIN_DIR . '/gigpress/tests/compat/fixtures/shows.csv';
+    $before = browser_snapshot();
+    $upload = browser_multipart_upload($page, $fields, 'gp_import', $fixture, 'full-workflow.csv');
+    $afterImport = browser_snapshot();
+    $checks['authenticated_multipart_import_reaches_http_route'] = $upload['status'] === 200
+        && $upload['transport'] === 'multipart/form-data' && strpos($upload['html'], '1 imported') !== false
+        && strpos($upload['html'], 'Show imported and verified.') !== false
+        && count($afterImport['shows']) === count($before['shows']) + 1;
+    $duplicate = browser_multipart_upload($page, $fields, 'gp_import', $fixture, 'full-workflow-repeat.csv');
+    $afterDuplicate = browser_snapshot();
+    $checks['repeat_upload_is_classified_as_duplicate_without_writes'] = $duplicate['status'] === 200
+        && strpos($duplicate['html'], '1 duplicates') !== false
+        && strpos($duplicate['html'], 'A matching show already exists and was left unchanged.') !== false
+        && $afterDuplicate === $afterImport;
+    $downloadPage = browser_http($page);
+    $downloadForm = browser_form($downloadPage['html'], '//form[contains(concat(" ",normalize-space(@class)," ")," gp-csv-download ")]');
+    $download = browser_http('/wp-admin/admin-post.php', $downloadForm);
+    $checks['authenticated_export_route_returns_imported_csv'] = $download['status'] === 200
+        && strpos($download['content_type'] ?? '', 'text/csv') !== false
+        && strpos($download['html'] ?? '', 'The Compatibility Band') !== false
+        && strpos($download['html'] ?? '', 'Quoted, durable notes') !== false;
     return $checks;
 }
 
@@ -622,6 +662,8 @@ PHP;
         'changed_snapshot_keys' => $changedSnapshotKeys, 'changed_snapshot_rows' => $changedSnapshotRows);
     $httpErrors = is_file('/tmp/gigpress-public-errors.log') ? file('/tmp/gigpress-public-errors.log', FILE_IGNORE_NEW_LINES) : array();
     $checks['no_plugin_http_errors'] = !$httpErrors;
+} elseif ($mode === 'full-workflow') {
+    $checks = browser_full_workflow();
 } elseif ($mode === 'smoke') {
     $case = getenv('COMPAT_BROWSER_CASE') ?: 'entry';
     $required = $case === 'all' ? array('entry','settings','guards') : array($case);

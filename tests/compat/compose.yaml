@@ -34,6 +34,7 @@ services:
       - wordpress_data:/var/www/html
       - ${REPO_ROOT:?runner must provide REPO_ROOT}:/var/www/html/wp-content/plugins/gigpress:ro
       - ./probe.php:/compat/probe.php:ro
+      - ./browser-bootstrap.php:/compat/browser-bootstrap.php:ro
       - ./fixtures:/compat/fixtures:ro
       - ./fixtures/php-floor-plugin.php:/var/www/html/wp-content/plugins/php-floor-plugin.php:ro
 

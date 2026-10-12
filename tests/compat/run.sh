@@ -335,12 +335,16 @@ run_self_test() {
   grep -q "fixture-activate" "$COMPAT_DIR/probe.php" || fail "fixture lifecycle probe is missing"
   grep -q "real_plugin_inventory" "$COMPAT_DIR/probe.php" || fail "real-plugin inventory contract is missing"
   grep -Fq "if (!in_array(\$purpose, array('real-recover', 'real-low-live'), true))" "$COMPAT_DIR/probe.php" || fail "real-plugin low-floor and recovery probes do not use normal active-plugin bootstrap"
+  ! grep -Fq "\$_FILES = array('gp_import'" "$COMPAT_DIR/probe.php" || fail "CSV full-workflow probe must not fabricate an upload"
+  ! grep -Fq 'gigpress_import();' "$COMPAT_DIR/probe.php" || fail "CSV full-workflow probe must use the authenticated HTTP importer"
+  grep -Fq 'browser_multipart_upload($page, $fields' "$COMPAT_DIR/browser-bootstrap.php" || fail "CSV HTTP probe must submit an actual multipart upload"
+  grep -Fq './browser-bootstrap.php:/compat/browser-bootstrap.php:ro' "$COMPAT_DIR/compose.yaml" || fail "cell runner does not mount the real multipart client"
   grep -Fq "update_option('siteurl', 'http://gigpress-compat.test')" "$COMPAT_DIR/probe.php" || fail "fresh installs do not seed a stable site URL for later recovery probes"
   grep -Fq 'menu_trace.menu_warnings | any(' "$COMPAT_DIR/run.sh" || fail "exact-key diagnostic does not require the WordPress warning"
   cleanup_paths=$(grep -v 'cleanup_paths=' "$COMPAT_DIR/run.sh" | grep -Fc 'compose_env down --volumes --remove-orphans')
   [[ "$cleanup_paths" == 5 ]] || fail "all disposable Compose targets must use the configured cleanup environment"
   ! grep -Fq 'curl_close(' "$COMPAT_DIR/browser-bootstrap.php" || fail "PHP 8.5 browser fixture must not call deprecated curl_close"
-  printf '%s\n' '{"status":"PASS","self_test":"matrix ordering, per-line WordPress patch pinning, upstream PHP support-page parsing, diagnostic exclusion, recovery bootstrap, PHP 8.5 curl lifecycle, and Compose cleanup"}'
+  printf '%s\n' '{"status":"PASS","self_test":"matrix ordering, per-line WordPress patch pinning, upstream PHP support-page parsing, diagnostic exclusion, recovery bootstrap, authenticated multipart full-workflow probe, PHP 8.5 curl lifecycle, and Compose cleanup"}'
 }
 
 normalise_menu_cases() {
@@ -1812,7 +1816,9 @@ if [[ "$SCENARIO" == admin-menu && "$CONFLICT_MODE" == order-only ]]; then
 elif [[ "$SCENARIO" == admin-menu ]]; then
   printf '%s\n' "$output" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.menu_warnings | length == 0) and (.plugin_errors | length == 0) and ((.menu_slugs | length) == (.menu_slugs | unique | length)) and ((.menu_slugs | index("edit-comments.php")) as $comments | (.menu_slugs | index("separator-gp")) as $separator | (.menu_slugs | index("gigpress.php")) as $gigpress | ($comments != null and $separator == ($comments + 1) and $gigpress == ($separator + 1)))' >/dev/null || fail "admin-menu cell did not preserve warning-free preferred GigPress placement"
 elif [[ "$SCENARIO" == full-workflows ]]; then
-  printf '%s\n' "$result" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.plugin_errors | length == 0) and .full_workflows.status == "PASS" and .full_workflows.admin_create_edit_read and .full_workflows.public_shortcode and .full_workflows.rss and .full_workflows.ical and .full_workflows.csv_import_export and .full_workflows.duplicate_preserved' >/dev/null || fail "full workflow cell did not satisfy the compatibility contract"
+  printf '%s\n' "$result" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.plugin_errors | length == 0) and .http_csv_workflow.status == "PASS" and .full_workflows.status == "PASS" and .full_workflows.admin_create_edit_read and .full_workflows.public_shortcode and .full_workflows.rss and .full_workflows.ical and .full_workflows.csv_import_export and .full_workflows.duplicate_preserved and .full_workflows.csv_http_workflow.status == "PASS"' >/dev/null || fail "full workflow cell did not satisfy the compatibility contract"
+elif [[ "$SCENARIO" == csv-roundtrip ]]; then
+  printf '%s\n' "$result" | rtk jq -e '.status == "PASS" and .plugin_active == true and (.plugin_errors | length == 0) and .http_csv_workflow.status == "PASS" and (.http_csv_workflow.checks | all) and .csv_roundtrip.artist == "The Compatibility Band" and .csv_roundtrip.venue == "The Test Hall" and .csv_roundtrip.notes == "Quoted, durable notes" and .csv_roundtrip.all_day_sentinel_preserved' >/dev/null || fail "CSV round-trip cell did not satisfy its authenticated import/export contract"
 elif [[ "$SCENARIO" == administration-workflows ]]; then
   administration_contract='
     def valid_case:

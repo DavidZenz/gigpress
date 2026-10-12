@@ -167,6 +167,116 @@ function gigpress_csv_conversion_retry_checks($tourIds, $showIds) {
 	$checks['journal_persists_per_show_readback_and_terminal_stage'] = count(gigpress_tour_conversion_journal_read()) === 1
 		&& count(gigpress_tour_conversion_journal_read()[gigpress_tour_conversion_journal_key($intent['token'], $targetTourId)]['shows'] ?? array()) === 2
 		&& (gigpress_tour_conversion_journal_read()[gigpress_tour_conversion_journal_key($intent['token'], $targetTourId)]['stage'] ?? '') === 'complete';
+
+	/* A failed exact-name read is not evidence that creating a target artist is safe. */
+	$fixture = gigpress_csv_conversion_reset_fixture();
+	$targetTourId = $fixture['tour_ids'][1];
+	$intent = gigpress_tour_conversion_intent(gigpress_tour_conversion_preview(array($targetTourId)));
+	$beforeTargetRead = gigpress_csv_conversion_snapshot();
+	$targetReadFailed = false;
+	$failTargetLookup = function ($sql) use (&$targetReadFailed) {
+		if (!$targetReadFailed && stripos($sql, 'SELECT artist_id, artist_name FROM ' . GIGPRESS_ARTISTS) !== false) {
+			$targetReadFailed = true;
+			return 'SELECT * FROM gigpress_missing_target_table';
+		}
+		return $sql;
+	};
+	$suppressed = $wpdb->suppress_errors(true); add_filter('query', $failTargetLookup, 9999);
+	$targetReadResult = gigpress_tour_conversion_confirm($intent['token'], get_current_user_id());
+	remove_filter('query', $failTargetLookup, 9999); $wpdb->suppress_errors($suppressed);
+	$targetReadEntry = gigpress_tour_conversion_journal_read()[gigpress_tour_conversion_journal_key($intent['token'], $targetTourId)] ?? array();
+	$targetReadPreserved = $targetReadFailed && ($targetReadResult['status'] ?? '') === 'partial'
+		&& (($targetReadResult['failed'][0]['reason'] ?? '') === 'target_read_failed')
+		&& gigpress_csv_conversion_snapshot() === $beforeTargetRead && empty($targetReadEntry['terminal']);
+	$targetReadRetry = gigpress_tour_conversion_confirm($intent['token'], get_current_user_id());
+	$targetCount = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_name = %s', 'New Target Artist'));
+	$sourceCount = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . GIGPRESS_TOURS . ' WHERE tour_id = %d', $targetTourId));
+	$reassignedCount = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . GIGPRESS_SHOWS . ' WHERE show_tour_id = 0 AND show_artist_id = (SELECT artist_id FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_name = %s)', 'New Target Artist'));
+	$checks['target_lookup_error_preserves_records_and_retry_creates_one_target'] = $targetReadPreserved
+		&& ($targetReadRetry['status'] ?? '') === 'complete' && $targetCount === 1 && $sourceCount === 0 && $reassignedCount === 2;
+
+	/* Database verification reads must fail closed before source deletion or terminal journaling. */
+	$verificationFaults = array();
+	foreach (array('remaining' => 'SELECT COUNT(*) FROM ' . GIGPRESS_SHOWS . ' WHERE show_tour_id', 'post_delete' => 'SELECT tour_id FROM ' . GIGPRESS_TOURS . ' WHERE tour_id') as $kind => $needle) {
+		$fixture = gigpress_csv_conversion_reset_fixture();
+		$targetTourId = $fixture['tour_ids'][1];
+		$intent = gigpress_tour_conversion_intent(gigpress_tour_conversion_preview(array($targetTourId)));
+		$injected = false; $rollbackObserved = false;
+		$failVerificationRead = function ($sql) use (&$injected, &$rollbackObserved, $needle) {
+			if (strtoupper(trim($sql)) === 'ROLLBACK') $rollbackObserved = true;
+			if (!$injected && stripos($sql, $needle) !== false) { $injected = true; return 'SELECT * FROM gigpress_missing_verification_table'; }
+			return $sql;
+		};
+		$suppressed = $wpdb->suppress_errors(true); add_filter('query', $failVerificationRead, 9999);
+		$result = gigpress_tour_conversion_confirm($intent['token'], get_current_user_id());
+		remove_filter('query', $failVerificationRead, 9999); $wpdb->suppress_errors($suppressed);
+		$sourceExists = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . GIGPRESS_TOURS . ' WHERE tour_id = %d', $targetTourId)) === 1;
+		$entry = gigpress_tour_conversion_journal_read()[gigpress_tour_conversion_journal_key($intent['token'], $targetTourId)] ?? array();
+		$verificationFaults[$kind] = $injected && ($result['status'] ?? '') === 'partial' && $sourceExists && empty($entry['terminal'])
+			&& ($kind !== 'post_delete' || $rollbackObserved);
+	}
+	$checks['failed_remaining_and_post_delete_verification_reads_retain_source_and_nonterminal_journal'] = !in_array(false, $verificationFaults, true);
+
+	/* A competing source row with the deleted ID must be rolled back with the unverified deletion. */
+	$fixture = gigpress_csv_conversion_reset_fixture();
+	$targetTourId = $fixture['tour_ids'][1];
+	$intent = gigpress_tour_conversion_intent(gigpress_tour_conversion_preview(array($targetTourId)));
+	$competingInsert = false; $rollbackObserved = false;
+	$insertCompetingTourBeforeReadback = function ($sql) use (&$competingInsert, &$rollbackObserved, $targetTourId) {
+		if (strtoupper(trim($sql)) === 'ROLLBACK') $rollbackObserved = true;
+		if (!$competingInsert && stripos($sql, 'SELECT tour_id FROM ' . GIGPRESS_TOURS . ' WHERE tour_id') !== false) {
+			$competingInsert = true;
+			$GLOBALS['wpdb']->insert(GIGPRESS_TOURS, array('tour_id' => $targetTourId, 'tour_name' => 'Competing Tour', 'tour_status' => 'active'));
+		}
+		return $sql;
+	};
+	add_filter('query', $insertCompetingTourBeforeReadback, 9999);
+	$collisionResult = gigpress_tour_conversion_confirm($intent['token'], get_current_user_id());
+	remove_filter('query', $insertCompetingTourBeforeReadback, 9999);
+	$source = $wpdb->get_row($wpdb->prepare('SELECT tour_id, tour_name FROM ' . GIGPRESS_TOURS . ' WHERE tour_id = %d', $targetTourId), ARRAY_A);
+	$collisionEntry = gigpress_tour_conversion_journal_read()[gigpress_tour_conversion_journal_key($intent['token'], $targetTourId)] ?? array();
+	$checks['post_delete_id_collision_rolls_back_and_preserves_original_tour'] = $competingInsert && $rollbackObserved
+		&& ($collisionResult['status'] ?? '') === 'partial' && is_array($source) && $source['tour_name'] === 'New Target Artist'
+		&& empty($collisionEntry['terminal']);
+
+	/* Nontransactional tour storage cannot guarantee rollback, so conversion must reject before mutation. */
+	$fixture = gigpress_csv_conversion_reset_fixture();
+	$targetTourId = $fixture['tour_ids'][1];
+	$intent = gigpress_tour_conversion_intent(gigpress_tour_conversion_preview(array($targetTourId)));
+	$engineBefore = gigpress_tour_conversion_source_engine();
+	$engineChanged = !empty($engineBefore['ok']) && !empty($engineBefore['transactional'])
+		&& $wpdb->query('ALTER TABLE ' . GIGPRESS_TOURS . ' ENGINE=MyISAM') !== false && $wpdb->last_error === '';
+	if ($engineChanged) {
+		$beforeNontransactionalConfirm = gigpress_csv_conversion_snapshot();
+		$blockedConversion = gigpress_tour_conversion_confirm($intent['token'], get_current_user_id());
+		$blockedWithoutMutation = ($blockedConversion['status'] ?? '') === 'rejected'
+			&& ($blockedConversion['reason'] ?? '') === 'source_table_not_transactional'
+			&& gigpress_csv_conversion_snapshot() === $beforeNontransactionalConfirm;
+		$engineRestored = $wpdb->query('ALTER TABLE ' . GIGPRESS_TOURS . ' ENGINE=InnoDB') !== false && $wpdb->last_error === '';
+	} else { $blockedWithoutMutation = false; $engineRestored = false; }
+	$checks['nontransactional_tour_table_is_rejected_before_any_mutation'] = $blockedWithoutMutation;
+	$checks['conversion_test_restores_transactional_tour_engine'] = $engineRestored;
+
+	/* Re-entrant confirmation models a second confirmation while the first resolves its target. */
+	$fixture = gigpress_csv_conversion_reset_fixture();
+	$targetTourId = $fixture['tour_ids'][1];
+	$intent = gigpress_tour_conversion_intent(gigpress_tour_conversion_preview(array($targetTourId)));
+	$reentered = false; $nested = array();
+	$reenterOnTargetLookup = function ($sql) use (&$reentered, &$nested, $intent, $targetTourId) {
+		if (!$reentered && stripos($sql, 'SELECT artist_id, artist_name FROM ' . GIGPRESS_ARTISTS) !== false) {
+			$reentered = true; $nested = gigpress_tour_conversion_confirm($intent['token'], get_current_user_id());
+		}
+		return $sql;
+	};
+	add_filter('query', $reenterOnTargetLookup, 9999);
+	$outer = gigpress_tour_conversion_confirm($intent['token'], get_current_user_id());
+	remove_filter('query', $reenterOnTargetLookup, 9999);
+	$targetCount = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_name = %s', 'New Target Artist'));
+	$journal = gigpress_tour_conversion_journal_read()[gigpress_tour_conversion_journal_key($intent['token'], $targetTourId)] ?? array();
+	$checks['double_confirmation_is_serialized_without_duplicate_target_or_lost_journal'] = $reentered && $targetCount === 1
+		&& (($nested['status'] ?? '') === 'partial') && (($nested['failed'][0]['reason'] ?? '') === 'conversion_in_progress')
+		&& (($outer['status'] ?? '') === 'complete')
+		&& !empty($journal['terminal']) && ($journal['stage'] ?? '') === 'complete';
 	return $checks;
 }
 

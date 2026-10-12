@@ -17,7 +17,7 @@ function gigpress_csv_reference() {
 		'City' => array(__('Required text.', 'gigpress'), 'Vienna'),
 		'State' => array(__('Optional text.', 'gigpress'), 'Vienna'),
 		'Postal code' => array(__('Optional text; preserve leading zeroes.', 'gigpress'), '01010'),
-		'Country' => array(__('Required country name or code.', 'gigpress'), 'Austria / AT'),
+		'Country' => array(__('Required supported two-letter country code.', 'gigpress'), 'AT'),
 		'Venue phone' => array(__('Optional text; preserve a leading plus sign.', 'gigpress'), '+43 1 555 0100'),
 		'Venue URL' => array(__('Optional URL.', 'gigpress'), 'https://example.test/venue'),
 		'Admittance' => array(__('Optional text.', 'gigpress'), 'All ages'),
@@ -47,6 +47,20 @@ function gigpress_csv_scalar($row, $column) {
 
 function gigpress_csv_identity(array $values) {
 	return implode(' — ', array_filter(array($values['Artist'] ?? '', $values['Date'] ?? '', $values['Venue'] ?? ''), function ($part) { return $part !== ''; }));
+}
+
+function gigpress_csv_field_limits(): array {
+	return array(
+		'Artist' => 255, 'Artist URL' => 255, 'Venue' => 255, 'Address' => 255, 'City' => 255,
+		'State' => 255, 'Postal code' => 32, 'Country' => 2, 'Venue phone' => 255, 'Venue URL' => 255,
+		'Admittance' => 255, 'Price' => 255, 'Ticket URL' => 255, 'Ticket phone' => 255,
+		'External URL' => 255, 'Tour' => 255, 'Status' => 32,
+	);
+}
+
+function gigpress_csv_exceeds_character_limit(string $value, int $limit): bool {
+	if (function_exists('mb_strlen')) return mb_strlen($value, 'UTF-8') > $limit;
+	return preg_match('/\A.{0,' . $limit . '}\z/us', $value) !== 1;
 }
 
 function gigpress_csv_detail($group, $row, $identity, $field, $reason, $next_step) {
@@ -125,9 +139,21 @@ function gigpress_csv_validate_record(array $row, int $csv_row, bool $include_re
 		$value = gigpress_csv_scalar($row, $column);
 		if ($value === null) return gigpress_csv_detail('rejected', $csv_row, gigpress_csv_identity($values), $column,
 			__('This value must be text.', 'gigpress'), __('Keep one text value in every CSV column.', 'gigpress'));
+		if (preg_match('//u', $value) !== 1) return gigpress_csv_detail('rejected', $csv_row, gigpress_csv_identity($values), $column,
+			__('This value is not valid UTF-8 text.', 'gigpress'), __('Save the CSV as UTF-8 without changing its values.', 'gigpress'));
 		$values[$column] = $value;
 	}
 	$identity = gigpress_csv_identity($values);
+	foreach (gigpress_csv_field_limits() as $column => $limit) {
+		if (gigpress_csv_exceeds_character_limit($values[$column], $limit)) return gigpress_csv_detail('rejected', $csv_row, $identity, $column,
+			sprintf(__('This value is longer than the %d-character storage limit.', 'gigpress'), $limit),
+			sprintf(__('Shorten %1$s to %2$d characters or fewer and try again.', 'gigpress'), $column, $limit));
+	}
+	global $gp_countries;
+	if (!is_array($gp_countries) || !array_key_exists($values['Country'], $gp_countries)) return gigpress_csv_detail('rejected', $csv_row, $identity, 'Country',
+		__('Use a supported two-letter country code.', 'gigpress'), __('Enter a country code such as AT instead of a country name.', 'gigpress'));
+	if (strlen($values['Notes']) > 65535) return gigpress_csv_detail('rejected', $csv_row, $identity, 'Notes',
+		__('This value is longer than the database text-field limit.', 'gigpress'), __('Shorten Notes to 65,535 UTF-8 bytes or fewer and try again.', 'gigpress'));
 	$dateOk = preg_match('/\A([0-9]{4})-([0-9]{2})-([0-9]{2})\z/', $values['Date'], $date) && checkdate((int) $date[2], (int) $date[3], (int) $date[1]);
 	if (!$dateOk) return gigpress_csv_detail('rejected', $csv_row, $identity, 'Date', __('Use a valid YYYY-MM-DD date.', 'gigpress'), __('Correct Date to a real calendar date in YYYY-MM-DD format.', 'gigpress'));
 	$time = $values['Time'] === '' ? '00:00:01' : $values['Time'];
@@ -266,8 +292,7 @@ function gigpress_csv_validate_upload(array $file, array $request) {
 }
 
 function gigpress_csv_import_request() {
-	global $gpo;
-	if (!current_user_can($gpo['user_level'] ?? 'edit_posts') || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !isset($_POST['gpaction']) || !is_string($_POST['gpaction']) || wp_unslash($_POST['gpaction']) !== 'import') {
+	if (!gigpress_csv_user_can_manage() || ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !isset($_POST['gpaction']) || !is_string($_POST['gpaction']) || wp_unslash($_POST['gpaction']) !== 'import') {
 		echo '<div class="error"><p>' . esc_html(__('You are not authorized to import shows.', 'gigpress')) . '</p></div>';
 		return false;
 	}

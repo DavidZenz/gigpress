@@ -815,27 +815,42 @@ if ($purpose === 'diagnose-menu' && function_exists('gigpress_menu_trace_result'
 }
 $csvRoundTrip = null;
 $fullWorkflows = null;
+$httpCsvWorkflow = null;
 if (in_array((getenv('COMPAT_PURPOSE') ?: 'activation-menu'), array('csv-roundtrip', 'full-workflows'), true)) {
     $fixture = '/compat/fixtures/shows.csv';
     if (!is_readable($fixture)) {
         $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'CSV fixture is unavailable', 'file' => $fixture, 'line' => 0);
     } else {
+        require_once WP_PLUGIN_DIR . '/gigpress/lib/parsecsv.lib.php';
         require_once WP_PLUGIN_DIR . '/gigpress/admin/handlers.php';
-        $_POST = array('_wpnonce' => wp_create_nonce('gigpress-action'));
-        $_REQUEST = $_POST;
-        $_FILES = array('gp_import' => array('name' => 'shows.csv', 'tmp_name' => $fixture, 'error' => UPLOAD_ERR_OK, 'size' => filesize($fixture)));
-        ob_start();
-        gigpress_import();
-        $firstImport = ob_get_clean();
-        $duplicateImport = '';
-        if ($purpose === 'full-workflows') {
-            $_POST = array('_wpnonce' => wp_create_nonce('gigpress-action'));
-            $_REQUEST = $_POST;
-            $_FILES = array('gp_import' => array('name' => 'shows.csv', 'tmp_name' => $fixture, 'error' => UPLOAD_ERR_OK, 'size' => filesize($fixture)));
-            ob_start();
-            gigpress_import();
-            $duplicateImport = ob_get_clean();
+        $priorHome = get_option('home'); $priorSiteUrl = get_option('siteurl');
+        $loopback = 'http://127.0.0.1:80';
+        try {
+            update_option('home', $loopback); update_option('siteurl', $loopback);
+            $environment = getenv();
+            $environment['COMPAT_BROWSER_MODE'] = 'full-workflow';
+            $environment['COMPAT_BROWSER_URL'] = $loopback;
+            $environment['COMPAT_BROWSER_PASSWORD'] = 'compat-password';
+            $pipes = array();
+            $process = proc_open(array(PHP_BINARY, '/compat/browser-bootstrap.php'), array(0 => array('pipe', 'r'), 1 => array('pipe', 'w'), 2 => array('pipe', 'w')), $pipes, null, $environment);
+            if (is_resource($process)) {
+                fclose($pipes[0]); $browserOutput = stream_get_contents($pipes[1]); fclose($pipes[1]);
+                $browserErrorOutput = stream_get_contents($pipes[2]); fclose($pipes[2]);
+                $browserExit = proc_close($process);
+                $browserLines = array_values(array_filter(preg_split('/\r?\n/', trim((string) $browserOutput)), function ($line) { return $line !== ''; }));
+                $httpCsvWorkflow = $browserLines ? json_decode(end($browserLines), true) : null;
+                if (!is_array($httpCsvWorkflow)) $httpCsvWorkflow = array('status' => 'FAIL', 'checks' => array(), 'output' => trim((string) $browserErrorOutput));
+                if ($browserExit !== 0 || ($httpCsvWorkflow['status'] ?? '') !== 'PASS') $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Authenticated multipart CSV workflow failed: ' . trim((string) $browserErrorOutput), 'file' => __FILE__, 'line' => __LINE__);
+            } else {
+                $httpCsvWorkflow = array('status' => 'FAIL', 'checks' => array(), 'output' => 'Could not start the authenticated multipart CSV probe.');
+                $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Could not start the authenticated multipart CSV probe.', 'file' => __FILE__, 'line' => __LINE__);
+            }
+        } finally {
+            update_option('home', $priorHome); update_option('siteurl', $priorSiteUrl);
+            wp_cache_delete('home', 'options'); wp_cache_delete('siteurl', 'options');
         }
+        $firstImport = !empty($httpCsvWorkflow['checks']['authenticated_multipart_import_reaches_http_route']) ? 'Show imported and verified.' : '';
+        $duplicateImport = !empty($httpCsvWorkflow['checks']['repeat_upload_is_classified_as_duplicate_without_writes']) ? 'A matching show already exists and was left unchanged.' : '';
 
         $show = $wpdb->get_row("SELECT * FROM " . GIGPRESS_SHOWS . " WHERE show_status != 'deleted' ORDER BY show_id ASC LIMIT 1");
         $artist = $show ? $wpdb->get_row($wpdb->prepare("SELECT * FROM " . GIGPRESS_ARTISTS . " WHERE artist_id = %d", $show->show_artist_id)) : null;
@@ -858,7 +873,7 @@ if (in_array((getenv('COMPAT_PURPOSE') ?: 'activation-menu'), array('csv-roundtr
             gigpress_update_show();
             $updateOutput = ob_get_clean();
             $updated = $wpdb->get_row($wpdb->prepare("SELECT * FROM " . GIGPRESS_SHOWS . " WHERE show_id = %d", $show->show_id));
-            $adminCreateEditRead = $updated && $updated->show_date === $future && $updated->show_notes === $show->show_notes && strpos($firstImport, 'successfully imported') !== false && strpos($updateOutput, 'successfully updated') !== false;
+            $adminCreateEditRead = $updated && $updated->show_date === $future && $updated->show_notes === $show->show_notes && strpos($firstImport, 'Show imported and verified.') !== false && strpos($updateOutput, 'successfully updated') !== false;
         }
 
         $_POST = array('_wpnonce' => wp_create_nonce('gigpress-action'), 'scope' => '-1', 'artist_id' => '-1', 'tour_id' => '-1');
@@ -890,13 +905,14 @@ if (in_array((getenv('COMPAT_PURPOSE') ?: 'activation-menu'), array('csv-roundtr
             gigpress_ical();
             $ical = ob_get_clean();
             $fullWorkflows = array(
-                'status' => ($adminCreateEditRead && strpos($shortcode, 'The Compatibility Band') !== false && strpos($rss, '<rss ') !== false && strpos($rss, 'The Compatibility Band') !== false && strpos($ical, 'BEGIN:VCALENDAR') !== false && strpos($ical, 'BEGIN:VEVENT') !== false && strpos($duplicateImport, 'deemed duplicates') !== false) ? 'PASS' : 'FAIL',
+                'status' => ($adminCreateEditRead && strpos($shortcode, 'The Compatibility Band') !== false && strpos($rss, '<rss ') !== false && strpos($rss, 'The Compatibility Band') !== false && strpos($ical, 'BEGIN:VCALENDAR') !== false && strpos($ical, 'BEGIN:VEVENT') !== false && !empty($httpCsvWorkflow['checks']['authenticated_export_route_returns_imported_csv']) && strpos($duplicateImport, 'A matching show already exists') !== false) ? 'PASS' : 'FAIL',
                 'admin_create_edit_read' => $adminCreateEditRead,
                 'public_shortcode' => strpos($shortcode, 'The Compatibility Band') !== false,
                 'rss' => strpos($rss, '<rss ') !== false && strpos($rss, 'The Compatibility Band') !== false,
                 'ical' => strpos($ical, 'BEGIN:VCALENDAR') !== false && strpos($ical, 'BEGIN:VEVENT') !== false,
-                'csv_import_export' => $csvRoundTrip['artist'] === 'The Compatibility Band' && $csvRoundTrip['venue'] === 'The Test Hall',
-                'duplicate_preserved' => strpos($duplicateImport, 'deemed duplicates') !== false,
+                'csv_import_export' => $csvRoundTrip['artist'] === 'The Compatibility Band' && $csvRoundTrip['venue'] === 'The Test Hall' && !empty($httpCsvWorkflow['checks']['authenticated_multipart_import_reaches_http_route']) && !empty($httpCsvWorkflow['checks']['authenticated_export_route_returns_imported_csv']),
+                'duplicate_preserved' => strpos($duplicateImport, 'A matching show already exists') !== false && !empty($httpCsvWorkflow['checks']['repeat_upload_is_classified_as_duplicate_without_writes']),
+                'csv_http_workflow' => $httpCsvWorkflow,
             );
             if ($fullWorkflows['status'] !== 'PASS') {
                 $pluginErrors[] = array('severity' => E_ERROR, 'message' => 'Full compatibility workflow contract failed', 'file' => __FILE__, 'line' => __LINE__);
@@ -916,6 +932,7 @@ $result = array(
     'fatal' => $fatal,
     'purpose' => $purpose,
     'csv_roundtrip' => $csvRoundTrip,
+    'http_csv_workflow' => $httpCsvWorkflow,
     'full_workflows' => $fullWorkflows,
     'upgrade_preservation' => $upgradePreservation,
     'administration_workflows' => $administrationWorkflows,

@@ -58,7 +58,9 @@ function gigpress_tour_conversion_cancel($token, $owner_id) {
 function gigpress_tour_conversion_resolve_target($name, $create = true, $known_artist_id = 0) {
 	global $wpdb;
 	if (!is_string($name)) return array('status' => 'invalid');
+	$wpdb->last_error = '';
 	$candidates = $wpdb->get_results($wpdb->prepare('SELECT artist_id, artist_name FROM ' . GIGPRESS_ARTISTS . ' WHERE BINARY artist_name = BINARY %s ORDER BY artist_id', $name), ARRAY_A);
+	if ($wpdb->last_error !== '' || !is_array($candidates)) return array('status' => 'failed', 'reason' => 'target_read_failed');
 	$candidates = array_values(array_filter((array) $candidates, function ($row) use ($name) { return (string) $row['artist_name'] === $name; }));
 	if (count($candidates) === 1) {
 		if ($known_artist_id > 0 && (int) $candidates[0]['artist_id'] !== $known_artist_id) return array('status' => 'conflict', 'reason' => 'target_identity_changed');
@@ -68,11 +70,13 @@ function gigpress_tour_conversion_resolve_target($name, $create = true, $known_a
 	if (!$create) return array('status' => 'missing');
 	$current_tour = (int) ($GLOBALS['gigpress_tour_conversion_current_tour'] ?? 0);
 	if (gigpress_tour_conversion_fault('insert-before', $current_tour)) return array('status' => 'failed', 'reason' => 'target_insert_failed');
+	$wpdb->last_error = '';
 	$insert = $wpdb->insert(GIGPRESS_ARTISTS, array('artist_name' => $name, 'artist_alpha' => preg_replace('/^the /iu', '', strtolower($name)), 'artist_url' => ''), array('%s', '%s', '%s'));
-	if ($insert === false || (int) $wpdb->insert_id < 1) return array('status' => 'failed', 'reason' => 'target_insert_failed');
+	if ($insert === false || $wpdb->last_error !== '' || (int) $wpdb->insert_id < 1) return array('status' => 'failed', 'reason' => 'target_insert_failed');
 	$created_id = (int) $wpdb->insert_id;
+	$wpdb->last_error = '';
 	$readback = $wpdb->get_row($wpdb->prepare('SELECT artist_id, artist_name FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_id = %d', $created_id), ARRAY_A);
-	if (!$readback || (int) $readback['artist_id'] !== $created_id || $readback['artist_name'] !== $name || gigpress_tour_conversion_fault('target-readback', $current_tour)) return array('status' => 'failed', 'reason' => 'target_readback_mismatch');
+	if ($wpdb->last_error !== '' || !$readback || (int) $readback['artist_id'] !== $created_id || $readback['artist_name'] !== $name || gigpress_tour_conversion_fault('target-readback', $current_tour)) return array('status' => 'failed', 'reason' => 'target_readback_mismatch');
 	if (gigpress_tour_conversion_fault('insert-after', $current_tour)) return array('status' => 'failed', 'reason' => 'target_insert_readback_failed');
 	return array('status' => 'created', 'artist_id' => $created_id, 'readback' => true);
 }
@@ -96,9 +100,79 @@ function gigpress_tour_conversion_journal_write($key, array $entry) {
 	return $valid && !gigpress_tour_conversion_fault('journal-after', $entry['tour_id'] ?? 0);
 }
 
+function gigpress_tour_conversion_lock_option(): string {
+	return 'gigpress_tour_conversion_lock';
+}
+
+function gigpress_tour_conversion_lock_clear_cache(): void {
+	wp_cache_delete(gigpress_tour_conversion_lock_option(), 'options');
+	wp_cache_delete('alloptions', 'options');
+}
+
+function gigpress_tour_conversion_lock_acquire() {
+	global $wpdb;
+	try { $owner = bin2hex(random_bytes(16)); } catch (Throwable $error) { return false; }
+	$key = gigpress_tour_conversion_lock_option();
+	$value = (string) (time() + 600) . ':' . $owner;
+	if (add_option($key, $value, '', false)) return array('key' => $key, 'owner' => $owner, 'value' => $value);
+
+	/* Remove an abandoned lease only if its exact stored value is still present. */
+	$wpdb->last_error = '';
+	$stored = $wpdb->get_var($wpdb->prepare('SELECT option_value FROM ' . $wpdb->options . ' WHERE option_name = %s LIMIT 1', $key));
+	if ($wpdb->last_error !== '' || !is_string($stored)) return false;
+	$parts = explode(':', $stored, 2);
+	if (count($parts) !== 2 || !ctype_digit($parts[0]) || (int) $parts[0] >= time()) return false;
+	$wpdb->last_error = '';
+	$removed = $wpdb->query($wpdb->prepare('DELETE FROM ' . $wpdb->options . ' WHERE option_name = %s AND option_value = %s', $key, $stored));
+	if ($wpdb->last_error !== '' || $removed !== 1) return false;
+	gigpress_tour_conversion_lock_clear_cache();
+	if (!add_option($key, $value, '', false)) return false;
+	return array('key' => $key, 'owner' => $owner, 'value' => $value);
+}
+
+function gigpress_tour_conversion_lock_refresh(): bool {
+	global $wpdb;
+	$lock = $GLOBALS['gigpress_tour_conversion_lock'] ?? null;
+	if (!is_array($lock) || empty($lock['key']) || empty($lock['owner']) || empty($lock['value'])) return false;
+	$parts = explode(':', (string) $lock['value'], 2);
+	if (count($parts) !== 2 || (int) $parts[0] < time() || !hash_equals((string) $parts[1], (string) $lock['owner'])) return false;
+	$nextValue = (string) (time() + 600) . ':' . $lock['owner'];
+	if ($nextValue === $lock['value']) {
+		$wpdb->last_error = '';
+		$current = $wpdb->get_var($wpdb->prepare('SELECT option_value FROM ' . $wpdb->options . ' WHERE option_name = %s LIMIT 1', $lock['key']));
+		return $wpdb->last_error === '' && $current === $lock['value'];
+	}
+	$wpdb->last_error = '';
+	$updated = $wpdb->update($wpdb->options, array('option_value' => $nextValue), array('option_name' => $lock['key'], 'option_value' => $lock['value']), array('%s'), array('%s', '%s'));
+	if ($updated !== 1 || $wpdb->last_error !== '') return false;
+	$lock['value'] = $nextValue;
+	$GLOBALS['gigpress_tour_conversion_lock'] = $lock;
+	gigpress_tour_conversion_lock_clear_cache();
+	return true;
+}
+
+function gigpress_tour_conversion_lock_release(): void {
+	global $wpdb;
+	$lock = $GLOBALS['gigpress_tour_conversion_lock'] ?? null;
+	if (!is_array($lock) || empty($lock['key']) || empty($lock['value'])) return;
+	$wpdb->last_error = '';
+	$wpdb->query($wpdb->prepare('DELETE FROM ' . $wpdb->options . ' WHERE option_name = %s AND option_value = %s', $lock['key'], $lock['value']));
+	gigpress_tour_conversion_lock_clear_cache();
+}
+
 function gigpress_tour_conversion_fault($stage, $tour_id, $show_id = 0) {
 	$fault = $GLOBALS['gigpress_tour_conversion_test_fault'] ?? null;
 	return is_callable($fault) ? (bool) call_user_func($fault, $stage, (int) $tour_id, (int) $show_id) : false;
+}
+
+function gigpress_tour_conversion_source_engine(): array {
+	global $wpdb;
+	$wpdb->last_error = '';
+	$row = $wpdb->get_row($wpdb->prepare('SHOW TABLE STATUS WHERE Name = %s', GIGPRESS_TOURS), ARRAY_A);
+	if ($wpdb->last_error !== '' || !is_array($row) || !isset($row['Engine']) || !is_string($row['Engine']) || $row['Engine'] === '') {
+		return array('ok' => false, 'transactional' => false);
+	}
+	return array('ok' => true, 'transactional' => strcasecmp($row['Engine'], 'InnoDB') === 0);
 }
 
 function gigpress_tour_conversion_current_show($show_id) {
@@ -122,14 +196,17 @@ function gigpress_tour_conversion_entry($intent, $tour) {
 function gigpress_tour_conversion_process_tour($intent, $tour) {
 	global $wpdb;
 	$tour_id = (int) $tour['tour_id'];
+	if (!gigpress_tour_conversion_lock_refresh()) return array('status' => 'failed', 'stage' => 'lock', 'reason' => 'conversion_lock_lost', 'tour_id' => $tour_id);
 	$GLOBALS['gigpress_tour_conversion_current_tour'] = $tour_id;
 	$key = gigpress_tour_conversion_journal_key($intent['token'], $tour_id);
 	$journal = gigpress_tour_conversion_journal_read();
 	$entry = $journal[$key] ?? gigpress_tour_conversion_entry($intent, $tour);
 	if (!isset($journal[$key]) && !gigpress_tour_conversion_journal_write($key, $entry)) return array('status' => 'failed', 'stage' => 'journal-start', 'reason' => 'journal_write_failed', 'tour_id' => $tour_id);
 	if (!empty($entry['terminal'])) return array('status' => 'complete', 'tour_id' => $tour_id, 'artist_id' => (int) $entry['target_artist_id']);
+	$wpdb->last_error = '';
 	$source = $wpdb->get_row($wpdb->prepare('SELECT tour_id, tour_name, tour_status FROM ' . GIGPRESS_TOURS . ' WHERE tour_id = %d', $tour_id), ARRAY_A);
-	if (!$source && in_array($entry['stage'] ?? '', array('references-reassigned', 'source-deleted'), true)) {
+	if ($wpdb->last_error !== '') return array('status' => 'failed', 'stage' => 'source-check', 'reason' => 'source_read_failed', 'tour_id' => $tour_id);
+	if (!$source && in_array($entry['stage'] ?? '', array('references-reassigned', 'verification-pending', 'source-deleted'), true)) {
 		$verified = true;
 		foreach ($entry['shows'] as $show_id => $showState) {
 			if (gigpress_tour_conversion_current_show($show_id) !== $showState['intended'] || empty($showState['readback']) || $showState['ownership'] !== 'owned') $verified = false;
@@ -145,13 +222,14 @@ function gigpress_tour_conversion_process_tour($intent, $tour) {
 	if (!$source || $source['tour_name'] !== $tour['name'] || $source['tour_status'] !== 'active') return array('status' => 'failed', 'stage' => 'source-check', 'reason' => 'source_changed', 'tour_id' => $tour_id);
 	if ((int) $entry['target_artist_id'] > 0) $target = gigpress_tour_conversion_resolve_target($tour['name'], false, (int) $entry['target_artist_id']);
 	else $target = gigpress_tour_conversion_resolve_target($tour['name'], true);
-	if (!in_array($target['status'] ?? '', array('created', 'reused'), true)) return array('status' => 'failed', 'stage' => 'target', 'reason' => $target['status'] ?? 'target_failed', 'tour_id' => $tour_id);
+	if (!in_array($target['status'] ?? '', array('created', 'reused'), true)) return array('status' => 'failed', 'stage' => 'target', 'reason' => $target['reason'] ?? ($target['status'] ?? 'target_failed'), 'tour_id' => $tour_id);
 	$entry['target_artist_id'] = (int) $target['artist_id'];
 	foreach ($entry['shows'] as $show_id => &$showState) $showState['intended'] = array('artist_id' => (int) $target['artist_id'], 'tour_id' => 0);
 	unset($showState);
 	$entry['stage'] = 'target-ready';
 	if (!gigpress_tour_conversion_journal_write($key, $entry)) return array('status' => 'failed', 'stage' => 'journal-target', 'reason' => 'journal_write_failed', 'tour_id' => $tour_id);
 	foreach ($entry['shows'] as $show_id => &$showState) {
+		if (!gigpress_tour_conversion_lock_refresh()) { $showState['error'] = 'conversion_lock_lost'; break; }
 		$current = gigpress_tour_conversion_current_show($show_id);
 		$showState['latest'] = $current;
 		if ($current === null) { $showState['ownership'] = 'conflict'; $showState['error'] = 'show_missing'; }
@@ -201,12 +279,61 @@ function gigpress_tour_conversion_process_tour($intent, $tour) {
 	$hasErrors = false; foreach ($entry['shows'] as $showState) if ($showState['error'] !== '' || $showState['ownership'] !== 'owned' || empty($showState['readback'])) $hasErrors = true;
 	if (!gigpress_tour_conversion_journal_write($key, $entry)) return array('status' => 'failed', 'stage' => 'journal-references', 'reason' => 'journal_write_failed', 'tour_id' => $tour_id);
 	if ($hasErrors) return array('status' => 'failed', 'stage' => 'references-reassigned', 'reason' => 'reference_conflict_or_failure', 'tour_id' => $tour_id, 'shows' => $entry['shows']);
-	$remaining = (int) $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . GIGPRESS_SHOWS . ' WHERE show_tour_id = %d', $tour_id));
+	if (!gigpress_tour_conversion_lock_refresh()) return array('status' => 'failed', 'stage' => 'lock', 'reason' => 'conversion_lock_lost', 'tour_id' => $tour_id);
+	$wpdb->last_error = '';
+	$remainingRaw = $wpdb->get_var($wpdb->prepare('SELECT COUNT(*) FROM ' . GIGPRESS_SHOWS . ' WHERE show_tour_id = %d', $tour_id));
+	if ($wpdb->last_error !== '' || $remainingRaw === null || !is_numeric($remainingRaw)) {
+		$entry['stage'] = 'verification-pending'; $entry['verification_error'] = 'remaining_reference_query_failed';
+		gigpress_tour_conversion_journal_write($key, $entry);
+		return array('status' => 'failed', 'stage' => 'references-reassigned', 'reason' => 'remaining_reference_verification_failed', 'tour_id' => $tour_id);
+	}
+	$remaining = (int) $remainingRaw;
 	if ($remaining !== 0) return array('status' => 'failed', 'stage' => 'references-reassigned', 'reason' => 'remaining_references', 'tour_id' => $tour_id);
 	if (gigpress_tour_conversion_fault('delete-before', $tour_id)) return array('status' => 'failed', 'stage' => 'source-delete', 'reason' => 'source_delete_failed', 'tour_id' => $tour_id);
+	if (!gigpress_tour_conversion_lock_refresh()) return array('status' => 'failed', 'stage' => 'lock', 'reason' => 'conversion_lock_lost', 'tour_id' => $tour_id);
+	$transactional = !empty($GLOBALS['gigpress_tour_conversion_source_transactional']);
+	if ($transactional) {
+		$wpdb->last_error = '';
+		$started = $wpdb->query('START TRANSACTION');
+		if ($started === false || $wpdb->last_error !== '') {
+			$entry['stage'] = 'verification-pending'; $entry['verification_error'] = 'source_delete_transaction_start_failed';
+			gigpress_tour_conversion_journal_write($key, $entry);
+			return array('status' => 'failed', 'stage' => 'source-delete', 'reason' => 'source_delete_transaction_start_failed', 'tour_id' => $tour_id);
+		}
+	}
+	$wpdb->last_error = '';
 	$deleted = $wpdb->delete(GIGPRESS_TOURS, array('tour_id' => $tour_id, 'tour_name' => $tour['name']), array('%d', '%s'));
-	$sourceAfter = $wpdb->get_var($wpdb->prepare('SELECT tour_id FROM ' . GIGPRESS_TOURS . ' WHERE tour_id = %d', $tour_id));
-	if ($deleted !== 1 || $sourceAfter) return array('status' => 'failed', 'stage' => 'source-delete', 'reason' => 'source_delete_readback_failed', 'tour_id' => $tour_id);
+	$deleteError = $wpdb->last_error;
+	if ($deleted !== 1 || $deleteError !== '') {
+		if ($transactional) { $wpdb->last_error = ''; $wpdb->query('ROLLBACK'); }
+		$entry['stage'] = 'verification-pending'; $entry['verification_error'] = 'source_delete_failed';
+		gigpress_tour_conversion_journal_write($key, $entry);
+		return array('status' => 'failed', 'stage' => 'source-delete', 'reason' => 'source_delete_failed', 'tour_id' => $tour_id);
+	}
+	if ($transactional) {
+		$wpdb->last_error = '';
+		$sourceAfter = $wpdb->get_var($wpdb->prepare('SELECT tour_id FROM ' . GIGPRESS_TOURS . ' WHERE tour_id = %d', $tour_id));
+		$sourceReadError = $wpdb->last_error;
+		if ($sourceReadError !== '' || $sourceAfter) {
+			$wpdb->last_error = '';
+			$rollback = $wpdb->query('ROLLBACK');
+			$rollbackOk = $rollback !== false && $wpdb->last_error === '';
+			$entry['stage'] = 'verification-pending'; $entry['verification_error'] = $sourceReadError !== '' ? 'source_delete_readback_failed' : 'source_delete_not_verified';
+			$entry['rollback_succeeded'] = $rollbackOk;
+			gigpress_tour_conversion_journal_write($key, $entry);
+			return array('status' => 'failed', 'stage' => 'source-delete', 'reason' => $sourceReadError !== '' ? 'source_delete_readback_failed' : 'source_delete_not_verified', 'tour_id' => $tour_id);
+		}
+		$wpdb->last_error = '';
+		$committed = $wpdb->query('COMMIT');
+		if ($committed === false || $wpdb->last_error !== '') {
+			$wpdb->last_error = '';
+			$wpdb->query('ROLLBACK');
+			$entry['stage'] = 'verification-pending'; $entry['verification_error'] = 'source_delete_commit_failed';
+			gigpress_tour_conversion_journal_write($key, $entry);
+			return array('status' => 'failed', 'stage' => 'source-delete', 'reason' => 'source_delete_commit_failed', 'tour_id' => $tour_id);
+		}
+	}
+	unset($entry['verification_error'], $entry['rollback_succeeded']);
 	$entry['stage'] = 'source-deleted';
 	if (!gigpress_tour_conversion_journal_write($key, $entry)) return array('status' => 'failed', 'stage' => 'journal-complete', 'reason' => 'journal_write_failed_after_delete', 'tour_id' => $tour_id);
 	if (gigpress_tour_conversion_fault('delete-after', $tour_id)) return array('status' => 'failed', 'stage' => 'source-delete', 'reason' => 'source_deleted_before_interruption', 'tour_id' => $tour_id);
@@ -219,32 +346,46 @@ function gigpress_tour_conversion_confirm($token, $owner_id = null) {
 	if ($owner_id === null) $owner_id = get_current_user_id();
 	$intent = gigpress_tour_conversion_get_intent($token, $owner_id);
 	if (!$intent) return array('status' => 'rejected', 'reason' => 'invalid_intent');
-	$journal = gigpress_tour_conversion_journal_read();
-	if (!empty($intent['consumed'])) {
-		$hasPending = false;
-		foreach ($intent['tours'] as $tour) {
-			$key = gigpress_tour_conversion_journal_key($token, $tour['tour_id']);
-			if (empty($journal[$key]['terminal'])) $hasPending = true;
+	$lock = gigpress_tour_conversion_lock_acquire();
+	if (!$lock) return array('status' => 'partial', 'completed' => array(), 'failed' => array(array('status' => 'failed', 'stage' => 'lock', 'reason' => 'conversion_in_progress')), 'results' => array());
+	$GLOBALS['gigpress_tour_conversion_lock'] = $lock;
+	try {
+		$intent = gigpress_tour_conversion_get_intent($token, $owner_id);
+		if (!$intent) return array('status' => 'rejected', 'reason' => 'invalid_intent');
+		$engine = gigpress_tour_conversion_source_engine();
+		if (empty($engine['ok'])) return array('status' => 'rejected', 'reason' => 'source_table_engine_unavailable');
+		if (empty($engine['transactional'])) return array('status' => 'rejected', 'reason' => 'source_table_not_transactional');
+		$GLOBALS['gigpress_tour_conversion_source_transactional'] = !empty($engine['transactional']);
+		$journal = gigpress_tour_conversion_journal_read();
+		if (!empty($intent['consumed'])) {
+			$hasPending = false;
+			foreach ($intent['tours'] as $tour) {
+				$key = gigpress_tour_conversion_journal_key($token, $tour['tour_id']);
+				if (empty($journal[$key]['terminal'])) $hasPending = true;
+			}
+			if (!$hasPending) return array('status' => 'rejected', 'reason' => 'replayed_intent');
+		} else {
+			$fresh = gigpress_tour_conversion_preview(array_column($intent['tours'], 'tour_id'));
+			if (($fresh['status'] ?? '') !== 'ready' || !hash_equals($intent['fingerprint'], (string) $fresh['fingerprint'])) return array('status' => 'rejected', 'reason' => 'source_changed');
+			$intent['consumed'] = true;
+			if (!set_transient(gigpress_tour_conversion_intent_key($token), $intent, max(1, (int) $intent['expires'] - time()))) return array('status' => 'rejected', 'reason' => 'intent_persist_failed');
 		}
-		if (!$hasPending) return array('status' => 'rejected', 'reason' => 'replayed_intent');
-	} else {
-		$fresh = gigpress_tour_conversion_preview(array_column($intent['tours'], 'tour_id'));
-		if (($fresh['status'] ?? '') !== 'ready' || !hash_equals($intent['fingerprint'], (string) $fresh['fingerprint'])) return array('status' => 'rejected', 'reason' => 'source_changed');
-		$intent['consumed'] = true;
-		if (!set_transient(gigpress_tour_conversion_intent_key($token), $intent, max(1, (int) $intent['expires'] - time()))) return array('status' => 'rejected', 'reason' => 'intent_persist_failed');
+		$results = array(); $complete = array(); $failed = array();
+		foreach ($intent['tours'] as $tour) {
+			$result = gigpress_tour_conversion_process_tour($intent, $tour);
+			$results[] = $result;
+			if (($result['status'] ?? '') === 'complete') $complete[] = $result; else $failed[] = $result;
+		}
+		return array('status' => $failed ? 'partial' : 'complete', 'completed' => $complete, 'failed' => $failed, 'results' => $results);
+	} finally {
+		unset($GLOBALS['gigpress_tour_conversion_source_transactional']);
+		gigpress_tour_conversion_lock_release();
+		unset($GLOBALS['gigpress_tour_conversion_lock']);
 	}
-	$results = array(); $complete = array(); $failed = array();
-	foreach ($intent['tours'] as $tour) {
-		$result = gigpress_tour_conversion_process_tour($intent, $tour);
-		$results[] = $result;
-		if (($result['status'] ?? '') === 'complete') $complete[] = $result; else $failed[] = $result;
-	}
-	return array('status' => $failed ? 'partial' : 'complete', 'completed' => $complete, 'failed' => $failed, 'results' => $results);
 }
 
 function gigpress_tour_conversion_dispatch() {
-	global $gpo;
-	if (!current_user_can($gpo['user_level'] ?? 'manage_options')) return array('status' => 'rejected', 'reason' => 'not_authorized');
+	if (!gigpress_csv_user_can_manage()) return array('status' => 'rejected', 'reason' => 'not_authorized');
 	if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !check_admin_referer('gigpress-tour-conversion', '_wpnonce', false)) return array('status' => 'rejected', 'reason' => 'invalid_nonce');
 	if (!gigpress_require_database_ready()) return array('status' => 'rejected', 'reason' => 'database_not_ready');
 	$action = sanitize_key(wp_unslash($_POST['gpaction'] ?? ''));
@@ -278,6 +419,7 @@ function gigpress_tour_conversion_render_result(array $result) {
 	echo '<div id="message" class="' . esc_attr($class) . ' fade"><p>';
 	if ($status === 'complete') echo esc_html__('All confirmed tours were converted and verified.', 'gigpress');
 	elseif ($status === 'cancelled') echo esc_html__('Tour conversion cancelled. Show and tour records were not changed.', 'gigpress');
+	elseif (($result['reason'] ?? '') === 'source_table_not_transactional') echo esc_html__('Tour conversion requires a transactional GigPress tours table so failed verification can roll back safely. Ask your database administrator to convert the tours table to InnoDB, then retry.', 'gigpress');
 	elseif (isset($result['reason'])) echo esc_html(sprintf(__('Tour conversion was not completed (%s). Review the retained source tours and retry after resolving the issue.', 'gigpress'), $result['reason']));
 	else echo esc_html__('Some tours could not be converted. Completed tours are verified; retained tours can be retried after resolving the listed conflicts.', 'gigpress');
 	echo '</p>';

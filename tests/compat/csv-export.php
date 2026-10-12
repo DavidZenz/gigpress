@@ -2,6 +2,7 @@
 /* Export selection and exact-value contracts; fixture expectations stay independent. */
 function gigpress_csv_export_case($case) {
 	global $wpdb, $admin, $gpo;
+	require_once WP_PLUGIN_DIR . '/gigpress/admin/handlers.php';
 	require_once WP_PLUGIN_DIR . '/gigpress/admin/csv.php';
 	$checks = array('selected_case' => in_array($case, array('export-filters', 'export-literals'), true));
 	if ($case === 'export-filters') {
@@ -40,6 +41,80 @@ function gigpress_csv_export_case($case) {
 			$_POST = array('_wpnonce' => 'invalid'); $_REQUEST = $_POST;
 			ob_start(); $deniedResult = gigpress_export(); $deniedOutput = ob_get_clean();
 			$checks['invalid_nonce_stops_before_export'] = $deniedResult === false && strpos($deniedOutput, 'not authorized') !== false;
+			$manager = wp_insert_user(array('user_login' => 'csv-export-manager-' . wp_generate_password(12, false, false), 'user_pass' => wp_generate_password(24), 'role' => 'subscriber'));
+			$managerUser = is_wp_error($manager) ? null : new WP_User((int) $manager);
+			$configuredCapability = 'gigpress_csv_export_manager';
+			if ($managerUser) $managerUser->add_cap($configuredCapability);
+			$previousLevel = $gpo['user_level'] ?? null;
+			$gpo['user_level'] = $configuredCapability;
+			wp_set_current_user((int) $manager);
+			$_POST = array('_wpnonce' => wp_create_nonce('gigpress-action'), 'artist_id' => '-1', 'tour_id' => '-1', 'scope' => '-1'); $_REQUEST = $_POST;
+			ob_start(); $managerDownload = gigpress_export(); $managerOutput = ob_get_clean();
+			$managerAllowed = $managerUser && current_user_can($configuredCapability) && !current_user_can('manage_options')
+				&& gigpress_csv_user_can_manage() && gigpress_csv_export_authorized()
+				&& $managerDownload !== false && strpos($managerOutput, '"Date"') !== false;
+			$priorAjaxHeader = $_SERVER['HTTP_X_REQUESTED_WITH'] ?? null;
+			$_SERVER['HTTP_X_REQUESTED_WITH'] = 'XMLHttpRequest';
+			$ajaxDieArgs = array();
+			$ajaxStatusCode = null;
+			$statusHeaderFilter = function ($header, $code) use (&$ajaxStatusCode) { $ajaxStatusCode = (int) $code; return $header; };
+			$doingAjaxFilter = function () { return true; };
+			$ajaxDieHandler = function () use (&$ajaxDieArgs) { return function ($message = '', $title = '', $args = array()) use (&$ajaxDieArgs) { $ajaxDieArgs = $args; throw new RuntimeException('Expected JSON response termination.'); }; };
+			add_filter('status_header', $statusHeaderFilter, 10, 4);
+			add_filter('wp_doing_ajax', $doingAjaxFilter);
+			add_filter('wp_die_ajax_handler', $ajaxDieHandler);
+			$_POST = array('_ajax_nonce' => wp_create_nonce('gigpress-export-preview'), 'artist_id' => '-1', 'tour_id' => '-1', 'scope' => '-1'); $_REQUEST = $_POST;
+			ob_start(); try { gigpress_export_preview(); } catch (Throwable $error) {} $managerPreviewOutput = ob_get_clean();
+			$managerPreviewJson = json_decode($managerPreviewOutput, true);
+			$managerPreviewStatus = $ajaxStatusCode;
+			$editorId = wp_insert_user(array('user_login' => 'csv-export-editor-' . wp_generate_password(12, false, false), 'user_pass' => wp_generate_password(24), 'role' => 'editor'));
+			$editorId = is_wp_error($editorId) ? 0 : (int) $editorId;
+			unset($gpo['user_level']);
+			wp_set_current_user($editorId);
+			$editorDefaultAllowed = $editorId > 0 && current_user_can('edit_posts') && !current_user_can('manage_options') && gigpress_csv_user_can_manage();
+			$_POST = array('_wpnonce' => wp_create_nonce('gigpress-action'), 'artist_id' => '-1', 'tour_id' => '-1', 'scope' => '-1'); $_REQUEST = $_POST;
+			ob_start(); $editorDownload = gigpress_export(); $editorDownloadOutput = ob_get_clean();
+			$_POST = array('_ajax_nonce' => wp_create_nonce('gigpress-export-preview'), 'artist_id' => '-1', 'tour_id' => '-1', 'scope' => '-1'); $_REQUEST = $_POST;
+			ob_start(); try { gigpress_export_preview(); } catch (Throwable $error) {} $editorPreviewOutput = ob_get_clean();
+			$editorPreviewJson = json_decode($editorPreviewOutput, true);
+			$editorPreviewStatus = $ajaxStatusCode;
+			$priorMethod = $_SERVER['REQUEST_METHOD'] ?? null; $_SERVER['REQUEST_METHOD'] = 'POST';
+			$priorFiles = $_FILES ?? array(); $_FILES = array();
+			$_POST = array('_wpnonce' => wp_create_nonce('gigpress-action'), 'gpaction' => 'import'); $_REQUEST = $_POST;
+			ob_start(); $editorImport = gigpress_csv_import_request(); $editorImportOutput = ob_get_clean();
+			if ($priorMethod === null) unset($_SERVER['REQUEST_METHOD']); else $_SERVER['REQUEST_METHOD'] = $priorMethod;
+			$_FILES = $priorFiles;
+			$editorDownloadPassed = $editorDownload !== false && strpos($editorDownloadOutput, '"Date"') !== false;
+			$editorPreviewPassed = ($editorPreviewJson['success'] ?? false) === true && isset($editorPreviewJson['data']['count']) && $editorPreviewStatus === null;
+			$editorImportPassed = is_array($editorImport) && strpos($editorImportOutput, 'Import results') !== false
+				&& strpos($editorImportOutput, 'not authorized') === false;
+			$deniedUser = wp_insert_user(array('user_login' => 'csv-export-denied-' . wp_generate_password(12, false, false), 'user_pass' => wp_generate_password(24), 'role' => 'subscriber'));
+			$gpo['user_level'] = $configuredCapability;
+			wp_set_current_user((int) $deniedUser);
+			$_POST = array('_wpnonce' => wp_create_nonce('gigpress-action'), 'artist_id' => '-1', 'tour_id' => '-1', 'scope' => '-1'); $_REQUEST = $_POST;
+			ob_start(); $deniedDownload = gigpress_export(); $deniedOutput = ob_get_clean();
+			$_POST = array('_ajax_nonce' => wp_create_nonce('gigpress-export-preview'), 'artist_id' => '-1', 'tour_id' => '-1', 'scope' => '-1'); $_REQUEST = $_POST;
+			ob_start(); try { gigpress_export_preview(); } catch (Throwable $error) {} $deniedPreviewOutput = ob_get_clean();
+			$deniedPreviewJson = json_decode($deniedPreviewOutput, true);
+			$deniedPreviewStatus = $ajaxStatusCode;
+			remove_filter('wp_die_ajax_handler', $ajaxDieHandler);
+			remove_filter('wp_doing_ajax', $doingAjaxFilter);
+			remove_filter('status_header', $statusHeaderFilter, 10);
+			if ($priorAjaxHeader === null) unset($_SERVER['HTTP_X_REQUESTED_WITH']); else $_SERVER['HTTP_X_REQUESTED_WITH'] = $priorAjaxHeader;
+			$managerPreviewPassed = ($managerPreviewJson['success'] ?? false) === true && isset($managerPreviewJson['data']['count']) && $managerPreviewStatus === null;
+			$deniedExportPassed = !is_wp_error($deniedUser) && !gigpress_csv_user_can_manage() && !gigpress_csv_export_authorized()
+				&& $deniedDownload === false && strpos($deniedOutput, 'not authorized') !== false && strpos($deniedOutput, '"Date"') === false;
+			$deniedPreviewPassed = ($deniedPreviewJson['success'] ?? true) === false && (int) $deniedPreviewStatus === 403;
+			$checks['configured_gigpress_manager_can_download'] = (bool) $managerAllowed;
+			$checks['configured_gigpress_manager_can_preview'] = (bool) $managerPreviewPassed;
+			$checks['missing_capability_configuration_uses_edit_posts_default'] = (bool) $editorDefaultAllowed;
+			$checks['editor_with_missing_capability_setting_can_import_export_and_preview'] = (bool) $editorImportPassed && (bool) $editorDownloadPassed && (bool) $editorPreviewPassed;
+			$checks['unconfigured_user_cannot_download'] = (bool) $deniedExportPassed;
+			$checks['unconfigured_user_cannot_preview'] = (bool) $deniedPreviewPassed;
+			$checks['configured_gigpress_manager_can_preview_and_download_while_denied_user_cannot'] = (bool) $managerAllowed
+				&& (bool) $managerPreviewPassed && (bool) $deniedExportPassed && (bool) $deniedPreviewPassed;
+			if ($previousLevel === null) unset($gpo['user_level']); else $gpo['user_level'] = $previousLevel;
+			wp_set_current_user($admin->ID);
 		}
 	}
 	if ($case === 'export-literals') {
