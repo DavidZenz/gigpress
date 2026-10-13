@@ -1,22 +1,21 @@
 # Compatibility Matrix Evidence
 
-**Checked:** 2026-10-04T08:44:16Z
+**Checked:** 2026-10-13T00:12:00Z
 
-Source revision: `259c0ca92cc99e8b3bfc2f6da16719ea3805f90e`
+Source revision: `2674b35230b6f4cf94a857d5788cb13361416a9e`
 
 ## Refreshed upstream sources
 
 - WordPress release archive: <https://wordpress.org/download/releases/> — latest
-  7.0 patch: **7.0.6**; latest 7.1 patch: **7.1.2**.
+  7.0 patch: **7.0.7**; latest 7.1 patch: **7.1.3**.
 - PHP supported versions: <https://www.php.net/supported-versions.php> — target
   branches at or above the selected 8.3 floor: **8.3**, **8.4**, and **8.5**.
 - Official WordPress image tags: <https://hub.docker.com/_/wordpress>.
 
-The exact 7.0.6 core came from the official WordPress release archive. Docker
-Hub no longer provides a `7.0.6-php8.x-apache` tag, so the disposable runner
-uses the listed official 7.1.2 PHP/Apache image as its runtime base and replaces
-only WordPress core with the checked 7.0.6 archive before boot. The `image`
-and `image ID` values below identify that actual official container base.
+The runner obtained the exact WordPress core version for each line immediately
+before the run. It used the official `wordpress:phpX.Y-apache` image as the
+runtime base, replacing only WordPress core with the official release archive
+when the requested core version differed from the base image.
 
 ## Supported full-workflow matrix
 
@@ -27,15 +26,20 @@ and duplicate-row preservation all passed. PHP 8.2 is absent from this table.
 
 | WordPress | PHP | Image | Image ID | Admin | Public | RSS | iCalendar | CSV + duplicate | Result | Result SHA-256 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 7.0.6 | 8.3.35 | `wordpress:7.1.2-php8.3-apache` | `sha256:4abf7a450ee477dde967584f8174d7e03221d224c4971a0c38d84e7254426e64` | PASS | PASS | PASS | PASS | PASS | PASS | `828d749693af51b6e56b9b1e833fe20bd4983e574462a47a0147a6c8b0c2543c` |
-| 7.0.6 | 8.4.26 | `wordpress:7.1.2-php8.4-apache` | `sha256:85ee71a393b0f3f7a45b2e293978f1c9ab94fb421161080e54f911eeb2501bdc` | PASS | PASS | PASS | PASS | PASS | PASS | `61286d92c0e244167a5fe52cbc877cdd8ee316fa624bd5eb36ca94eb62c742ed` |
-| 7.0.6 | 8.5.11 | `wordpress:7.1.2-php8.5-apache` | `sha256:9d881655fccdcfd19b779320ca819310b51061e1ba3c086012ecbf69a177d521` | PASS | PASS | PASS | PASS | PASS | PASS | `5786cfdd2ac9551c5014246920a110f87aa51f66c840cdac290f2b5a699a9a52` |
-| 7.1.2 | 8.3.35 | `wordpress:7.1.2-php8.3-apache` | `sha256:4abf7a450ee477dde967584f8174d7e03221d224c4971a0c38d84e7254426e64` | PASS | PASS | PASS | PASS | PASS | PASS | `bd62265f284191c7f8aca6f5294344c9b2c1a7c2aa7b609c35b68e0c991867a9` |
-| 7.1.2 | 8.4.26 | `wordpress:7.1.2-php8.4-apache` | `sha256:85ee71a393b0f3f7a45b2e293978f1c9ab94fb421161080e54f911eeb2501bdc` | PASS | PASS | PASS | PASS | PASS | PASS | `69cfeeeb201b001eb05d50d03c58cf6ecfeeeaae35c1a026a6fed1d3f5e081ea` |
-| 7.1.2 | 8.5.11 | `wordpress:7.1.2-php8.5-apache` | `sha256:9d881655fccdcfd19b779320ca819310b51061e1ba3c086012ecbf69a177d521` | PASS | PASS | PASS | PASS | PASS | PASS | `012c7e063753d2ccd6c3c4ff991d2e1055766530127690394f3530e6b5365476` |
+| 7.0.7 | 8.3.35 | `wordpress:php8.3-apache` | `sha256:f32ffa85064d9c951b7b69c929fa2a9f682aa4443e0c0a56ac2000499cb64383` | PASS | PASS | PASS | PASS | PASS | PASS | `ab42d023e9e36647895a7f900caa73c47cd98310f2d17401d995ebf982c1b2d9` |
+| 7.0.7 | 8.4.26 | `wordpress:php8.4-apache` | `sha256:309307430abf80009378a63a79df73554a6449b700fac59a991b4959e6dda8ca` | PASS | PASS | PASS | PASS | PASS | PASS | `0b4875c023c9d8e8735a77d01b2dd5ecf97189f5c5ed27a6d16219d286f19eb7` |
+| 7.0.7 | 8.5.11 | `wordpress:php8.5-apache` | `sha256:c12bed9c5af9d76261221c2af3a6216a074dd80b4fc2459588b3cbf2dd8e1798` | PASS | PASS | PASS | PASS | PASS | PASS | `dac81b7cfc5fe51677a9bb5d2f6b7187e75e2cd2fa42a19869de950cd51ee4bd` |
+| 7.1.3 | 8.3.35 | `wordpress:php8.3-apache` | `sha256:f32ffa85064d9c951b7b69c929fa2a9f682aa4443e0c0a56ac2000499cb64383` | PASS | PASS | PASS | PASS | PASS | PASS | `bbead667305ba640dc8f0ee948f47e33a5aef7be8d9d79725858430b7e402031` |
+| 7.1.3 | 8.4.26 | `wordpress:php8.4-apache` | `sha256:309307430abf80009378a63a79df73554a6449b700fac59a991b4959e6dda8ca` | PASS | PASS | PASS | PASS | PASS | PASS | `545a5b6a10ab1e6582053bdd6eb83d58aba07d0da96fdfd8ab1b937278cc681a` |
+| 7.1.3 | 8.5.11 | `wordpress:php8.5-apache` | `sha256:c12bed9c5af9d76261221c2af3a6216a074dd80b4fc2459588b3cbf2dd8e1798` | PASS | PASS | PASS | PASS | PASS | PASS | `8efbacb389d3e00f82e6ac6a4ab72dc3fe3df13e39e9abfd74612649972b6d5c` |
 
 Fixture SHA-256: `8ff7322ca6afdd134c96a9cc0c6fe6a87ed00ac405fc3f300606b8fb6f082975`
 for `tests/compat/fixtures/shows.csv`.
+
+The result artifacts are the six `tests/compat/.results/*-full-workflows.json`
+records named by their WordPress and PHP versions. Every result records
+`plugin_active: true`, no fatal, zero `plugin_errors`, zero `menu_warnings`,
+and all six aggregate workflow assertions as true.
 
 Verification command:
 
@@ -45,7 +49,7 @@ rtk bash tests/compat/run.sh matrix --scenario full-workflows --wp-lines 7.0,7.1
 
 ## D-03 runtime-floor lifecycle
 
-The following lifecycle passed on both WordPress 7.0.6 and 7.1.2 using the
+The following lifecycle passed on both WordPress 7.0.7 and 7.1.3 using the
 same isolated database for each 8.3 → 8.2 → 8.3 transition:
 
 ```text
@@ -57,13 +61,13 @@ diagnostic PHP 8.2 transition, exposed only its repeated authorized manager
 notice, left normal modules/hooks/functions unavailable, did not expose the
 notice to unauthorized or public requests, and recovered normal behavior with
 the notice removed on PHP 8.3. The low-floor checks booted the actual WordPress
-7.0.6 and 7.1.2 sites with GigPress already active; they did not use the plugin
+7.0.7 and 7.1.3 sites with GigPress already active; they did not use the plugin
 API facade for the real-plugin path.
 
 ## D-02 diagnostic-only evidence
 
 PHP 8.2 remains diagnostic-only and contributes to no supported row. The
-controlled exact-key trace remains recorded in
-[`01-MENU-VERIFICATION.md`](./01-MENU-VERIFICATION.md): it attributes
-`separator-gigpress` to the fixture callback at priority 20. It does not
-identify the unavailable live-site callback.
+controlled exact-key trace on WordPress 7.1.3/PHP 8.2.34 again emitted the
+exact `Undefined array key "separator-gigpress"` core warning and attributed
+the synthetic row to `gigpress_menu_conflict_late_add` at priority 20. The
+fixture diagnostic does not identify the unavailable live-site callback.

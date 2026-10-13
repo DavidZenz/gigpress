@@ -1,6 +1,6 @@
 ---
 phase: 01-compatibility-baseline-and-menu-diagnosis
-verified: 2026-10-04T09:02:25Z
+verified: 2026-10-13T00:12:00Z
 status: passed
 verdict: pass
 score: 4/4 must-haves verified
@@ -31,25 +31,40 @@ covered_files:
   - tests/compat/fixtures/shows.csv
   - tests/compat/probe.php
   - tests/compat/run.sh
-covered_digest: "v2:sha256:61b9308d009bb636aa2d38f371d03093644fd7f6059f6fc489dfd977ef11ce97"
+covered_digest: "v2:sha256:ad14036e97ee05c73edefbc1421fab536920606ec3ebec481d454c89495a018c"
 behavior_unverified: 0
 overrides_applied: 0
 re_verification:
-  previous_status: gaps_found
-  previous_score: 3/4
-  gaps_closed:
-    - "The real-plugin runtime-floor command emits valid lifecycle summaries and exits zero for WordPress 7.0.6 and 7.1.2."
+  previous_status: passed
+  previous_score: 4/4
+  gaps_closed: []
   gaps_remaining: []
   regressions: []
+decision_coverage:
+  honored: 4
+  total: 4
+  not_honored: []
 ---
 
 # Phase 01: Compatibility Baseline and Menu Diagnosis Verification Report
 
-**Phase Goal:** Establish a trustworthy compatibility baseline for GigPress, reproduce and diagnose the legacy menu warning, and verify the plugin's supported PHP floor and recovery lifecycle.
+**Phase Goal:** Site owners can run GigPress on the selected WordPress and PHP support matrix, and the admin-menu warning is traced and resolved.
 
-**Verified:** 2026-10-04T09:02:25Z  
+**Verified:** 2026-10-13T00:12:00Z
 **Status:** passed  
-**Re-verification:** Yes — after gap closure
+**Re-verification:** Yes — current shared source and compatibility evidence refreshed
+
+## User Flow Coverage
+
+User story: “As a site owner, I want to run GigPress on the selected WordPress and PHP support matrix, and have the admin-menu warning traced and resolved, so that I can use the plugin safely.”
+
+| Step | Expected | Current codebase evidence | Status |
+| --- | --- | --- | --- |
+| Activate GigPress | The plugin activates on each selected WordPress/PHP pair. | Six fresh full-workflow records report `plugin_active: true`, no fatal, and no plugin errors. | ✓ VERIFIED |
+| Use routine workflows | Administration, public display, feeds, and CSV still work. | Each fresh record reports true for admin create/edit/read, shortcode, RSS, iCalendar, CSV import/export, and duplicate preservation. | ✓ VERIFIED |
+| Open the admin menu | GigPress is visible without an undefined separator warning, and conflicts fall back safely. | `gigpress_admin_menu()` owns `separator-gp` before ordering; `custom_menu_order()` is a pure strict transform. | ✓ VERIFIED |
+| Run below the PHP floor | An already-active site remains inert below PHP 8.3, then resumes automatically. | The current real-plugin lifecycle run passes both WordPress target lines through 8.3 → 8.2 → 8.3. | ✓ VERIFIED |
+| Outcome | The site owner can use the supported plugin safely. | Fresh matrix, lifecycle, metadata, and controlled-diagnostic checks all pass; PHP 8.2 remains diagnostic-only. | ✓ VERIFIED |
 
 ## Goal Achievement
 
@@ -57,10 +72,10 @@ re_verification:
 
 | # | Truth | Status | Evidence |
 | --- | --- | --- | --- |
-| 1 | The `separator-gigpress` warning is reproducible under a controlled WordPress core menu fixture, and its source is diagnosed without claiming an unproven live callback. | ✓ VERIFIED | Fresh `diagnose-menu` on WordPress 7.1.2/PHP 8.2 emitted and captured eight exact `Undefined array key "separator-gigpress"` warnings from WordPress core `wp-admin/includes/menu.php:339`. The trace names only fixture callback `gigpress_menu_conflict_late_add` at priority 20; exact key is absent from input and returned maps. The diagnosis therefore does not attribute this to a live GigPress callback. |
-| 2 | The supported WordPress 7.0/7.1 × PHP 8.3+ compatibility baseline completes the required workflows without GigPress warnings or fatals. | ✓ VERIFIED | [`01-COMPATIBILITY-MATRIX.md`](01-COMPATIBILITY-MATRIX.md) records six PASS cells at source `259c0ca`: WordPress 7.0.6 and 7.1.2 across PHP 8.3.35, 8.4.26, and 8.5.11. Each records plugin activation, admin edit/create/read, shortcode, RSS/iCal, CSV import, and duplicate workflows with no plugin warnings or fatals. Commit `8ac118d` changes only runtime-floor result serialization. |
-| 3 | Public compatibility metadata states WordPress floor 7.0, PHP floor 8.3, and WordPress 7.1 test coverage. | ✓ VERIFIED | `gigpress.php` header and `readme.txt` declare the same floors; the metadata check passed against expected `7.0`, `8.3`, and `7.1`. |
-| 4 | An already-active GigPress remains active but inert below PHP 8.3, preserves state and data, scopes a single admin notice, avoids normal runtime loading, and recovers on PHP 8.3. | ✓ VERIFIED | Fresh `runtime-floor --plugin gigpress/gigpress.php --wp-lines 7.0,7.1 --supported-php 8.3 --diagnostic-php 8.2` exited 0. For WordPress 7.0.6 and 7.1.2 it reported `plugin_active_preserved: true`, `data_preserved: true`, no normal surface/hooks/modules under PHP 8.2, exactly one authorized admin notice, no public/unauthorized notice, and recovery under PHP 8.3. |
+| 1 | The controlled fixture reproduces `separator-gigpress`, attributes it to its own callback, and the checkout's equivalent late `separator-gp` behavior is corrected without claiming the unavailable live callback. | ✓ VERIFIED | Fresh `diagnose-menu` on WordPress 7.1.3/PHP 8.2.34 returned PASS, captured eight expected core warnings, and kept GigPress inactive. The fixture declares `gigpress_menu_conflict_late_add` at priority 20; repository history has no `separator-gigpress` in `gigpress.php`. The current menu-contract edge suite passes. |
+| 2 | Site owners can complete existing administration, public-display, feed, and CSV workflows on WordPress 7.0 and 7.1 with PHP 8.3+ without plugin warnings or fatals. | ✓ VERIFIED | Fresh OrbStack matrix results for WordPress 7.0.7/7.1.3 × PHP 8.3.35/8.4.26/8.5.11 all PASS. Every record has zero menu warnings, zero plugin errors, no fatal, and six true workflow assertions. |
+| 3 | Plugin metadata and readme declare WordPress 7.0 and PHP 8.3 minimums, and `Tested up to` names a checked WordPress line. | ✓ VERIFIED | `gigpress.php` and `readme.txt` both declare 7.0 and 8.3; the readme declares `Tested up to: 7.1`. The strict metadata-to-evidence command returned PASS after refresh. |
+| 4 | An already-active site below PHP 8.3 is active but inert, exposes only the scoped notice, and resumes normal behavior on PHP 8.3+. | ✓ VERIFIED | The real-plugin lifecycle command passed on current WordPress 7.0.7 and 7.1.3: active/data preservation, absent normal surface/hooks/modules below the floor, authorized repeated notice only, and clean recovery. |
 
 **Score:** 4/4 truths verified (0 present, behavior-unverified)
 
@@ -68,63 +83,70 @@ re_verification:
 
 | Artifact | Expected | Status | Details |
 | --- | --- | --- | --- |
-| `tests/compat/run.sh` | Reproducible compatibility, diagnostic, contract, metadata, and lifecycle runner | ✓ VERIFIED | Shell syntax and `self-test` pass; fresh real-plugin lifecycle run returns valid PASS JSON for both WordPress lines. |
-| `tests/compat/diagnostics/menu-trace.php` | Captures core warning and menu ownership/order evidence | ✓ VERIFIED | Loaded by `diagnose-menu`; captured the exact WordPress warning and callback trace. |
-| `tests/compat/fixtures/menu-conflict-plugin.php` | Deterministic late exact-key conflict fixture | ✓ VERIFIED | The exact-key-late-add mode produces the controlled warning without modifying GigPress. |
-| `tests/compat/fixtures/php-floor-plugin.php` and `gigpress.php` | Real-plugin PHP-floor lifecycle coverage | ✓ VERIFIED | The runner booted actual WordPress with GigPress active, then observed low-floor and recovery states. |
-| `01-COMPATIBILITY-MATRIX.md` | Supported six-cell compatibility evidence | ✓ VERIFIED | Records exact image versions, commands, workflow results, and source revision. |
-| `01-MENU-VERIFICATION.md` | Visual WordPress-admin menu evidence | ✓ VERIFIED | Records disposable WordPress 7.1.2/PHP 8.3 preferred and conflict views with GigPress's menu available and no raw warning output. |
+| `gigpress.php` | Runtime guard and warning-safe menu ordering | ✓ VERIFIED | The `< 80300` branch registers only the capability-scoped notice; normal includes and hooks are within the supported branch. |
+| `tests/compat/run.sh` and `probe.php` | Disposable matrix, diagnostic, menu, metadata, and lifecycle contracts | ✓ VERIFIED | Shell syntax and `self-test` pass; current container commands exercise the real checkout. |
+| `menu-conflict-plugin.php` and `menu-trace.php` | Exact-key diagnostic attribution | ✓ VERIFIED | The fixture creates only `separator-gigpress` and the disposable diagnostic asserts its warning path. |
+| `01-COMPATIBILITY-MATRIX.md` | Exact supported-current matrix evidence | ✓ VERIFIED | Refreshed for source `2674b35230b6f4cf94a857d5788cb13361416a9e` with six rows, image IDs, and result checksums. |
+| `readme.txt` | Public compatibility declaration | ✓ VERIFIED | Strict provenance check confirms header/readme parity, 7.0/8.3 floors, and the 7.1 tested line. |
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 | --- | --- | --- | --- | --- |
-| `run.sh diagnose-menu` | `menu-trace.php` | WordPress boot plus fixture activation and warning capture | ✓ WIRED | Fresh exact-key command produced core warning, trace data, and exit 0. |
-| `run.sh full-workflows` | `probe.php` / actual GigPress | Disposable WordPress containers and HTTP/admin workflow probes | ✓ WIRED | Six recorded matrix cells complete all required workflows. |
-| `gigpress.php` PHP guard | WordPress activation/runtime environment | Low-floor inertness and supported-floor recovery lifecycle | ✓ WIRED | Fresh real-plugin lifecycle result proves the active plugin is inert below PHP 8.3 and recovers on the supported floor in both WordPress versions. |
-| Plugin/readme headers | metadata check | Explicit floor and tested-version assertions | ✓ WIRED | Fresh metadata check returned PASS. |
+| `run.sh diagnose-menu` | `menu-trace.php` and conflict fixture | Disposable WordPress boot, fixture activation, trace JSON, and warning assertion | ✓ WIRED | Current diagnostic command passed; the fixture cannot satisfy a supported cell. |
+| `gigpress.php` PHP guard | WordPress request lifecycle | Early PHP branch before normal includes and hook registration | ✓ WIRED | Current real-plugin lifecycle observes the active plugin, database snapshot, notices, function/hook/module inventory, and recovery. |
+| `gigpress_admin_menu()` | WordPress menu globals and `menu_order` | Separator setup during `admin_menu`, then input-only ordering filter | ✓ WIRED | Current menu-contract pass exercises registration order, strict uniqueness, fallback, index zero, and non-mutation. |
+| Matrix evidence | `readme.txt` and `gigpress.php` | Strict metadata parser validates the evidence source and package floors | ✓ WIRED | Current strict metadata command returned PASS. |
 
 ### Data-Flow Trace (Level 4)
 
-| Artifact | Data Variable | Source | Produces Real Data | Status |
+| Artifact | Data | Source | Produces real data | Status |
 | --- | --- | --- | --- | --- |
-| `menu-trace.php` | warning/trace/order records | WordPress runtime warning handler and menu globals | Yes | ✓ FLOWING |
-| `probe.php` | admin/public workflow responses | Disposable, actual WordPress + active GigPress installation | Yes | ✓ FLOWING |
-| `run.sh runtime-floor` | activation/data/notice/recovery fields | Actual WordPress option state, page output, hooks, and loaded modules | Yes | ✓ FLOWING |
+| `probe.php` full-workflow result | activation, errors, menu, workflow assertions | Actual disposable WordPress, MariaDB, and mounted checkout | Yes | ✓ FLOWING |
+| `probe.php` runtime-floor result | active state, data snapshot, notices, modules/hooks/functions | Actual WordPress options, GigPress data, request responses, and inventory | Yes | ✓ FLOWING |
+| `menu-trace.php` | warning, row creator, callback and order evidence | WordPress menu globals and runtime warning handler | Yes | ✓ FLOWING |
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 | --- | --- | --- | --- |
-| Runner self-validation | `rtk bash -n tests/compat/run.sh && rtk bash tests/compat/run.sh self-test` | Exit 0; self-test PASS | ✓ PASS |
-| Controlled core warning reproduction | `rtk bash tests/compat/run.sh diagnose-menu --wp 7.1.2 --php 8.2 --diagnostic tests/compat/diagnostics/menu-trace.php --conflict-fixture tests/compat/fixtures/menu-conflict-plugin.php --conflict-mode exact-key-late-add --expect-key separator-gigpress --assert-repository-boundary .planning/phases/01-compatibility-baseline-and-menu-diagnosis/01-DIAGNOSIS.md` | Exit 0; eight captured exact warnings at `menu.php:339` | ✓ PASS |
-| Supported conflict menu contract | `rtk bash tests/compat/run.sh menu-contract --wp 7.1.2 --php 8.3 --cases preferred,index-zero,missing,duplicate,empty,single,order-conflict,no-global-mutation` | Exit 0; all cases PASS | ✓ PASS |
-| Supported compatibility matrix | Recorded `full-workflows` six-cell run in `01-COMPATIBILITY-MATRIX.md` | All six cells PASS at source `259c0ca` | ✓ PASS |
-| Compatibility metadata | `rtk bash tests/compat/run.sh metadata --plugin gigpress.php --readme readme.txt --matrix-evidence .planning/phases/01-compatibility-baseline-and-menu-diagnosis/01-COMPATIBILITY-MATRIX.md --expect-wp-min 7.0 --expect-php-min 8.3 --require-tested-line-pass` | Exit 0; metadata PASS with `Tested up to: 7.1` backed by matrix evidence | ✓ PASS |
-| Active-but-inert behavior and recovery | `rtk bash tests/compat/run.sh runtime-floor --plugin gigpress/gigpress.php --wp-lines 7.0,7.1 --supported-php 8.3 --diagnostic-php 8.2` | Exit 0; WordPress 7.0.6 and 7.1.2 lifecycle records PASS while the plugin stays active below PHP 8.3 | ✓ PASS |
+| Harness contracts | `rtk bash tests/compat/run.sh self-test` | PASS | ✓ PASS |
+| Menu transform and fallback | `rtk bash tests/compat/run.sh menu-contract --wp 7.1.2 --php 8.3 --cases preferred,index-zero,missing,duplicate,empty,single,order-conflict,no-global-mutation` | PASS; all eight cases | ✓ PASS |
+| Controlled exact-key reproduction | `rtk bash tests/compat/run.sh diagnose-menu --wp 7.1.2 --php 8.2 … --expect-key separator-gigpress` | PASS; eight expected core warnings; PHP 8.2 diagnostic only | ✓ PASS |
+| Current supported workflows | `rtk bash tests/compat/run.sh matrix --scenario full-workflows --wp-lines 7.0,7.1 --wp-patches latest --php-supported upstream --php-min 8.3 --error-reporting E_ALL` | PASS; six current cells, all workflow assertions true | ✓ PASS |
+| PHP-floor lifecycle | `rtk bash tests/compat/run.sh runtime-floor --plugin gigpress/gigpress.php --wp-lines 7.0,7.1 --supported-php 8.3 --diagnostic-php 8.2` | PASS; active-but-inert and recovery on both target lines | ✓ PASS |
+| Metadata provenance | `rtk bash tests/compat/run.sh metadata --plugin gigpress.php --readme readme.txt --matrix-evidence .planning/phases/01-compatibility-baseline-and-menu-diagnosis/01-COMPATIBILITY-MATRIX.md --expect-wp-min 7.0 --expect-php-min 8.3 --require-tested-line-pass` | PASS | ✓ PASS |
 
 ### Requirements Coverage
 
-| Requirement | Source Plan | Description | Status | Evidence |
-| --- | --- | --- | --- | --- |
-| COMP-01 | 01-03, 01-05 | Declare the WordPress 7.0 and PHP 8.3 floors and back the Tested up to value with passing evidence. | ✓ SATISFIED | Plugin/readme metadata agrees; the evidence-backed metadata check passes for WordPress 7.1. |
-| COMP-02 | 01-01, 01-03, 01-05 | Run existing workflows on WordPress 7.0/7.1 and every currently supported PHP branch at or above 8.3. | ✓ SATISFIED | Six full-workflow cells pass under PHP 8.3, 8.4, and 8.5 without GigPress warnings or fatals. |
-| COMP-03 | 01-01, 01-02, 01-04, 01-05 | Reproduce and diagnose the controlled menu warning, remove GigPress's equivalent unsafe ordering behavior, and leave the live callback unclaimed. | ✓ SATISFIED | The exact core warning is captured from the controlled fixture; the supported menu contract and conflict matrix pass, and the unavailable live callback remains unproven. |
-| COMP-04 | 01-01, 01-03, 01-05 | Keep already-active GigPress installations inert and scoped below PHP 8.3, preserve state, then recover on PHP 8.3+. | ✓ SATISFIED | The real-plugin lifecycle passes on both WordPress lines with active/data preservation, notice scoping, and PHP 8.3 recovery. |
+| Requirement | Source plans | Status | Evidence |
+| --- | --- | --- | --- |
+| COMP-01 | 01-03, 01-05 | ✓ SATISFIED | Current strict metadata check proves floor declarations and evidence-backed 7.1 tested line. |
+| COMP-02 | 01-01, 01-03, 01-05 | ✓ SATISFIED | Six current full-workflow cells pass under PHP 8.3, 8.4, and 8.5 with no plugin warnings or fatals. |
+| COMP-03 | 01-01, 01-02, 01-04, 01-05 | ✓ SATISFIED | Current fixture diagnostic reproduces the exact key without attributing it to GigPress; the pure menu-order contract passes. |
+| COMP-04 | 01-01, 01-03, 01-05 | ✓ SATISFIED | Current real-plugin lifecycle proves the active-but-inert contract and recovery on both WordPress lines. |
+
+### Test Quality Audit
+
+| Test surface | Linked requirements | Active | Skipped | Circular | Assertion level | Verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| `tests/compat/run.sh` + `probe.php` | COMP-01–COMP-04 | Current container checks above | 0 disabled requirement tests found | No | Behavioral | ✓ PASS |
+
+The disabled-test scan found no skipped-test directives in the compatibility suite. The runner consumes actual WordPress state and responses; it does not generate asserted matrix results from the system under test.
 
 ### Anti-Patterns Found
 
 | File | Line | Pattern | Severity | Impact |
 | --- | --- | --- | --- | --- |
-| None | — | No unreferenced `TBD`, `FIXME`, or `XXX` debt markers in phase implementation artifacts | — | No blocker |
+| None | — | No unreferenced `TBD`, `FIXME`, or `XXX` marker in Phase 01 implementation artifacts | — | No blocker |
 
 ### Recorded Visual Verification
 
-`01-MENU-VERIFICATION.md` records the completed manual WordPress-admin checks on disposable WordPress 7.1.2/PHP 8.3 instances: GigPress's **Add a show** screen opened in the preferred and conflict arrangements, and neither showed raw warning output. Its scope correctly does not claim that an unavailable live callback was identified.
+`01-MENU-VERIFICATION.md` records completed disposable WordPress admin checks for preferred and conflict menu arrangements. The current source changes did not alter the menu implementation, and the current menu-contract and full-workflow results retain the recorded behavior.
 
 ### Decision Coverage
 
-All four decisions in the phase decision log are honored: supported floors and workflows have evidence, the warning diagnosis uses the controlled fixture and core trace, metadata matches the support contract, and the PHP-floor lifecycle is exercised against the actual plugin.
+All four trackable decisions in `01-CONTEXT.md` are honored by shipped artifacts. This is a non-blocking decision-coverage result.
 
 ### Advisory (New Scope, Unevidenced)
 
@@ -132,9 +154,9 @@ None.
 
 ## Gaps Summary
 
-No gaps remain. The previous lifecycle blocker was a runner JSON serialization defect, not a product lifecycle failure; commit `8ac118d` repairs it, and the independent full real-plugin lifecycle command now succeeds on both supported WordPress lines.
+No gaps remain. The prior digest was stale because later phases changed shared source and the upstream WordPress patch releases advanced. The refreshed matrix proves the current source at `2674b35230b6f4cf94a857d5788cb13361416a9e`; the strict metadata check now passes against that evidence.
 
 ---
 
-_Verified: 2026-10-04T09:02:25Z_  
+_Verified: 2026-10-13T00:12:00Z_
 _Verifier: the agent (gsd-verifier)_
