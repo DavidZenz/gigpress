@@ -38,7 +38,7 @@ Requirements for the first compatibility and UX delivery. Each maps to a roadmap
 ### Usability and Safety
 
 - [x] **UX-01**: Administration controls changed for this delivery have associated labels, semantic table headings where applicable, keyboard operation, and text-based success and error feedback.
-- [x] **SEC-01**: Changed administration and import/export paths validate inputs, retain appropriate capability and nonce checks for mutations, and escape output for its destination format.
+- [ ] **SEC-01**: Changed administration and import/export paths validate inputs, retain appropriate capability and nonce checks for mutations, and escape output for its destination format. Follow-up required for open source-review findings CR-01 and WR-01 in Phase 01.
 
 ## v2 Requirements
 
@@ -77,7 +77,7 @@ Which phases cover which requirements.
 | PUB-02 | Phase 4 | Complete |
 | CSV-01 | Phase 5 | Complete |
 | CSV-02 | Phase 5 | Complete |
-| SEC-01 | Phase 5 | Complete |
+| SEC-01 | Phase 5 | Follow-up required |
 
 **Coverage:**
 - v1 requirements: 15 total
@@ -86,4 +86,4 @@ Which phases cover which requirements.
 
 ---
 *Requirements defined: 2026-10-03*
-*Last updated: 2026-10-03 after Phase 1 runtime-floor decision and repository-evidence boundary clarification*
+*Last updated: 2026-10-13 after current-source review reopened SEC-01 for follow-up*

@@ -24,11 +24,12 @@ Site owners can manage show information and reliably publish it on their WordPre
 - ✓ Changed Phase 3 controls support associated labels, keyboard operation and readable feedback — Phase 3 human acceptance
 - ✓ Preserve public shortcodes, widgets, related-post displays, RSS/iCalendar output, and theme overrides over populated migrated fixtures — Phase 4, source-bound matrix and accepted UAT
 - ✓ Publish readable bundled listings at 320 CSS pixels, with keyboard-usable links without JavaScript and preserved calendar date meanings — Phase 4, accepted browser and Apple Calendar checks
+- ✓ Preserve CSV import/export columns, filters, related-post associations, row handling, and migrated-data round trips — Phase 5
+- ✓ Provide clear import/export tasks, live export counts, actionable row outcomes, and recoverable tour conversion — Phase 5, accepted browser checks
 
 ### Active
 
-- [ ] Preserve established CSV import/export contracts, including migrated-data round trips and protected mutations — Phase 5.
-- [ ] Deliver clearer import/export layout and actionable outcome feedback — Phase 5.
+- [ ] Recheck destination escaping for CSV-imported artist names and validate optional URL columns — open source-review findings CR-01 and WR-01 in Phase 01; follow-up required for SEC-01.
 
 ### Out of Scope
 
@@ -48,6 +49,8 @@ Site owners can manage show information and reliably publish it on their WordPre
 - Phase 3 has 6384 passing administration assertions across six pinned supported cells, 54 authenticated HTTP checks and 39 PHP syntax checks. Eight user-reported passing UAT checkpoints close manual acceptance; the earlier browser record retains its actual observation limits.
 - Three inherited CSV/conversion review defects remain required Phase 5 fixes in `.planning/CSV-REVIEW-FOLLOWUPS.md`; Phase 3 acceptance does not establish plugin-wide safety.
 - Phase 4 is complete: all 22 UAT checks pass, and canonical verification is passed. The final-source public matrix covers six WordPress/PHP cells, nine cases each and 852 assertions; browser, keyboard and Apple Calendar acceptance remain separate recorded evidence. The user accepted the static privacy assessment on 2026-10-11. The UI review's 17/24 advisory findings remain documented in `04-UI-REVIEW.md`.
+- Phase 5 is complete: the CSV matrix covers 54 passing records across six runtime cells, and the user accepted its browser checks with D-01 explicitly waived and untested. The optional spreadsheet-client workflow remains unobserved.
+- The current-source Phase 01 review found CR-01, an unescaped imported artist name in the Artists admin table, and WR-01, missing validation for optional CSV URL fields. Both remain open in `01-REVIEW-DISPOSITION.md`; they require a security follow-up despite the completed phase plans.
 
 ## Constraints
 
@@ -76,10 +79,14 @@ Site owners can manage show information and reliably publish it on their WordPre
 | Keep compatible HTML fragments while preparing separate plain values for JSON-LD, RSS and iCalendar. | Each output format needs its own encoding boundary while existing template variables remain usable. | Implemented and verified in Phase 4. |
 | Require browser and calendar-client acceptance against the verified final source. | Automated parser checks cannot establish visual readability or actual client behavior. | Explicitly accepted and completed in Phase 4. |
 | Accept the static privacy assessment for the public publishing paths. | Inspection finds no new server-side outbound HTTP request or provider; existing Calendar and Maps URLs remain visitor-followed links. | User replied `pass` to Phase 4 UAT test 22 on 2026-10-11; no network-level test claimed. |
+| Preserve exact CSV values, including formula-like and leading-plus values, and provide Excel text-import guidance. | Silent value rewriting would break GigPress round trips; spreadsheet-client safety must not be overstated. | Phase 5 preserves the values and the user passed D-17; D-01 remains waived and no spreadsheet-client behavior is claimed. |
+| Keep exported Status `0` unchanged and call out its need for manual attention. | Import/export must preserve source values while making exceptional records understandable. | Implemented and verified in Phase 5. |
+| Use one normalized selection for export counts and downloaded rows. | The visible count must describe the exact file a site owner receives. | Implemented and accepted in Phase 5. |
+| Require a read-only, owner-bound preview and explicit confirmation for tour conversion. | Destructive conversion needs clear intent, duplicate-safe retry, and preservation of intervening relationship changes. | Implemented and verified with recovery and conflict checks in Phase 5. |
 
 ## Evolution
 
 After each phase, move completed and confirmed requirements from Active to Validated, move rejected requirements to Out of Scope with a reason, record new requirements and decisions, and update this project description if the product changes. Review all sections at each milestone.
 
 ---
-*Last updated: 2026-10-11 after Phase 4 public publishing verification and human acceptance.*
+*Last updated: 2026-10-13 after Phase 01 re-verification and milestone transition.*
