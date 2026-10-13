@@ -69,6 +69,10 @@ function gigpress_csv_import_case($case) {
 			'venue_url' => array('Venue URL', str_repeat('u', 256)), 'admittance' => array('Admittance', str_repeat('A', 256)),
 			'price' => array('Price', str_repeat('P', 256)), 'ticket_url' => array('Ticket URL', str_repeat('u', 256)),
 			'ticket_phone' => array('Ticket phone', str_repeat('1', 256)), 'external_url' => array('External URL', str_repeat('u', 256)),
+			'artist_url_scheme' => array('Artist URL', 'javascript:alert(1)'),
+			'venue_url_relative' => array('Venue URL', 'example.test/venue'),
+			'ticket_url_missing_host' => array('Ticket URL', 'https://'),
+			'external_url_whitespace' => array('External URL', 'https://example.test/path with space'),
 			'tour' => array('Tour', str_repeat('T', 256)), 'status' => array('Status', str_repeat('x', 33)),
 			'notes' => array('Notes', str_repeat('N', 65536)),
 		);
@@ -80,7 +84,17 @@ function gigpress_csv_import_case($case) {
 		});
 		$checks['schema_bounded_values_rejected_before_all_writes_and_retry_is_clean'] = $allBoundedRejected
 			&& $beforeBoundedValidation === $afterBoundedValidation;
+		$urlFeedback = array();
+		foreach (array('artist_url_scheme' => 'Artist URL', 'venue_url_relative' => 'Venue URL', 'ticket_url_missing_host' => 'Ticket URL', 'external_url_whitespace' => 'External URL') as $name => $column) {
+			$detail = $boundedOutcomes[$name]['records']['rejected'][0] ?? array();
+			$urlFeedback[$name] = ($detail['field'] ?? '') === $column && !empty($detail['reason']) && !empty($detail['next_step']);
+		}
+		$checks['invalid_optional_urls_have_column_specific_guidance'] = !in_array(false, $urlFeedback, true);
 		foreach (array(GIGPRESS_SHOWS, GIGPRESS_ARTISTS, GIGPRESS_VENUES, GIGPRESS_TOURS) as $table) $wpdb->query('DELETE FROM ' . $table);
+		$literalRow['Artist URL'] = 'https://artist.example.test/a?x=1&y=2';
+		$literalRow['Venue URL'] = 'https://venue.example.test/hall?label=A%26B';
+		$literalRow['Ticket URL'] = 'https://tickets.example.test/show?ref=001';
+		$literalRow['External URL'] = 'https://example.test/info#details';
 		$literalPrepared = gigpress_csv_validate_record($literalRow, 2, false);
 		$beforeInvalid = gigpress_csv_import_snapshot();
 		$rejectedPrepared = $literalRow; $rejectedPrepared['Date'] = '2032-02-30';
@@ -91,14 +105,25 @@ function gigpress_csv_import_case($case) {
 		$again = gigpress_csv_persist_record($literalPrepared);
 		$afterAgain = gigpress_csv_import_snapshot();
 		$storedShow = $wpdb->get_row($wpdb->prepare('SELECT * FROM ' . GIGPRESS_SHOWS . ' WHERE show_id = %d', (int) ($first['show_id'] ?? 0)), ARRAY_A);
-		$storedArtist = $storedShow ? $wpdb->get_row($wpdb->prepare('SELECT artist_name FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_id = %d', $storedShow['show_artist_id']), ARRAY_A) : null;
+		$storedArtist = $storedShow ? $wpdb->get_row($wpdb->prepare('SELECT artist_name, artist_url FROM ' . GIGPRESS_ARTISTS . ' WHERE artist_id = %d', $storedShow['show_artist_id']), ARRAY_A) : null;
+		$storedVenue = $storedShow ? $wpdb->get_row($wpdb->prepare('SELECT venue_url FROM ' . GIGPRESS_VENUES . ' WHERE venue_id = %d', $storedShow['show_venue_id']), ARRAY_A) : null;
 		$accounted = gigpress_csv_import_result(array($first, $again, $rejected));
 		$checks['rejected_and_duplicate_snapshots_unchanged'] = ($rejected['group'] ?? '') === 'rejected' && $beforeInvalid === $afterInvalid
 			&& ($again['group'] ?? '') === 'duplicate' && $afterFirst === $afterAgain;
 		$checks['all_groups_once_and_literal_storage_preserved'] = ($accounted['total'] ?? -1) === 3
 			&& ($accounted['counts'] ?? array()) === array('imported' => 1, 'duplicate' => 1, 'rejected' => 1, 'failed' => 0)
 			&& ($storedArtist['artist_name'] ?? null) === $fixture['literals']['artist']
-			&& ($storedShow['show_tix_phone'] ?? null) === '+00012' && ($storedShow['show_notes'] ?? null) === $fixture['literals']['notes'];
+			&& ($storedShow['show_tix_phone'] ?? null) === '+00012' && ($storedShow['show_notes'] ?? null) === $fixture['literals']['notes']
+			&& ($storedArtist['artist_url'] ?? null) === $literalRow['Artist URL']
+			&& ($storedVenue['venue_url'] ?? null) === $literalRow['Venue URL']
+			&& ($storedShow['show_tix_url'] ?? null) === $literalRow['Ticket URL']
+			&& ($storedShow['show_external_url'] ?? null) === $literalRow['External URL'];
+		$hostileRow = $fixture['base']; $hostileRow['Artist'] = '<img src=x onerror=alert(1)>'; $hostileRow['Artist URL'] = 'https://artist.example.test/hostile'; $hostileRow['Date'] = '2032-05-07';
+		$hostileImport = gigpress_csv_import_records(array($hostileRow));
+		ob_start(); gigpress_artists(); $artistAdminHtml = ob_get_clean();
+		$checks['hostile_artist_import_succeeded'] = ($hostileImport['counts']['imported'] ?? 0) === 1;
+		$checks['hostile_artist_name_is_escaped_in_admin'] = strpos($artistAdminHtml, esc_html(wptexturize($hostileRow['Artist']))) !== false;
+		$checks['hostile_artist_event_handler_is_not_rendered'] = strpos($artistAdminHtml, '<img src=x onerror=alert(1)>') === false;
 	} elseif ($case === 'import-retry') {
 		foreach (array(GIGPRESS_SHOWS, GIGPRESS_ARTISTS, GIGPRESS_VENUES, GIGPRESS_TOURS) as $table) $wpdb->query('DELETE FROM ' . $table);
 		$lateRow = $fixture['base']; $lateRow['Artist'] = 'Late Failure Band'; $lateRow['Venue'] = 'Late Failure Hall'; $lateRow['Tour'] = 'Late Failure Tour';

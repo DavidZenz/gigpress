@@ -157,7 +157,7 @@ function gigpress_artists() {
 				<tr<?php echo $style; ?> id="artist_<?php echo $artist->artist_id; ?>">
 					<td class="gp-tiny"><img src="<?php echo plugins_url('gigpress/images/sort.png'); ?>" alt="" class="gp-sort-handle" /></td>
 					<td class="gp-tiny"><?php echo $artist->artist_id; ?></td>
-					<td><?php if(!empty($artist->artist_url)) echo '<a href="'.esc_url($artist->artist_url).'">'; echo wptexturize($artist->artist_name); if(!empty($artist->artist_url)) echo '</a>';?></td>
+					<td><?php if(!empty($artist->artist_url)) echo '<a href="'.esc_url($artist->artist_url).'">'; echo esc_html(wptexturize($artist->artist_name)); if(!empty($artist->artist_url)) echo '</a>';?></td>
 					<td class="gp-centre"><?php echo $count; ?></td>
 					<td class="gp-centre">
 						<a href="<?php echo admin_url('admin.php?page=gigpress-artists&amp;gpaction=edit&amp;artist_id='.$artist->artist_id . $url_args); ?>" class="edit"><?php _e("Edit", "gigpress"); ?></a>

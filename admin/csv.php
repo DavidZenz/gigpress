@@ -45,6 +45,15 @@ function gigpress_csv_scalar($row, $column) {
 	return (string) $row[$column];
 }
 
+function gigpress_csv_valid_optional_url(string $value): bool {
+	if ($value === '') return true;
+	if (preg_match('/[\x00-\x20\x7f\\\\]/', $value)) return false;
+	$parts = wp_parse_url($value);
+	if (!is_array($parts) || empty($parts['host']) || empty($parts['scheme'])) return false;
+	if (!in_array(strtolower($parts['scheme']), array('http', 'https'), true)) return false;
+	return esc_url_raw($value, array('http', 'https')) === $value;
+}
+
 function gigpress_csv_identity(array $values) {
 	return implode(' — ', array_filter(array($values['Artist'] ?? '', $values['Date'] ?? '', $values['Venue'] ?? ''), function ($part) { return $part !== ''; }));
 }
@@ -148,6 +157,11 @@ function gigpress_csv_validate_record(array $row, int $csv_row, bool $include_re
 		if (gigpress_csv_exceeds_character_limit($values[$column], $limit)) return gigpress_csv_detail('rejected', $csv_row, $identity, $column,
 			sprintf(__('This value is longer than the %d-character storage limit.', 'gigpress'), $limit),
 			sprintf(__('Shorten %1$s to %2$d characters or fewer and try again.', 'gigpress'), $column, $limit));
+	}
+	foreach (array('Artist URL', 'Venue URL', 'Ticket URL', 'External URL') as $column) {
+		if ($values[$column] !== '' && !gigpress_csv_valid_optional_url($values[$column])) return gigpress_csv_detail('rejected', $csv_row, $identity, $column,
+			__('Enter a valid absolute HTTP or HTTPS URL, or leave this field blank.', 'gigpress'),
+			sprintf(__('Correct %s to a valid absolute HTTP or HTTPS URL, or clear the field.', 'gigpress'), $column));
 	}
 	global $gp_countries;
 	if (!is_array($gp_countries) || !array_key_exists($values['Country'], $gp_countries)) return gigpress_csv_detail('rejected', $csv_row, $identity, 'Country',
