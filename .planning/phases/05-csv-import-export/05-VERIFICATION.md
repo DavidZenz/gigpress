@@ -1,6 +1,6 @@
 ---
 phase: 05-csv-import-export
-verified: 2026-10-12T21:17:22Z
+verified: 2026-10-13T08:32:36Z
 status: passed
 score: 24/25 must-haves verified
 covered_files:
@@ -180,8 +180,12 @@ The optional spreadsheet-client workflow remains separate and unobserved. It is 
 
 No implementation gap blocks CSV-01, CSV-02, or SEC-01. The user-approved UAT waiver allows this acceptance to complete with status `passed`; D-01 remains behavior-unverified and is not represented as observed or passed. The score remains 24/25, and the optional spreadsheet-client workflow remains separate and unobserved.
 
+## Security follow-up recheck — 2026-10-13
+
+The shared CSV/admin code received two fixes in commit `47285be` after the original verification: artist names are escaped when rendered in the Artists table, and nonempty persisted URL values must be absolute HTTP/HTTPS URLs before any writes. The new `import-rows` assertions pass for hostile artist markup, all four URL columns, rejected-row database snapshots, and byte-for-byte preservation of valid URLs. The refreshed source-fingerprinted CSV matrix passed all 54 records across six runtimes, `csv-evidence validate` passed, and its 12-class corruption self-test passed. The previously approved D-01 JavaScript-disabled observation waiver and the pending, unobserved spreadsheet-client workflow remain unchanged.
+
 ---
 
-_Verified: 2026-10-12T21:17:22Z_
+_Verified: 2026-10-13T08:32:36Z_
 
 _Verifier: the agent (gsd-verifier)_

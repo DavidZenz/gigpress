@@ -7,7 +7,7 @@ requirements:
   - CSV-01
   - CSV-02
   - SEC-01
-updated: 2026-10-12
+updated: 2026-10-13
 ---
 
 # Phase 05 Validation Strategy
@@ -68,6 +68,10 @@ Wave 3 is intentionally parallel: 05-03 and 05-04 have no overlapping modified f
 The final-source CSV producer rebuilt 54 rows (nine exact cases across six WordPress/PHP cells); validation and all 12 corruption checks passed. The focused `export-literals` rerun passed on WordPress 7.1.2 / PHP 8.3.35 with the 23-column format/example contract. The owned `csv-fixture --action smoke --wp 7.1.2 --php 8.3 --case all` passed and cleaned up its temporary services. The final-source Phase 04 public report built and validated all six cells/nine cases (852 assertions, zero warnings/fatals/plugin errors); its 22 corruption checks passed.
 
 The exact Phase 02 preservation matrix passed all 11 cases in all six cells. Its old lifecycle assertions expected the retired one-click tour conversion and called CSV import without the required POST action; the test now verifies safe legacy rejection and current request guards. The Phase 02 report validates against the current shared runner.
+
+### Security follow-up — 2026-10-13
+
+The merge review surfaced two earlier Phase 01 findings in shared Phase 05 code: stored artist markup in the Artists admin table and unvalidated optional URL columns. Commit `47285be` escapes artist labels at the output sink and validates all four persisted URL columns before writes. The `import-rows` contract now verifies hostile markup renders as text, invalid URLs are rejected with column-specific guidance and no database writes, and valid URL values remain exact in storage. A fresh six-runtime/nine-case matrix rebuild produced 54 passing rows; matrix validation and all 12 corruption self-tests passed.
 
 ### Approved validation-gap closure — 2026-10-12
 

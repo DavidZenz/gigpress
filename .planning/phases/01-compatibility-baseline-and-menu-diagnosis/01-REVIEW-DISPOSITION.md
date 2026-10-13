@@ -5,23 +5,23 @@ titles: json
 findings:
   - id: CR-01
     severity: critical
-    disposition: open
+    disposition: fixed
     title: "CSV-imported artist names execute in the Artists administration page"
   - id: WR-01
     severity: warning
-    disposition: open
+    disposition: fixed
     title: "Import accepts values that are not URLs"
-open: 2
+open: 0
 total: 2
-recorded: 2026-10-13T07:53:00Z
+recorded: 2026-10-13T08:32:36Z
 ---
 
 # Phase 01: Code Review Disposition
 
 | Finding | Severity | Disposition | Source |
 |---------|----------|-------------|--------|
-| CR-01 | critical | open | - |
-| WR-01 | warning | open | - |
+| CR-01 | critical | fixed | `admin/artists.php`; regression `csv-workflows/import-rows`; commit `47285be` |
+| WR-01 | warning | fixed | `admin/csv.php`; URL rejection and exact-value preservation in `csv-workflows/import-rows`; commit `47285be` |
 
 Dispositions: `open` (recorded, not yet triaged), `fixed`, `skipped`, `deferred`.
 
